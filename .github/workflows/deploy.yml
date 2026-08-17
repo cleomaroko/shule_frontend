@@ -42,5 +42,5 @@ jobs:
             cd ~/Java/shule_frontend
             tar -xzf shule-frontend.tgz
             rm -f shule-frontend.tgz
-            docker compose up -d --build
-            docker image prune -f
+            echo "${{ secrets.PASSWORD }}" | sudo -S -p '' docker compose up -d --build
+            echo "${{ secrets.PASSWORD }}" | sudo -S -p '' docker image prune -f
