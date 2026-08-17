@@ -1,0 +1,13 @@
+services:
+  shule-frontend:
+    build:
+      context: .
+      args:
+        VITE_API_BASE_URL: /api
+        VITE_BASE_PATH: /dira/
+        VITE_APP_NAME: Dira
+    image: shule-frontend:latest
+    container_name: shule-frontend
+    restart: always
+    ports:
+      - "127.0.0.1:8082:80"

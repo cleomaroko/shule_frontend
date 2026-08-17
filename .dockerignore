@@ -1,0 +1,14 @@
+node_modules
+dist
+dist-ssr
+.git
+.github
+.vscode
+.idea
+*.local
+.env
+.env.*
+!.env.example
+*.log
+README.md
+deploy

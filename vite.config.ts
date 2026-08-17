@@ -17,7 +17,14 @@ export default defineConfig(({ mode }) => {
     },
   }
 
+  // Production on the VPS is served under `/dira/` so host nginx can keep
+  // `location /` pointing at the Spring Boot backend. Local `npm run dev`
+  // stays at `/`. Docker passes VITE_BASE_PATH=/dira/.
+  const rawBase = env.VITE_BASE_PATH || process.env.VITE_BASE_PATH || '/'
+  const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`
+
   return {
+    base,
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

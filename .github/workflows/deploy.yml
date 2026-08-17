@@ -1,0 +1,44 @@
+name: Deploy Dira frontend to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-frontend
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pack sources for the VPS
+        run: tar --exclude='.git' --exclude='node_modules' --exclude='dist' --exclude='shule-frontend.tgz' -czf shule-frontend.tgz .
+
+      - name: Copy archive to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          source: shule-frontend.tgz
+          target: "~/Java/shule_frontend"
+          overwrite: true
+
+      - name: Build and start frontend container
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          command_timeout: 20m
+          script: |
+            mkdir -p ~/Java/shule_frontend
+            cd ~/Java/shule_frontend
+            tar -xzf shule-frontend.tgz
+            rm -f shule-frontend.tgz
+            docker compose up -d --build
+            docker image prune -f
