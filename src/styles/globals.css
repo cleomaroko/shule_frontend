@@ -1,0 +1,247 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/plus-jakarta-sans';
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+  Dira design tokens.
+  Semantic names only — components must never reference raw palette values so the
+  brand can be re-themed (per-school branding) from this single file.
+*/
+:root {
+  --radius: 0.625rem;
+
+  /* Brand palette: deep navy for authority, green for direction/progress. */
+  --brand-navy-950: #06101f;
+  --brand-navy-900: #0a182e;
+  --brand-navy-800: #0e1f3d;
+  --brand-navy-700: #16294d;
+  --brand-navy-600: #1f3760;
+  --brand-green-700: #17795a;
+  --brand-green-600: #1d8b66;
+  --brand-green-500: #23916b;
+  --brand-green-400: #38a97f;
+  --brand-mint-300: #6fd3a5;
+  --brand-mint-200: #a7e6c8;
+
+  /* Surfaces */
+  --background: #f5f7fa;
+  --foreground: #0e1f3d;
+  --card: #ffffff;
+  --card-foreground: #0e1f3d;
+  --popover: #ffffff;
+  --popover-foreground: #0e1f3d;
+
+  /* Intent */
+  --primary: var(--brand-green-500);
+  --primary-hover: var(--brand-green-600);
+  --primary-foreground: #ffffff;
+  --secondary: #eef2f7;
+  --secondary-foreground: #16294d;
+  --muted: #f1f4f9;
+  --muted-foreground: #5b6b85;
+  --accent: #eef2f7;
+  --accent-foreground: #0e1f3d;
+
+  /* Feedback */
+  --destructive: #d92d20;
+  --destructive-foreground: #ffffff;
+  --destructive-subtle: #fef3f2;
+  --success: #0f9d58;
+  --success-foreground: #ffffff;
+  --success-subtle: #ecfdf3;
+  --warning: #b54708;
+  --warning-foreground: #ffffff;
+  --warning-subtle: #fffaeb;
+
+  /* Lines & controls */
+  --border: #e3e8ef;
+  --input: #d8e0ea;
+  --ring: var(--brand-green-500);
+
+  /* Elevation — restrained, used only to lift surfaces off the page. */
+  --shadow-subtle: 0 1px 2px 0 rgb(14 31 61 / 0.05);
+  --shadow-card: 0 1px 2px 0 rgb(14 31 61 / 0.04), 0 8px 24px -8px rgb(14 31 61 / 0.08);
+  --shadow-panel: 0 24px 60px -24px rgb(14 31 61 / 0.22);
+}
+
+.dark {
+  --background: #06101f;
+  --foreground: #eef2f7;
+  --card: #0a182e;
+  --card-foreground: #eef2f7;
+  --popover: #0e1f3d;
+  --popover-foreground: #eef2f7;
+
+  --primary: var(--brand-green-400);
+  --primary-hover: var(--brand-mint-300);
+  --primary-foreground: #06101f;
+  --secondary: #16294d;
+  --secondary-foreground: #eef2f7;
+  --muted: #0e1f3d;
+  --muted-foreground: #93a3bd;
+  --accent: #16294d;
+  --accent-foreground: #eef2f7;
+
+  --destructive: #f97066;
+  --destructive-foreground: #06101f;
+  --destructive-subtle: #2d1211;
+  --success: #32d583;
+  --success-foreground: #06101f;
+  --success-subtle: #0a2a1c;
+  --warning: #fdb022;
+  --warning-foreground: #06101f;
+  --warning-subtle: #2b1c05;
+
+  --border: #1f3760;
+  --input: #26406b;
+  --ring: var(--brand-green-400);
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Plus Jakarta Sans Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-subtle: var(--destructive-subtle);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-subtle: var(--warning-subtle);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-navy-950: var(--brand-navy-950);
+  --color-navy-900: var(--brand-navy-900);
+  --color-navy-800: var(--brand-navy-800);
+  --color-navy-700: var(--brand-navy-700);
+  --color-navy-600: var(--brand-navy-600);
+  --color-mint-300: var(--brand-mint-300);
+  --color-mint-200: var(--brand-mint-200);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 10px);
+
+  --shadow-subtle: var(--shadow-subtle);
+  --shadow-card: var(--shadow-card);
+  --shadow-panel: var(--shadow-panel);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+    font-variation-settings: 'opsz' 32;
+  }
+
+  /* One consistent focus treatment across every interactive element. */
+  :focus-visible {
+    @apply outline-ring outline-2 outline-offset-2;
+  }
+
+  ::placeholder {
+    @apply text-muted-foreground/70;
+  }
+
+  /* Hide Edge/IE native password reveal so the custom toggle is the only affordance. */
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none;
+  }
+}
+
+/*
+  Semantic typography scale. Prefer these over ad-hoc font-size combinations so
+  hierarchy stays consistent as ERP modules are added.
+*/
+@utility type-display {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 1.6rem + 1.6vw, 2.75rem);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+@utility type-page-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+@utility type-section-title {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+@utility type-heading {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+@utility type-body {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+@utility type-label {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+}
+
+@utility type-caption {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+@utility type-wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
