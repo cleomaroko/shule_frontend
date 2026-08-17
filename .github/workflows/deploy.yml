@@ -16,7 +16,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Pack sources for the VPS
-        run: tar --exclude='.git' --exclude='node_modules' --exclude='dist' --exclude='shule-frontend.tgz' -czf shule-frontend.tgz .
+        run: |
+          tar --exclude='.git' --exclude='node_modules' --exclude='dist' -czf "$RUNNER_TEMP/shule-frontend.tgz" .
+          mv "$RUNNER_TEMP/shule-frontend.tgz" shule-frontend.tgz
 
       - name: Copy archive to VPS
         uses: appleboy/scp-action@v0.1.7
