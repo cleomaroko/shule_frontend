@@ -37,6 +37,7 @@ jobs:
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           command_timeout: 20m
+          script_stop: true
           script: |
             mkdir -p ~/Java/shule_frontend
             cd ~/Java/shule_frontend

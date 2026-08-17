@@ -18,8 +18,8 @@ function readString(value: string | undefined, fallback: string): string {
  */
 const apiBaseUrl = readString(import.meta.env.VITE_API_BASE_URL, '/api').replace(/\/+$/, '')
 
-/** Vite `base` without a trailing slash. Empty in local dev (`base: '/'`). */
-const routerBasename = import.meta.env.BASE_URL.replace(/\/+$/, '')
+/** Vite `base` without a trailing slash. Local dev is `/`. Production is `/dira`. */
+const routerBasename = import.meta.env.BASE_URL.replace(/\/+$/, '') || '/'
 
 export const env = {
   apiBaseUrl,
@@ -28,7 +28,7 @@ export const env = {
    * React Router basename. Production on the VPS is `/dira` so the SPA can
    * live next to the existing nginx `location /` backend proxy.
    */
-  routerBasename: routerBasename === '' ? undefined : routerBasename,
+  routerBasename,
   isDevelopment: import.meta.env.DEV,
   isProduction: import.meta.env.PROD,
 } as const
