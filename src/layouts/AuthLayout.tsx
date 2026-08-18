@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 
 import { BrandPanel } from '@/components/branding/BrandPanel'
 import { DiraWordmark } from '@/components/branding/DiraWordmark'
+import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { env } from '@/lib/env'
 
 /**
@@ -19,7 +20,11 @@ export function AuthLayout(): ReactNode {
     <div className="min-h-dvh bg-card lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
       <BrandPanel />
 
-      <main className="flex min-h-dvh flex-col bg-card px-5 py-8 sm:px-8 lg:min-h-0 lg:px-10 lg:py-10">
+      <main className="relative flex min-h-dvh flex-col bg-card px-5 py-8 sm:px-8 lg:min-h-0 lg:px-10 lg:py-10">
+        <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+          <ThemeToggle />
+        </div>
+
         {/* Compact brand lockup for viewports without the brand panel. */}
         <div className="mb-10 flex justify-center lg:hidden">
           <DiraWordmark size="sm" />

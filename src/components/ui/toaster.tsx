@@ -1,13 +1,18 @@
 import { Toaster as SonnerToaster } from 'sonner'
 import type { ReactNode } from 'react'
 
+import { useTheme } from '@/theme/useTheme'
+
 /**
  * Application-wide toast host, themed with Dira tokens so notifications match
  * the rest of the product rather than Sonner's defaults.
  */
 export function Toaster(): ReactNode {
+  const { resolved } = useTheme()
+
   return (
     <SonnerToaster
+      theme={resolved}
       // Bottom-right keeps confirmations clear of the header and the auth form.
       position="bottom-right"
       offset={20}

@@ -7,18 +7,21 @@ import { Toaster } from '@/components/ui/toaster'
 import { env } from '@/lib/env'
 import { QueryProvider } from '@/providers/QueryProvider'
 import { AppRoutes } from '@/routes/AppRoutes'
+import { ThemeProvider } from '@/theme/ThemeProvider'
 
 export function App(): ReactNode {
   return (
     <RootErrorBoundary>
-      <QueryProvider>
-        <BrowserRouter basename={env.routerBasename}>
-          <AuthProvider>
-            <AppRoutes />
-            <Toaster />
-          </AuthProvider>
-        </BrowserRouter>
-      </QueryProvider>
+      <ThemeProvider>
+        <QueryProvider>
+          <BrowserRouter basename={env.routerBasename}>
+            <AuthProvider>
+              <AppRoutes />
+              <Toaster />
+            </AuthProvider>
+          </BrowserRouter>
+        </QueryProvider>
+      </ThemeProvider>
     </RootErrorBoundary>
   )
 }

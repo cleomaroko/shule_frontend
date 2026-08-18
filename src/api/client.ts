@@ -132,6 +132,36 @@ export async function apiRequest<T>(config: AxiosRequestConfig): Promise<ApiResu
   return unwrapEnvelope<T>(response)
 }
 
+/**
+ * GET helpers for endpoints that return a JSON array *without* wrapping it in
+ * `ApiResponse`. Lookup/picker controllers do this; staff and learner lists do not.
+ */
+export async function apiGetList<T>(url: string, config?: AxiosRequestConfig): Promise<T[]> {
+  const response = await httpClient.request<unknown>({ ...config, url, method: 'GET' })
+  const body = response.data
+
+  if (Array.isArray(body)) return body as T[]
+
+  if (isEnvelope(body)) {
+    if (!body.success) {
+      throw new ApiError({
+        kind: 'business',
+        message: body.message ?? '',
+        status: response.status,
+        detail: body,
+      })
+    }
+    if (Array.isArray(body.data)) return body.data as T[]
+  }
+
+  throw new ApiError({
+    kind: 'unknown',
+    message: 'Expected a list response',
+    status: response.status,
+    detail: body,
+  })
+}
+
 export const api = {
   get<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResult<T>> {
     return apiRequest<T>({ ...config, url, method: 'GET' })
@@ -144,5 +174,8 @@ export const api = {
   },
   delete<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResult<T>> {
     return apiRequest<T>({ ...config, url, method: 'DELETE' })
+  },
+  getList<T>(url: string, config?: AxiosRequestConfig): Promise<T[]> {
+    return apiGetList<T>(url, config)
   },
 }

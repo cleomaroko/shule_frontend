@@ -21,6 +21,17 @@ export function formatRoleLabel(role: UserRole): string {
 }
 
 /**
+ * A short name for greetings. The backend only returns a username, so this
+ * takes the first token (`jane.doe` → `Jane`) rather than inventing a profile.
+ */
+export function getGreetingName(user: AuthenticatedUser): string {
+  const token = user.username.split(/[\s._@-]+/).find(Boolean)
+  if (!token) return user.username
+
+  return token.charAt(0).toUpperCase() + token.slice(1)
+}
+
+/**
  * Derives up to two initials for the avatar fallback. Handles usernames with
  * separators (`jane.doe` → `JD`) as well as single tokens (`mgaschool` → `MG`).
  */

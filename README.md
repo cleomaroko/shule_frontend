@@ -3,11 +3,9 @@
 The web frontend for **Dira**, a modern school ERP platform. This is the client for the
 Spring Boot backend that lives in the repository root.
 
-> **Current scope: authentication only.**
-> Authentication is the only module implemented on the Java backend, so it is the only
-> feature implemented here. No ERP module (students, staff, fees, attendance, exams,
-> timetables, reports…) is mocked, stubbed or faked. The architecture is built so those
-> modules can be added without redesigning anything.
+> **Current scope: authentication, staff, and learners.**
+> Other ERP modules are not implemented. Staff and learner screens talk to the real
+> Spring Boot API — they do not use mock data.
 
 ---
 
@@ -359,7 +357,15 @@ frontend/
 | `/login`           | public only  | Sign in                                          |
 | `/forgot-password` | public only  | Request a reset code                             |
 | `/reset-password`  | public only  | Redeem the code and set a new password           |
-| `/app`             | protected    | Minimal post-login placeholder (not a dashboard) |
+| `/app`             | protected    | Dashboard placeholder                            |
+| `/staff`           | protected    | Staff list                                       |
+| `/staff/new`       | protected    | Add staff                                        |
+| `/staff/:id`       | protected    | Staff profile                                    |
+| `/staff/:id/edit`  | protected    | Edit staff                                       |
+| `/learners`        | protected    | Learner list                                     |
+| `/learners/new`    | protected    | Enrol learner (multi-step)                       |
+| `/learners/:id`    | protected    | Learner profile                                  |
+| `/learners/:id/edit` | protected  | Edit learner (partial update)                    |
 | `*`                | —            | Not found                                        |
 
 `ProtectedRoute` waits for the stored session to be evaluated before deciding, so a page
