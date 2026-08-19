@@ -28,7 +28,10 @@ export function StaffCreatePage(): ReactNode {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Add staff" description="Create a staff profile. A default password is set by the backend." />
+      <PageHeader
+        title="Add staff"
+        description="Creates a staff profile and a login account. The work email becomes the username; the backend sets the default password."
+      />
       <StaffForm
         isSubmitting={create.isPending}
         submitLabel="Create staff"

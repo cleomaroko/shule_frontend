@@ -18,6 +18,8 @@ export interface ConfirmDialogProps {
   confirmLabel: string
   isConfirming?: boolean
   onConfirm: () => void
+  confirmVariant?: 'destructive' | 'primary'
+  loadingLabel?: string
 }
 
 export function ConfirmDialog({
@@ -28,6 +30,8 @@ export function ConfirmDialog({
   confirmLabel,
   isConfirming = false,
   onConfirm,
+  confirmVariant = 'destructive',
+  loadingLabel = 'Deleting',
 }: ConfirmDialogProps): ReactNode {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -40,7 +44,12 @@ export function ConfirmDialog({
           <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={isConfirming}>
             Cancel
           </Button>
-          <Button variant="destructive" isLoading={isConfirming} loadingLabel="Deleting" onClick={onConfirm}>
+          <Button
+            variant={confirmVariant}
+            isLoading={isConfirming}
+            loadingLabel={loadingLabel}
+            onClick={onConfirm}
+          >
             {confirmLabel}
           </Button>
         </DialogFooter>

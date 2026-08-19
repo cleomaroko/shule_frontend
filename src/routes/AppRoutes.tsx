@@ -1,14 +1,17 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
+import { AcademicsPage } from '@/features/academic/pages/AcademicsPage'
 import { LearnerCreatePage } from '@/features/learners/pages/LearnerCreatePage'
 import { LearnerDetailsPage } from '@/features/learners/pages/LearnerDetailsPage'
 import { LearnerEditPage } from '@/features/learners/pages/LearnerEditPage'
 import { LearnersPage } from '@/features/learners/pages/LearnersPage'
+import { LogisticsPage } from '@/features/logistics/pages/LogisticsPage'
 import { StaffCreatePage } from '@/features/staff/pages/StaffCreatePage'
 import { StaffDetailsPage } from '@/features/staff/pages/StaffDetailsPage'
 import { StaffEditPage } from '@/features/staff/pages/StaffEditPage'
 import { StaffPage } from '@/features/staff/pages/StaffPage'
+import { SystemPage } from '@/features/system/pages/SystemPage'
 import { AppLayout } from '@/layouts/AppLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { NotFoundPage } from '@/pages/NotFoundPage'
@@ -44,6 +47,9 @@ export function AppRoutes(): ReactNode {
           <Route path={paths.learnerNew} element={<LearnerCreatePage />} />
           <Route path="/learners/:id/edit" element={<LearnerEditPage />} />
           <Route path="/learners/:id" element={<LearnerDetailsPage />} />
+          <Route path={paths.academics} element={<AcademicsPage />} />
+          <Route path={paths.logistics} element={<LogisticsPage />} />
+          <Route path={paths.system} element={<SystemPage />} />
         </Route>
       </Route>
 

@@ -84,7 +84,11 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
           label="Work email"
           type="email"
           autoComplete="email"
-          hint={isEdit ? 'Work email cannot be changed after registration.' : 'Used as the staff username on the backend.'}
+          hint={
+            isEdit
+              ? 'Work email cannot be changed after registration. The backend does not update it on save.'
+              : 'Becomes the login username. The account is created with role ROLE_STAFF and the backend default password.'
+          }
           error={form.formState.errors.workEmail?.message}
           disabled={isSubmitting || isEdit}
           {...form.register('workEmail')}
@@ -112,7 +116,7 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
         />
         <TextField
           label="System role"
-          hint="There is no staff-roles lookup endpoint. Enter the role name stored on the staff record."
+          hint="Stored on the staff record only. New logins are always created as ROLE_STAFF; this field does not change the users table."
           error={form.formState.errors.systemRole?.message}
           disabled={isSubmitting}
           {...form.register('systemRole')}

@@ -14,6 +14,9 @@ export const paths = {
   learnerNew: '/learners/new',
   learnerDetail: (id: number | string) => `/learners/${id}`,
   learnerEdit: (id: number | string) => `/learners/${id}/edit`,
+  academics: '/academics',
+  logistics: '/logistics',
+  system: '/system',
 } as const
 
 /** Where users land after signing in. */

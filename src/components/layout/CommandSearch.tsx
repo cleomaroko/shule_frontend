@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { navigation } from '@/components/layout/navigation'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { useLearningAreaList } from '@/features/academic/hooks/useAcademic'
 import { useLearnerList } from '@/features/learners/hooks/useLearners'
 import { useStaffList } from '@/features/staff/hooks/useStaff'
 import { formatPersonName } from '@/lib/format'
@@ -28,6 +29,7 @@ export function CommandSearch(): ReactNode {
   const navigate = useNavigate()
   const staff = useStaffList()
   const learners = useLearnerList()
+  const learningAreas = useLearningAreaList()
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -95,12 +97,26 @@ export function CommandSearch(): ReactNode {
       }))
   }, [learners.data, needle])
 
+  const learningAreaHits = useMemo<SearchHit[]>(() => {
+    if (!needle) return []
+    return (learningAreas.data ?? [])
+      .filter((item) => matches([item.name, item.shortName, item.knecCode].join(' '), needle))
+      .slice(0, 6)
+      .map((item) => ({
+        id: `subject-${item.id}`,
+        label: item.name,
+        hint: [item.shortName, item.knecCode].filter(Boolean).join(' · ') || 'Learning area',
+        to: `${paths.academics}?tab=learning-areas`,
+      }))
+  }, [learningAreas.data, needle])
+
   const go = (to: string) => {
     setOpen(false)
     void navigate(to)
   }
 
-  const hasResults = pages.length > 0 || staffHits.length > 0 || learnerHits.length > 0
+  const hasResults =
+    pages.length > 0 || staffHits.length > 0 || learnerHits.length > 0 || learningAreaHits.length > 0
 
   return (
     <>
@@ -151,6 +167,7 @@ export function CommandSearch(): ReactNode {
                 <ResultGroup title="Pages" items={pages} onSelect={go} />
                 <ResultGroup title="Learners" items={learnerHits} onSelect={go} />
                 <ResultGroup title="Staff" items={staffHits} onSelect={go} />
+                <ResultGroup title="Learning areas" items={learningAreaHits} onSelect={go} />
               </>
             )}
           </div>

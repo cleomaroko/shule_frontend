@@ -1,4 +1,4 @@
-import { GraduationCap, LayoutDashboard, Users } from 'lucide-react'
+import { BookOpen, Bus, GraduationCap, LayoutDashboard, Settings2, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 import { paths } from '@/routes/paths'
@@ -26,5 +26,16 @@ export const navigation: NavSection[] = [
       { label: 'Learners', to: paths.learners, icon: GraduationCap },
       { label: 'Staff', to: paths.staff, icon: Users },
     ],
+  },
+  {
+    title: 'School',
+    items: [
+      { label: 'Academics', to: paths.academics, icon: BookOpen },
+      { label: 'Logistics', to: paths.logistics, icon: Bus },
+    ],
+  },
+  {
+    title: 'Admin',
+    items: [{ label: 'System', to: paths.system, icon: Settings2 }],
   },
 ]

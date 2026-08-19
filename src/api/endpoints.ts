@@ -13,9 +13,9 @@ export const endpoints = {
   staff: {
     /** GET — `ApiResponse<Staff[]>` */
     list: '/staff',
-    /** POST — requires Authorization; body is a Staff entity */
+    /** POST — requires Authorization; creates Staff and a User login (username = workEmail, role ROLE_STAFF). */
     register: '/staff/register',
-    /** PUT — requires Authorization; full overwrite of copied fields */
+    /** PUT — requires Authorization; full overwrite of copied fields. Does not update workEmail or password. */
     byId: (id: number) => `/staff/${id}`,
   },
   learners: {
@@ -26,8 +26,41 @@ export const endpoints = {
     /** PUT / DELETE — requires Authorization */
     byId: (id: number) => `/learners/${id}`,
   },
-  campuses: '/campuses',
-  departments: '/departments',
+  campuses: {
+    list: '/campuses',
+    byId: (id: number) => `/campuses/${id}`,
+  },
+  departments: {
+    list: '/departments',
+    byId: (id: number) => `/departments/${id}`,
+  },
+  academic: {
+    /** GET raw `SchoolClass[]`; POST wrapped, Authorization used for audit logging. */
+    classes: '/academic/classes',
+    /** GET raw `Stream[]`; POST wrapped. */
+    streams: '/academic/streams',
+    assignments: {
+      /** GET raw `TeacherAssignment[]`. */
+      list: '/academic/assignments',
+      /** DELETE wrapped; POST/DELETE require ADMIN or HEAD. */
+      byId: (id: number) => `/academic/assignments/${id}`,
+    },
+  },
+  subjects: {
+    /** GET wrapped `ApiResponse<Subject[]>`. Mutations: SUPER_ADMIN / IT_ADMIN / HEAD_OF_SCHOOL / SECTION_HEAD. */
+    list: '/subjects',
+    byId: (id: number) => `/subjects/${id}`,
+  },
+  logistics: {
+    /** GET raw arrays; POST wrapped and Authorization is required for logging. */
+    zones: '/logistics/zones',
+    houses: '/logistics/houses',
+  },
+  system: {
+    reset: '/system/reset-to-defaults',
+    logs: '/system/logs',
+    emailUsage: '/system/email-usage',
+  },
   lookups: {
     titles: '/lookups/titles',
     genders: '/lookups/genders',
@@ -51,6 +84,20 @@ export const queryKeys = {
   },
   learners: {
     all: ['learners'] as const,
+  },
+  academic: {
+    classes: ['academic', 'classes'] as const,
+    streams: ['academic', 'streams'] as const,
+    assignments: ['academic', 'assignments'] as const,
+    subjects: ['academic', 'subjects'] as const,
+  },
+  logistics: {
+    zones: ['logistics', 'zones'] as const,
+    houses: ['logistics', 'houses'] as const,
+  },
+  system: {
+    logs: ['system', 'logs'] as const,
+    emailUsage: ['system', 'email-usage'] as const,
   },
   lookups: {
     campuses: ['lookups', 'campuses'] as const,

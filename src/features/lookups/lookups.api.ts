@@ -17,8 +17,8 @@ import type {
  * pickers, etc. return a raw JSON array — see `LookupController` / `PickerController`.
  */
 export const lookupsApi = {
-  campuses: () => api.get<Campus[]>(endpoints.campuses).then((r) => r.data ?? []),
-  departments: () => api.get<Department[]>(endpoints.departments).then((r) => r.data ?? []),
+  campuses: () => api.get<Campus[]>(endpoints.campuses.list).then((r) => r.data ?? []),
+  departments: () => api.get<Department[]>(endpoints.departments.list).then((r) => r.data ?? []),
   titles: () => api.getList<NamedLookup>(endpoints.lookups.titles),
   genders: () => api.getList<NamedLookup>(endpoints.lookups.genders),
   maritalStatuses: () => api.getList<NamedLookup>(endpoints.lookups.maritalStatuses),
@@ -30,4 +30,23 @@ export const lookupsApi = {
   streams: () => api.getList<StreamOption>(endpoints.pickers.streams),
   zones: () => api.getList<ZoneOption>(endpoints.pickers.zones),
   houses: () => api.getList<HouseOption>(endpoints.pickers.houses),
+
+  createCampus(body: { name: string; location?: string }): Promise<Campus> {
+    return api.post<Campus>(endpoints.campuses.list, body).then((r) => r.data as Campus)
+  },
+  updateCampus(id: number, body: { name: string; location?: string | null }): Promise<Campus> {
+    return api.put<Campus>(endpoints.campuses.byId(id), body).then((r) => r.data as Campus)
+  },
+  deleteCampus(id: number): Promise<void> {
+    return api.delete(endpoints.campuses.byId(id)).then(() => undefined)
+  },
+  createDepartment(body: { name: string }): Promise<Department> {
+    return api.post<Department>(endpoints.departments.list, body).then((r) => r.data as Department)
+  },
+  deleteDepartment(id: number): Promise<void> {
+    return api.delete(endpoints.departments.byId(id)).then(() => undefined)
+  },
+  addNamed(path: string, name: string): Promise<NamedLookup> {
+    return api.post<NamedLookup>(path, { name }).then((r) => r.data as NamedLookup)
+  },
 }

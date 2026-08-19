@@ -27,6 +27,24 @@ export function formatDate(value: string | null | undefined): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date)
 }
 
+export function formatDateTime(value: string | null | undefined): string {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
+}
+
+export function formatClassLabel(parts: {
+  section?: string | null
+  className?: string | null
+}): string {
+  const label = [parts.section, parts.className]
+    .map((part) => part?.trim())
+    .filter((part): part is string => Boolean(part))
+    .join(' · ')
+  return label || 'Unnamed class'
+}
+
 export function formatYear(value: string | null | undefined): string | null {
   if (!value) return null
   const date = new Date(value)

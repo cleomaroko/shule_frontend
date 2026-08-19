@@ -1,4 +1,4 @@
-import { ArrowUpRight, GraduationCap, Plus, Users } from 'lucide-react'
+import { ArrowUpRight, BookOpen, Bus, GraduationCap, Plus, Settings2, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
@@ -97,7 +97,7 @@ export function AppPlaceholderPage(): ReactNode {
         <div>
           <h1 className="type-page-title">Dashboard</h1>
           <p className="type-body mt-1.5 max-w-2xl text-muted-foreground">
-            Welcome back, {getGreetingName(user)}. Manage the people in your school from here.
+            Welcome back, {getGreetingName(user)}. Manage people, academics, and school setup from here.
           </p>
         </div>
         {quickAction ? (
@@ -160,6 +160,27 @@ export function AppPlaceholderPage(): ReactNode {
               title="Staff"
               description="Staff records and employment information"
               icon={<Users className="size-5" aria-hidden="true" />}
+              tone="green"
+            />
+            <ModuleLink
+              to={paths.academics}
+              title="Academics"
+              description="Classes, learning areas, and teacher assignments"
+              icon={<BookOpen className="size-5" aria-hidden="true" />}
+              tone="green"
+            />
+            <ModuleLink
+              to={paths.logistics}
+              title="Logistics"
+              description="Transport zones and boarding houses"
+              icon={<Bus className="size-5" aria-hidden="true" />}
+              tone="navy"
+            />
+            <ModuleLink
+              to={paths.system}
+              title="System"
+              description="Audit logs, campuses, and reference lists"
+              icon={<Settings2 className="size-5" aria-hidden="true" />}
               tone="green"
             />
           </CardContent>
