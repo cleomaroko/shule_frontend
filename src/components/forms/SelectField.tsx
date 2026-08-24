@@ -19,6 +19,8 @@ export interface SelectFieldProps {
   containerClassName?: string
   allowEmpty?: boolean
   emptyLabel?: string
+  /** Shown inside the list when `options` is empty (desktop and mobile). */
+  emptyMessage?: string | undefined
 }
 
 export function SelectField({
@@ -34,6 +36,7 @@ export function SelectField({
   containerClassName,
   allowEmpty = true,
   emptyLabel = 'Not set',
+  emptyMessage,
 }: SelectFieldProps): ReactNode {
   const generatedId = useId()
   const id = name ? `${name}-${generatedId}` : generatedId
@@ -61,6 +64,11 @@ export function SelectField({
         <SelectContent>
           {allowEmpty ? (
             <SelectItem value="__empty">{emptyLabel}</SelectItem>
+          ) : null}
+          {options.length === 0 && emptyMessage ? (
+            <div className="px-2.5 py-2 type-label text-muted-foreground" role="status">
+              {emptyMessage}
+            </div>
           ) : null}
           {options.map((option) => (
             <SelectItem key={option.value} value={option.value}>

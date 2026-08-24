@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useAssetList } from '@/features/assets/hooks/useAssets'
 import { useStoreItems } from '@/features/store/hooks/useStore'
+import { useVehicleList } from '@/features/transport/hooks/useTransport'
 import { useLearningAreaList } from '@/features/academic/hooks/useAcademic'
 import { useStaffRoles } from '@/features/lookups/useLookups'
 import { useLearnerList } from '@/features/learners/hooks/useLearners'
@@ -35,6 +36,7 @@ export function CommandSearch(): ReactNode {
   const learningAreas = useLearningAreaList()
   const assets = useAssetList()
   const storeItems = useStoreItems()
+  const vehicles = useVehicleList()
   const staffRoles = useStaffRoles()
 
   useEffect(() => {
@@ -147,6 +149,21 @@ export function CommandSearch(): ReactNode {
       }))
   }, [needle, storeItems.data])
 
+  const vehicleHits = useMemo<SearchHit[]>(() => {
+    if (!needle) return []
+    return (vehicles.data ?? [])
+      .filter((item) =>
+        matches([item.numberPlate, item.makeModel, item.vehicleType, item.status].join(' '), needle),
+      )
+      .slice(0, 6)
+      .map((item) => ({
+        id: `vehicle-${item.id}`,
+        label: item.numberPlate,
+        hint: [item.makeModel, item.vehicleType].filter(Boolean).join(' · ') || 'Vehicle',
+        to: `${paths.transport}?tab=fleet`,
+      }))
+  }, [needle, vehicles.data])
+
   const roleHits = useMemo<SearchHit[]>(() => {
     if (!needle) return []
     return (staffRoles.data ?? [])
@@ -172,6 +189,7 @@ export function CommandSearch(): ReactNode {
     learningAreaHits.length > 0 ||
     assetHits.length > 0 ||
     storeHits.length > 0 ||
+    vehicleHits.length > 0 ||
     roleHits.length > 0
 
   return (
@@ -226,6 +244,7 @@ export function CommandSearch(): ReactNode {
                 <ResultGroup title="Learning areas" items={learningAreaHits} onSelect={go} />
                 <ResultGroup title="Asset Management" items={assetHits} onSelect={go} />
                 <ResultGroup title="Store Management" items={storeHits} onSelect={go} />
+                <ResultGroup title="Transport" items={vehicleHits} onSelect={go} />
                 <ResultGroup title="Staff roles" items={roleHits} onSelect={go} />
               </>
             )}

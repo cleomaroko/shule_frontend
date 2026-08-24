@@ -19,11 +19,17 @@ import type { UserRole } from '@/auth/auth.types'
  * Asset mutations (`AssetController.isAuthorized`):
  *   role contains `ADMIN` OR role contains `PROCUREMENT`
  *
+ * Transport mutations (`TransportController.isAuthorized`):
+ *   role contains `ADMIN` OR role contains `OPERATOR`
+ *
  * Store mutations (`StoreController`): no role check; Authorization is used for
  * audit `recordedBy` / system logs. The UI still gates write actions.
  *
  * System logs / reset / email usage (`SystemController.isSuperAdmin`):
  *   role equals `ROLE_SUPER_ADMIN`
+ *
+ * System analytics (`SystemController.isITOrSuperAdmin`):
+ *   role equals `ROLE_SUPER_ADMIN` OR contains `IT_ADMIN` OR `IT_OFFICER`
  *
  * Academic year/term mutations (`AcademicController.isAuthorized`):
  *   role contains `ADMIN` OR role contains `HEAD`. No DELETE in the controller.
@@ -45,7 +51,9 @@ export type Capability =
   | 'assignment:write'
   | 'asset:write'
   | 'store:write'
+  | 'transport:write'
   | 'system:super'
+  | 'system:analytics'
 
 export function hasRole(role: UserRole | null | undefined, expected: string): boolean {
   if (!role) return false
@@ -82,7 +90,15 @@ export function can(role: UserRole | null | undefined, capability: Capability): 
       return roleContains(role, 'ADMIN') || roleContains(role, 'PROCUREMENT')
     case 'store:write':
       return roleContains(role, 'ADMIN') || roleContains(role, 'STORE') || roleContains(role, 'HEAD')
+    case 'transport:write':
+      return roleContains(role, 'ADMIN') || roleContains(role, 'OPERATOR')
     case 'system:super':
       return hasRole(role, 'ROLE_SUPER_ADMIN')
+    case 'system:analytics':
+      return (
+        hasRole(role, 'ROLE_SUPER_ADMIN') ||
+        roleContains(role, 'IT_ADMIN') ||
+        roleContains(role, 'IT_OFFICER')
+      )
   }
 }

@@ -23,6 +23,14 @@ export function useEmailUsage(enabled: boolean) {
   })
 }
 
+export function useSystemAnalytics(enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.system.analytics,
+    queryFn: systemApi.analytics,
+    enabled,
+  })
+}
+
 export function useSystemMutations() {
   const queryClient = useQueryClient()
 
@@ -31,6 +39,7 @@ export function useSystemMutations() {
     onSuccess: async (message) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.system.logs }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.system.analytics }),
         queryClient.invalidateQueries({ queryKey: queryKeys.lookups.campuses }),
         queryClient.invalidateQueries({ queryKey: queryKeys.lookups.departments }),
       ])

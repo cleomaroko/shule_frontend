@@ -73,7 +73,15 @@ export function LearnerForm({ learner, isSubmitting, submitLabel, onSubmit }: Le
     .map((item) => item.className)
     .filter((name): name is string => Boolean(name))
   const uniqueClasses = Array.from(new Set(classes))
-  const streams = (useStreams().data ?? []).map((item) => item.name).filter(Boolean)
+  const streamQuery = useStreams()
+  const streams = useMemo(
+    () =>
+      withExistingOption(
+        Array.from(new Set((streamQuery.data ?? []).map((item) => item.name).filter(Boolean))),
+        learner?.stream,
+      ),
+    [learner?.stream, streamQuery.data],
+  )
   const termList = useAcademicTermList()
   const terms = useMemo(() => {
     const labels = (termList.data ?? []).map(academicTermLabel).filter(Boolean)
@@ -123,6 +131,7 @@ export function LearnerForm({ learner, isSubmitting, submitLabel, onSubmit }: Le
     genders,
     uniqueClasses,
     streams,
+    streamsLoading: streamQuery.isLoading,
     terms,
     termsLoading: termList.isLoading,
     counties,
@@ -194,6 +203,7 @@ interface StepProps {
   genders: string[]
   uniqueClasses: string[]
   streams: string[]
+  streamsLoading: boolean
   terms: string[]
   termsLoading: boolean
   counties: string[]
@@ -226,12 +236,29 @@ function BasicStep({ register, control, errors, disabled, genders, uniqueClasses
   )
 }
 
-function AcademicStep({ register, control, errors, disabled, uniqueClasses, streams, terms, termsLoading }: StepProps): ReactNode {
+function AcademicStep({ register, control, errors, disabled, uniqueClasses, streams, streamsLoading, terms, termsLoading }: StepProps): ReactNode {
+  const streamPlaceholder = streamsLoading
+    ? 'Loading streams…'
+    : streams.length === 0
+      ? 'No streams available'
+      : 'Select stream'
+
   return (
     <>
       <FormSection title="Placement">
         <LookupSelect control={control} name="currentClass" label="Current class" options={uniqueClasses} error={errors.currentClass?.message} disabled={disabled} />
-        <LookupSelect control={control} name="stream" label="Stream" options={streams} error={errors.stream?.message} disabled={disabled} />
+        <LookupSelect
+          control={control}
+          name="stream"
+          label="Stream"
+          options={streams}
+          placeholder={streamPlaceholder}
+          emptyMessage="No streams available"
+          fallbackToText={false}
+          allowEmpty={streams.length > 0}
+          error={errors.stream?.message}
+          disabled={disabled || streamsLoading}
+        />
         <LookupSelect
           control={control}
           name="admissionTerm"

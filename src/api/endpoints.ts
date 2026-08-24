@@ -80,10 +80,23 @@ export const endpoints = {
     /** GET/POST wrapped. No PUT/DELETE for items. No units list endpoint in the controller. */
     items: '/store/items',
   },
+  transport: {
+    /** GET wrapped. POST/PUT/DELETE require ADMIN or OPERATOR. */
+    vehicles: '/transport/vehicles',
+    vehicleById: (id: number) => `/transport/vehicles/${id}`,
+    /** GET wrapped. POST/PUT/DELETE require ADMIN or OPERATOR. */
+    logs: '/transport/logs',
+    logById: (id: number) => `/transport/logs/${id}`,
+    /** GET raw `BusStop[]`. POST/PUT/DELETE wrapped; require ADMIN or OPERATOR. */
+    stops: '/transport/stops',
+    stopById: (id: number) => `/transport/stops/${id}`,
+  },
   system: {
     reset: '/system/reset-to-defaults',
     logs: '/system/logs',
     emailUsage: '/system/email-usage',
+    /** GET wrapped. SUPER_ADMIN, IT_ADMIN, or IT_OFFICER. Data is null when there are no logs. */
+    analytics: '/system/analytics',
   },
   lookups: {
     /** GET raw `StaffRole[]`. POST/PUT/DELETE wrapped; Authorization used for audit logging. */
@@ -128,6 +141,11 @@ export const queryKeys = {
     logs: ['store', 'logs'] as const,
     items: ['store', 'items'] as const,
   },
+  transport: {
+    vehicles: ['transport', 'vehicles'] as const,
+    logs: ['transport', 'logs'] as const,
+    stops: ['transport', 'stops'] as const,
+  },
   logistics: {
     zones: ['logistics', 'zones'] as const,
     houses: ['logistics', 'houses'] as const,
@@ -135,6 +153,7 @@ export const queryKeys = {
   system: {
     logs: ['system', 'logs'] as const,
     emailUsage: ['system', 'email-usage'] as const,
+    analytics: ['system', 'analytics'] as const,
   },
   lookups: {
     campuses: ['lookups', 'campuses'] as const,

@@ -1,6 +1,6 @@
 import { api } from '@/api/client'
 import { endpoints } from '@/api/endpoints'
-import type { EmailUsage, SystemLog } from '@/features/system/types/system.types'
+import type { EmailUsage, SystemAnalytics, SystemLog } from '@/features/system/types/system.types'
 
 export const systemApi = {
   logs: () => api.get<SystemLog[]>(endpoints.system.logs).then((r) => r.data ?? []),
@@ -12,4 +12,5 @@ export const systemApi = {
       return r.data
     }),
   resetToDefaults: () => api.post<string | null>(endpoints.system.reset).then((r) => r.message),
+  analytics: () => api.get<SystemAnalytics | null>(endpoints.system.analytics).then((r) => r.data ?? null),
 }

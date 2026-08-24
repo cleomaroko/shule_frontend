@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Package,
   Settings2,
+  Truck,
   Users,
   Warehouse,
 } from "lucide-react";
@@ -43,6 +44,7 @@ export const navigation: NavSection[] = [
     items: [
       { label: "Academics", to: paths.academics, icon: BookOpen },
       { label: "Logistics", to: paths.logistics, icon: Bus },
+      { label: "Transport", to: paths.transport, icon: Truck },
       { label: "Assets", to: paths.assets, icon: Package },
       { label: "Stores", to: paths.store, icon: Warehouse },
     ],

@@ -35,6 +35,7 @@ import {
 } from '@/features/lookups/useLookups'
 import type { Campus, Department, NamedLookup } from '@/features/lookups/lookups.types'
 import { CalendarPanel } from '@/features/system/components/CalendarPanel'
+import { AnalyticsPanel } from '@/features/system/components/AnalyticsPanel'
 import { RolesPanel } from '@/features/system/components/RolesPanel'
 import { useAuditLogs, useEmailUsage, useSystemMutations } from '@/features/system/hooks/useSystem'
 import type { SystemLog } from '@/features/system/types/system.types'
@@ -47,15 +48,16 @@ export function SystemPage(): ReactNode {
   useDocumentTitle('System')
   const { user } = useAuth()
   const isSuper = can(user?.role, 'system:super')
+  const canAnalytics = can(user?.role, 'system:analytics')
   const canAdmin = can(user?.role, 'staff:write')
   const canCalendar = can(user?.role, 'academic:setup')
   const [params, setParams] = useSearchParams()
 
-  const defaultTab = isSuper ? 'logs' : canAdmin ? 'campuses' : 'calendar'
+  const defaultTab = canAnalytics ? 'analytics' : isSuper ? 'logs' : canAdmin ? 'campuses' : 'calendar'
   const requested = params.get('tab')
   const tab = requested ?? defaultTab
 
-  if (!isSuper && !canAdmin && !canCalendar) {
+  if (!isSuper && !canAnalytics && !canAdmin && !canCalendar) {
     return (
       <div className="flex flex-col gap-6">
         <PageHeader title="System administration" description="Restricted to administrators." />
@@ -71,10 +73,11 @@ export function SystemPage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="System administration"
-        description="Audit activity, campuses, calendar, staff roles, and reference lists used across Dira."
+        description="Audit activity, module usage, campuses, calendar, staff roles, and reference lists used across Dira."
       />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
         <TabsList>
+          {canAnalytics ? <TabsTrigger value="analytics">Usage</TabsTrigger> : null}
           {isSuper ? (
             <>
               <TabsTrigger value="logs">Audit logs</TabsTrigger>
@@ -95,6 +98,11 @@ export function SystemPage(): ReactNode {
             </>
           ) : null}
         </TabsList>
+        {canAnalytics ? (
+          <TabsContent value="analytics">
+            <AnalyticsPanel />
+          </TabsContent>
+        ) : null}
         {isSuper ? (
           <>
             <TabsContent value="logs">

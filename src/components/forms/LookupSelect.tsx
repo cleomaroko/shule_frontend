@@ -16,6 +16,8 @@ export interface LookupSelectProps<T extends FieldValues> {
   disabled?: boolean | undefined
   /** When the lookup list is empty, fall back to a free-text field. */
   fallbackToText?: boolean
+  emptyMessage?: string | undefined
+  allowEmpty?: boolean
 }
 
 /**
@@ -32,6 +34,8 @@ export function LookupSelect<T extends FieldValues>({
   hint,
   disabled,
   fallbackToText = true,
+  emptyMessage,
+  allowEmpty,
 }: LookupSelectProps<T>): ReactNode {
   if (fallbackToText && options.length === 0) {
     return (
@@ -69,6 +73,8 @@ export function LookupSelect<T extends FieldValues>({
           error={error}
           hint={hint}
           disabled={disabled}
+          emptyMessage={emptyMessage}
+          {...(allowEmpty === undefined ? {} : { allowEmpty })}
         />
       )}
     />

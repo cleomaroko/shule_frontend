@@ -1,4 +1,4 @@
-import { ArrowUpRight, BookOpen, Bus, GraduationCap, Package, Plus, Settings2, Users, Warehouse } from 'lucide-react'
+import { ArrowUpRight, BookOpen, Bus, GraduationCap, Package, Plus, Settings2, Truck, Users, Warehouse } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useAssetList } from '@/features/assets/hooks/useAssets'
 import { useLearnerList } from '@/features/learners/hooks/useLearners'
 import { useStaffList } from '@/features/staff/hooks/useStaff'
+import { useVehicleList } from '@/features/transport/hooks/useTransport'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { formatDate, formatPersonName, isActiveStatus } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -56,6 +57,7 @@ export function AppPlaceholderPage(): ReactNode {
   const staff = useStaffList()
   const learners = useLearnerList()
   const assets = useAssetList()
+  const fleet = useVehicleList()
 
   if (!user || !token) return null
 
@@ -67,6 +69,7 @@ export function AppPlaceholderPage(): ReactNode {
   const learnerCount = learners.data?.length ?? 0
   const staffCount = staff.data?.length ?? 0
   const assetCount = assets.data?.length ?? 0
+  const fleetCount = fleet.data?.length ?? 0
   const activeLearners = (learners.data ?? []).filter((item) => isActiveStatus(item.status)).length
   const activeStaff = (staff.data ?? []).filter((item) => isActiveStatus(item.status)).length
 
@@ -143,6 +146,13 @@ export function AppPlaceholderPage(): ReactNode {
           icon={<Package className="size-5" aria-hidden="true" />}
           loading={assetsLoading}
         />
+        <StatCard
+          label="Fleet"
+          value={fleetCount.toLocaleString()}
+          hint="Registered school vehicles"
+          icon={<Truck className="size-5" aria-hidden="true" />}
+          loading={fleet.isLoading}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.8fr)]">
@@ -179,6 +189,13 @@ export function AppPlaceholderPage(): ReactNode {
               description="Transport zones and boarding houses"
               icon={<Bus className="size-5" aria-hidden="true" />}
               tone="navy"
+            />
+            <ModuleLink
+              to={paths.transport}
+              title="Transport"
+              description="Fleet, fuel logs, and bus stops"
+              icon={<Truck className="size-5" aria-hidden="true" />}
+              tone="green"
             />
             <ModuleLink
               to={paths.assets}
