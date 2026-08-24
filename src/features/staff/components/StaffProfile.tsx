@@ -6,18 +6,20 @@ import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/data/DataTable'
 import { ProfileField, ProfileSection } from '@/components/forms/FormSection'
 import { displayValue, formatDate, formatPersonName, getInitials } from '@/lib/format'
+import { toDriveImageSrc } from '@/lib/google-drive'
 import { paths } from '@/routes/paths'
 import type { Staff } from '@/features/staff/types/staff.types'
 
 export function StaffProfile({ staff, canWrite }: { staff: Staff; canWrite: boolean }): ReactNode {
   const name = formatPersonName(staff)
+  const photoSrc = toDriveImageSrc(staff.googleDrivePhotoLink)
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-6 shadow-subtle sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <Avatar className="size-16">
-            {staff.googleDrivePhotoLink ? <AvatarImage src={staff.googleDrivePhotoLink} alt="" /> : null}
+            {photoSrc ? <AvatarImage src={photoSrc} alt="" /> : null}
             <AvatarFallback className="text-base">
               {getInitials({ firstName: staff.firstName, lastName: staff.lastName, fallback: name })}
             </AvatarFallback>

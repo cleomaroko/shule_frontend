@@ -407,28 +407,37 @@ function CampusesPanel(): ReactNode {
 
 function DepartmentsPanel(): ReactNode {
   const list = useDepartments()
-  const { createDepartment, deleteDepartment } = useSystemMutations()
+  const { createDepartment, updateDepartment, deleteDepartment } = useSystemMutations()
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<Department | null>(null)
   const [name, setName] = useState('')
   const [pendingDelete, setPendingDelete] = useState<Department | null>(null)
 
   const rows = list.data ?? []
   const paged = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
+  const openCreate = () => {
+    setEditing(null)
+    setName('')
+    setOpen(true)
+  }
+
+  const openEdit = (item: Department) => {
+    setEditing(item)
+    setName(item.name)
+    setOpen(true)
+  }
+
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
     const trimmed = name.trim()
     if (!trimmed) return
-    createDepartment.mutate(
-      { name: trimmed },
-      {
-        onSuccess: () => {
-          setOpen(false)
-          setName('')
-        },
-      },
-    )
+    if (editing) {
+      updateDepartment.mutate({ id: editing.id, body: { name: trimmed } }, { onSuccess: () => setOpen(false) })
+      return
+    }
+    createDepartment.mutate({ name: trimmed }, { onSuccess: () => setOpen(false) })
   }
 
   const columns: Array<DataColumn<Department>> = [
@@ -436,11 +445,16 @@ function DepartmentsPanel(): ReactNode {
     {
       id: 'actions',
       header: '',
-      className: 'w-14 text-right',
+      className: 'w-24 text-right',
       cell: (row) => (
-        <Button variant="ghost" size="icon" aria-label={`Delete ${row.name}`} onClick={() => setPendingDelete(row)}>
-          <Trash2 aria-hidden="true" />
-        </Button>
+        <span className="flex justify-end gap-1">
+          <Button variant="ghost" size="icon" aria-label={`Edit ${row.name}`} onClick={() => openEdit(row)}>
+            <Pencil aria-hidden="true" />
+          </Button>
+          <Button variant="ghost" size="icon" aria-label={`Delete ${row.name}`} onClick={() => setPendingDelete(row)}>
+            <Trash2 aria-hidden="true" />
+          </Button>
+        </span>
       ),
     },
   ]
@@ -451,11 +465,8 @@ function DepartmentsPanel(): ReactNode {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="type-caption text-muted-foreground">
-        Departments can be created and deleted. The backend does not expose an update endpoint.
-      </p>
       <div className="flex justify-end">
-        <Button onClick={() => setOpen(true)}>
+        <Button onClick={openCreate}>
           <Plus aria-hidden="true" />
           Add department
         </Button>
@@ -465,7 +476,7 @@ function DepartmentsPanel(): ReactNode {
           title="No departments yet"
           description="Add a department such as Education or Finance."
           actionLabel="Add department"
-          onAction={() => setOpen(true)}
+          onAction={openCreate}
         />
       ) : (
         <DataTable
@@ -484,7 +495,7 @@ function DepartmentsPanel(): ReactNode {
         <DialogContent>
           <form onSubmit={handleSubmit}>
             <DialogHeader>
-              <DialogTitle>Add department</DialogTitle>
+              <DialogTitle>{editing ? 'Edit department' : 'Add department'}</DialogTitle>
               <DialogDescription>Department names must be unique.</DialogDescription>
             </DialogHeader>
             <div className="mt-4">
@@ -494,7 +505,11 @@ function DepartmentsPanel(): ReactNode {
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" isLoading={createDepartment.isPending} loadingLabel="Saving">
+              <Button
+                type="submit"
+                isLoading={createDepartment.isPending || updateDepartment.isPending}
+                loadingLabel="Saving"
+              >
                 Save
               </Button>
             </DialogFooter>
@@ -554,17 +569,23 @@ function LookupsPanel(): ReactNode {
   ]
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {groups.map((group) => (
-        <LookupCard
-          key={group.title}
-          title={group.title}
-          items={group.query.data ?? []}
-          isLoading={group.query.isLoading}
-          onAdd={(name) => addLookup.mutate({ path: group.path, name, key: group.key })}
-          isAdding={addLookup.isPending}
-        />
-      ))}
+    <div className="flex flex-col gap-4">
+      <p className="type-caption text-muted-foreground">
+        These lists only have GET and POST in the backend. There is no update or delete endpoint for titles,
+        genders, marital statuses, banks, employment statuses, or tax-exempt reasons.
+      </p>
+      <div className="grid gap-4 md:grid-cols-2">
+        {groups.map((group) => (
+          <LookupCard
+            key={group.title}
+            title={group.title}
+            items={group.query.data ?? []}
+            isLoading={group.query.isLoading}
+            onAdd={(name) => addLookup.mutate({ path: group.path, name, key: group.key })}
+            isAdding={addLookup.isPending}
+          />
+        ))}
+      </div>
     </div>
   )
 }

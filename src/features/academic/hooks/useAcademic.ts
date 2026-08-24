@@ -67,6 +67,31 @@ export function useAcademicMutations() {
     },
   })
 
+  const updateClass = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: { section: string; className: string } }) =>
+      academicApi.updateClass(id, body),
+    onSuccess: async () => {
+      await invalidateClasses()
+      toast.success('Class updated.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Update class failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
+  const deleteClass = useMutation({
+    mutationFn: (id: number) => academicApi.deleteClass(id),
+    onSuccess: async () => {
+      await invalidateClasses()
+      toast.success('Class deleted.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Delete class failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
   const createStream = useMutation({
     mutationFn: (body: { name: string }) => academicApi.createStream(body),
     onSuccess: async () => {
@@ -75,6 +100,31 @@ export function useAcademicMutations() {
     },
     onError: (error: unknown) => {
       logger.error('Create stream failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
+  const updateStream = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: { name: string } }) =>
+      academicApi.updateStream(id, body),
+    onSuccess: async () => {
+      await invalidateStreams()
+      toast.success('Stream updated.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Update stream failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
+  const deleteStream = useMutation({
+    mutationFn: (id: number) => academicApi.deleteStream(id),
+    onSuccess: async () => {
+      await invalidateStreams()
+      toast.success('Stream removed.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Delete stream failed', error)
       toast.error(toUserMessage(error))
     },
   })
@@ -142,7 +192,11 @@ export function useAcademicMutations() {
 
   return {
     createClass,
+    updateClass,
+    deleteClass,
     createStream,
+    updateStream,
+    deleteStream,
     createLearningArea,
     updateLearningArea,
     deleteLearningArea,

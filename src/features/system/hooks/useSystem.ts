@@ -91,6 +91,19 @@ export function useSystemMutations() {
     },
   })
 
+  const updateDepartment = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: { name: string } }) =>
+      lookupsApi.updateDepartment(id, body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.lookups.departments })
+      toast.success('Department updated.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Update department failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
   const deleteDepartment = useMutation({
     mutationFn: (id: number) => lookupsApi.deleteDepartment(id),
     onSuccess: async () => {
@@ -122,6 +135,7 @@ export function useSystemMutations() {
     updateCampus,
     deleteCampus,
     createDepartment,
+    updateDepartment,
     deleteDepartment,
     addLookup,
   }

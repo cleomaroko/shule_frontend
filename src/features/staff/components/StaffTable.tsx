@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { DataTable, StatusBadge, type DataColumn } from '@/components/data/DataTable'
 import { formatPersonName, getInitials } from '@/lib/format'
+import { toDriveImageSrc } from '@/lib/google-drive'
 import { paths } from '@/routes/paths'
 import type { Staff } from '@/features/staff/types/staff.types'
 
@@ -87,10 +88,7 @@ export function StaffTable({
       onPageChange={onPageChange}
       mobileCard={(row) => (
         <div className="flex flex-col gap-3">
-          <div className="flex items-start justify-between gap-3">
-            <StaffIdentity staff={row} />
-            <StaffRowActions staff={row} canWrite={canWrite} onDelete={onDelete} />
-          </div>
+          <StaffIdentity staff={row} />
           <dl className="grid grid-cols-2 gap-2 type-caption text-muted-foreground">
             <div>
               <dt>Staff no.</dt>
@@ -119,10 +117,11 @@ export function StaffTable({
 
 function StaffIdentity({ staff }: { staff: Staff }): ReactNode {
   const name = formatPersonName(staff)
+  const photoSrc = toDriveImageSrc(staff.googleDrivePhotoLink)
   return (
     <Link to={paths.staffDetail(staff.id)} className="flex items-center gap-3 min-w-0 hover:underline">
       <Avatar>
-        {staff.googleDrivePhotoLink ? <AvatarImage src={staff.googleDrivePhotoLink} alt="" /> : null}
+        {photoSrc ? <AvatarImage src={photoSrc} alt="" /> : null}
         <AvatarFallback>{getInitials({ firstName: staff.firstName, lastName: staff.lastName, fallback: name })}</AvatarFallback>
       </Avatar>
       <span className="min-w-0">

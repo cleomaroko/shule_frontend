@@ -1,9 +1,10 @@
-import { Plus } from 'lucide-react'
+import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
 
 import { toUserMessage } from '@/api/errors'
 import { Button } from '@/components/ui/button'
 import { DataTable, type DataColumn } from '@/components/data/DataTable'
+import { ConfirmDialog } from '@/components/feedback/ConfirmDialog'
 import { EmptyState, ErrorState } from '@/components/feedback/PageStates'
 import { TextField } from '@/components/forms/TextField'
 import {
@@ -32,14 +33,30 @@ export function ClassesPanel({ canWrite }: { canWrite: boolean }): ReactNode {
 
 function ClassesTable({ canWrite }: { canWrite: boolean }): ReactNode {
   const list = useClassList()
-  const { createClass } = useAcademicMutations()
+  const { createClass, updateClass, deleteClass } = useAcademicMutations()
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<SchoolClass | null>(null)
   const [section, setSection] = useState('')
   const [className, setClassName] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<SchoolClass | null>(null)
 
   const rows = list.data ?? []
   const paged = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  const openCreate = () => {
+    setEditing(null)
+    setSection('')
+    setClassName('')
+    setOpen(true)
+  }
+
+  const openEdit = (item: SchoolClass) => {
+    setEditing(item)
+    setSection(item.section ?? '')
+    setClassName(item.className ?? '')
+    setOpen(true)
+  }
 
   const columns: Array<DataColumn<SchoolClass>> = [
     {
@@ -69,6 +86,32 @@ function ClassesTable({ canWrite }: { canWrite: boolean }): ReactNode {
         )
       },
     },
+    {
+      id: 'actions',
+      header: '',
+      className: 'w-24 text-right',
+      cell: (row) =>
+        canWrite ? (
+          <span className="flex justify-end gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Edit ${formatClassLabel(row)}`}
+              onClick={() => openEdit(row)}
+            >
+              <Pencil aria-hidden="true" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Delete ${formatClassLabel(row)}`}
+              onClick={() => setPendingDelete(row)}
+            >
+              <Trash2 aria-hidden="true" />
+            </Button>
+          </span>
+        ) : null,
+    },
   ]
 
   const handleSubmit = (event: FormEvent) => {
@@ -76,16 +119,12 @@ function ClassesTable({ canWrite }: { canWrite: boolean }): ReactNode {
     const trimmedSection = section.trim()
     const trimmedName = className.trim()
     if (!trimmedSection || !trimmedName) return
-    createClass.mutate(
-      { section: trimmedSection, className: trimmedName },
-      {
-        onSuccess: () => {
-          setOpen(false)
-          setSection('')
-          setClassName('')
-        },
-      },
-    )
+    const body = { section: trimmedSection, className: trimmedName }
+    if (editing) {
+      updateClass.mutate({ id: editing.id, body }, { onSuccess: () => setOpen(false) })
+      return
+    }
+    createClass.mutate(body, { onSuccess: () => setOpen(false) })
   }
 
   if (list.isError) {
@@ -98,11 +137,11 @@ function ClassesTable({ canWrite }: { canWrite: boolean }): ReactNode {
         <div>
           <h2 className="type-section-title">Classes</h2>
           <p className="type-caption mt-1 text-muted-foreground">
-            The backend can add classes but does not expose edit or delete for them.
+            Section is the school phase. Class name is the year group.
           </p>
         </div>
         {canWrite ? (
-          <Button onClick={() => setOpen(true)}>
+          <Button onClick={openCreate}>
             <Plus aria-hidden="true" />
             Add class
           </Button>
@@ -113,7 +152,7 @@ function ClassesTable({ canWrite }: { canWrite: boolean }): ReactNode {
         <EmptyState
           title="No classes yet"
           description="Add a class such as Grade 7 in Junior Secondary."
-          {...(canWrite ? { actionLabel: 'Add class', onAction: () => setOpen(true) } : {})}
+          {...(canWrite ? { actionLabel: 'Add class', onAction: openCreate } : {})}
         />
       ) : (
         <DataTable
@@ -138,7 +177,7 @@ function ClassesTable({ canWrite }: { canWrite: boolean }): ReactNode {
         <DialogContent>
           <form onSubmit={handleSubmit}>
             <DialogHeader>
-              <DialogTitle>Add class</DialogTitle>
+              <DialogTitle>{editing ? 'Edit class' : 'Add class'}</DialogTitle>
               <DialogDescription>Section is the school phase, class name is the year group.</DialogDescription>
             </DialogHeader>
             <div className="mt-4 flex flex-col gap-4">
@@ -161,44 +200,94 @@ function ClassesTable({ canWrite }: { canWrite: boolean }): ReactNode {
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" isLoading={createClass.isPending} loadingLabel="Saving">
+              <Button
+                type="submit"
+                isLoading={createClass.isPending || updateClass.isPending}
+                loadingLabel="Saving"
+              >
                 Save class
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(next) => {
+          if (!next) setPendingDelete(null)
+        }}
+        title="Delete class?"
+        description={pendingDelete ? `This will remove ${formatClassLabel(pendingDelete)}.` : ''}
+        confirmLabel="Delete"
+        loadingLabel="Deleting"
+        isConfirming={deleteClass.isPending}
+        onConfirm={() => {
+          if (!pendingDelete) return
+          deleteClass.mutate(pendingDelete.id, { onSuccess: () => setPendingDelete(null) })
+        }}
+      />
     </section>
   )
 }
 
 function StreamsTable({ canWrite }: { canWrite: boolean }): ReactNode {
   const list = useStreamList()
-  const { createStream } = useAcademicMutations()
+  const { createStream, updateStream, deleteStream } = useAcademicMutations()
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<AcademicStream | null>(null)
   const [name, setName] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<AcademicStream | null>(null)
 
   const rows = useMemo(() => list.data ?? [], [list.data])
   const paged = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
+  const openCreate = () => {
+    setEditing(null)
+    setName('')
+    setOpen(true)
+  }
+
+  const openEdit = (item: AcademicStream) => {
+    setEditing(item)
+    setName(item.name)
+    setOpen(true)
+  }
+
   const columns: Array<DataColumn<AcademicStream>> = [
     { id: 'name', header: 'Stream', cell: (row) => row.name },
+    {
+      id: 'actions',
+      header: '',
+      className: 'w-24 text-right',
+      cell: (row) =>
+        canWrite ? (
+          <span className="flex justify-end gap-1">
+            <Button variant="ghost" size="icon" aria-label={`Edit ${row.name}`} onClick={() => openEdit(row)}>
+              <Pencil aria-hidden="true" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Delete ${row.name}`}
+              onClick={() => setPendingDelete(row)}
+            >
+              <Trash2 aria-hidden="true" />
+            </Button>
+          </span>
+        ) : null,
+    },
   ]
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
     const trimmed = name.trim()
     if (!trimmed) return
-    createStream.mutate(
-      { name: trimmed },
-      {
-        onSuccess: () => {
-          setOpen(false)
-          setName('')
-        },
-      },
-    )
+    if (editing) {
+      updateStream.mutate({ id: editing.id, body: { name: trimmed } }, { onSuccess: () => setOpen(false) })
+      return
+    }
+    createStream.mutate({ name: trimmed }, { onSuccess: () => setOpen(false) })
   }
 
   if (list.isError) {
@@ -215,7 +304,7 @@ function StreamsTable({ canWrite }: { canWrite: boolean }): ReactNode {
           </p>
         </div>
         {canWrite ? (
-          <Button variant="secondary" onClick={() => setOpen(true)}>
+          <Button variant="secondary" onClick={openCreate}>
             <Plus aria-hidden="true" />
             Add stream
           </Button>
@@ -226,7 +315,7 @@ function StreamsTable({ canWrite }: { canWrite: boolean }): ReactNode {
         <EmptyState
           title="No streams yet"
           description="Add streams such as North, East, or Blue."
-          {...(canWrite ? { actionLabel: 'Add stream', onAction: () => setOpen(true) } : {})}
+          {...(canWrite ? { actionLabel: 'Add stream', onAction: openCreate } : {})}
         />
       ) : (
         <DataTable
@@ -246,7 +335,7 @@ function StreamsTable({ canWrite }: { canWrite: boolean }): ReactNode {
         <DialogContent>
           <form onSubmit={handleSubmit}>
             <DialogHeader>
-              <DialogTitle>Add stream</DialogTitle>
+              <DialogTitle>{editing ? 'Edit stream' : 'Add stream'}</DialogTitle>
               <DialogDescription>A stream name such as North or East.</DialogDescription>
             </DialogHeader>
             <div className="mt-4">
@@ -262,13 +351,32 @@ function StreamsTable({ canWrite }: { canWrite: boolean }): ReactNode {
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" isLoading={createStream.isPending} loadingLabel="Saving">
+              <Button
+                type="submit"
+                isLoading={createStream.isPending || updateStream.isPending}
+                loadingLabel="Saving"
+              >
                 Save stream
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(next) => {
+          if (!next) setPendingDelete(null)
+        }}
+        title="Remove stream?"
+        description={pendingDelete ? `This will remove ${pendingDelete.name}.` : ''}
+        confirmLabel="Remove"
+        loadingLabel="Removing"
+        isConfirming={deleteStream.isPending}
+        onConfirm={() => {
+          if (!pendingDelete) return
+          deleteStream.mutate(pendingDelete.id, { onSuccess: () => setPendingDelete(null) })
+        }}
+      />
     </section>
   )
 }

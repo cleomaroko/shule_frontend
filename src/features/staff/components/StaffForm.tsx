@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { FormSection } from '@/components/forms/FormSection'
+import { GoogleDrivePhotoField } from '@/components/forms/GoogleDrivePhotoField'
 import { LookupSelect } from '@/components/forms/LookupSelect'
 import { SelectField } from '@/components/forms/SelectField'
 import { toSelectOptions } from '@/components/forms/select-utils'
@@ -169,13 +170,18 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
       </FormSection>
 
       <FormSection title="Profile photo">
-        <TextField
-          label="Google Drive photo link"
-          hint="Public “anyone with the link can view” URL."
-          containerClassName="sm:col-span-2"
-          error={form.formState.errors.googleDrivePhotoLink?.message}
-          disabled={isSubmitting}
-          {...form.register('googleDrivePhotoLink')}
+        <Controller
+          control={form.control}
+          name="googleDrivePhotoLink"
+          render={({ field }) => (
+            <GoogleDrivePhotoField
+              value={field.value}
+              onChange={field.onChange}
+              error={form.formState.errors.googleDrivePhotoLink?.message}
+              disabled={isSubmitting}
+              containerClassName="sm:col-span-2"
+            />
+          )}
         />
       </FormSection>
 

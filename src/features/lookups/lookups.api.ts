@@ -43,6 +43,9 @@ export const lookupsApi = {
   createDepartment(body: { name: string }): Promise<Department> {
     return api.post<Department>(endpoints.departments.list, body).then((r) => r.data as Department)
   },
+  updateDepartment(id: number, body: { name: string }): Promise<Department> {
+    return api.put<Department>(endpoints.departments.byId(id), body).then((r) => r.data as Department)
+  },
   deleteDepartment(id: number): Promise<void> {
     return api.delete(endpoints.departments.byId(id)).then(() => undefined)
   },

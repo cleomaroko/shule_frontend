@@ -43,5 +43,10 @@ jobs:
             cd ~/Java/shule_frontend
             tar -xzf shule-frontend.tgz
             rm -f shule-frontend.tgz
+            printf '%s\n' \
+              "VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}" \
+              "VITE_GOOGLE_API_KEY=${{ secrets.VITE_GOOGLE_API_KEY }}" \
+              "VITE_GOOGLE_APP_ID=${{ secrets.VITE_GOOGLE_APP_ID }}" \
+              > .env
             echo "${{ secrets.PASSWORD }}" | sudo -S -p '' docker compose up -d --build
             echo "${{ secrets.PASSWORD }}" | sudo -S -p '' docker image prune -f

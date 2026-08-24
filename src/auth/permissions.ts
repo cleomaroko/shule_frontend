@@ -16,6 +16,9 @@ import type { UserRole } from '@/auth/auth.types'
  * Teacher assignment mutations (`TeacherAssignmentController.isAuthorized`):
  *   role contains `ADMIN` OR role contains `HEAD`
  *
+ * Asset mutations (`AssetController.isAuthorized`):
+ *   role contains `ADMIN` OR role contains `PROCUREMENT`
+ *
  * System logs / reset / email usage (`SystemController.isSuperAdmin`):
  *   role equals `ROLE_SUPER_ADMIN`
  *
@@ -31,6 +34,7 @@ export type Capability =
   | 'academic:setup'
   | 'subject:write'
   | 'assignment:write'
+  | 'asset:write'
   | 'system:super'
 
 export function hasRole(role: UserRole | null | undefined, expected: string): boolean {
@@ -64,6 +68,8 @@ export function can(role: UserRole | null | undefined, capability: Capability): 
       )
     case 'assignment:write':
       return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
+    case 'asset:write':
+      return roleContains(role, 'ADMIN') || roleContains(role, 'PROCUREMENT')
     case 'system:super':
       return hasRole(role, 'ROLE_SUPER_ADMIN')
   }

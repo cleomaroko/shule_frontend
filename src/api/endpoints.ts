@@ -35,10 +35,12 @@ export const endpoints = {
     byId: (id: number) => `/departments/${id}`,
   },
   academic: {
-    /** GET raw `SchoolClass[]`; POST wrapped, Authorization used for audit logging. */
+    /** GET raw `SchoolClass[]`; POST/PUT/DELETE wrapped, Authorization used for audit logging. */
     classes: '/academic/classes',
-    /** GET raw `Stream[]`; POST wrapped. */
+    classById: (id: number) => `/academic/classes/${id}`,
+    /** GET raw `Stream[]`; POST/PUT/DELETE wrapped. */
     streams: '/academic/streams',
+    streamById: (id: number) => `/academic/streams/${id}`,
     assignments: {
       /** GET raw `TeacherAssignment[]`. */
       list: '/academic/assignments',
@@ -52,9 +54,18 @@ export const endpoints = {
     byId: (id: number) => `/subjects/${id}`,
   },
   logistics: {
-    /** GET raw arrays; POST wrapped and Authorization is required for logging. */
+    /** GET raw arrays; POST/PUT/DELETE wrapped and Authorization is required for logging. */
     zones: '/logistics/zones',
+    zoneById: (id: number) => `/logistics/zones/${id}`,
     houses: '/logistics/houses',
+    houseById: (id: number) => `/logistics/houses/${id}`,
+  },
+  assets: {
+    /** GET wrapped `ApiResponse<Asset[]>`. POST/PUT/DELETE require ADMIN or PROCUREMENT. */
+    list: '/assets',
+    byId: (id: number) => `/assets/${id}`,
+    /** GET raw `AssetCategory[]`; POST wrapped. No PUT/DELETE in the controller. */
+    categories: '/assets/categories',
   },
   system: {
     reset: '/system/reset-to-defaults',
@@ -90,6 +101,10 @@ export const queryKeys = {
     streams: ['academic', 'streams'] as const,
     assignments: ['academic', 'assignments'] as const,
     subjects: ['academic', 'subjects'] as const,
+  },
+  assets: {
+    all: ['assets'] as const,
+    categories: ['assets', 'categories'] as const,
   },
   logistics: {
     zones: ['logistics', 'zones'] as const,

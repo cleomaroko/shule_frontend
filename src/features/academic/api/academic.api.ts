@@ -13,10 +13,16 @@ export const academicApi = {
   listClasses: () => api.getList<SchoolClass>(endpoints.academic.classes),
   createClass: (body: { section: string; className: string }) =>
     api.post<SchoolClass>(endpoints.academic.classes, body).then((r) => r.data),
+  updateClass: (id: number, body: { section: string; className: string }) =>
+    api.put<SchoolClass>(endpoints.academic.classById(id), body).then((r) => r.data),
+  deleteClass: (id: number) => api.delete(endpoints.academic.classById(id)).then(() => undefined),
 
   listStreams: () => api.getList<AcademicStream>(endpoints.academic.streams),
   createStream: (body: { name: string }) =>
     api.post<AcademicStream>(endpoints.academic.streams, body).then((r) => r.data),
+  updateStream: (id: number, body: { name: string }) =>
+    api.put<AcademicStream>(endpoints.academic.streamById(id), body).then((r) => r.data),
+  deleteStream: (id: number) => api.delete(endpoints.academic.streamById(id)).then(() => undefined),
 
   listLearningAreas: () =>
     api.get<LearningArea[]>(endpoints.subjects.list).then((r) => r.data ?? []),

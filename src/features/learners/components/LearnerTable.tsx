@@ -71,10 +71,7 @@ export function LearnerTable({
       onPageChange={onPageChange}
       mobileCard={(row) => (
         <div className="flex flex-col gap-3">
-          <div className="flex items-start justify-between gap-3">
-            <LearnerIdentity learner={row} />
-            <LearnerRowActions learner={row} canWrite={canWrite} onDelete={onDelete} />
-          </div>
+          <LearnerIdentity learner={row} />
           <dl className="grid grid-cols-2 gap-2 type-caption text-muted-foreground">
             <div>
               <dt>Admission</dt>

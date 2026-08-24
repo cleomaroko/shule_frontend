@@ -16,6 +16,7 @@ export const paths = {
   learnerEdit: (id: number | string) => `/learners/${id}/edit`,
   academics: '/academics',
   logistics: '/logistics',
+  assets: '/assets',
   system: '/system',
 } as const
 

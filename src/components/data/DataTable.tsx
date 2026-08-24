@@ -41,6 +41,7 @@ export function DataTable<T>({
   const pageCount = Math.max(1, Math.ceil(total / pageSize))
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1
   const to = Math.min(page * pageSize, total)
+  const actionColumn = columns.find((column) => column.id === 'actions')
 
   if (isLoading) {
     return (
@@ -89,6 +90,9 @@ export function DataTable<T>({
         {rows.map((row) => (
           <div key={getRowId(row)} className="rounded-xl border border-border p-4">
             {mobileCard ? mobileCard(row) : null}
+            {actionColumn ? (
+              <div className="mt-3 flex justify-end border-t border-border pt-3">{actionColumn.cell(row)}</div>
+            ) : null}
           </div>
         ))}
       </div>

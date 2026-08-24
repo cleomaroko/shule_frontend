@@ -29,6 +29,17 @@ export const env = {
    * live next to the existing nginx `location /` backend proxy.
    */
   routerBasename,
+  /**
+   * Google Cloud OAuth web client ID for the Drive Picker.
+   * Public by design (embedded in the bundle).
+   */
+  googleClientId: readString(import.meta.env.VITE_GOOGLE_CLIENT_ID, ''),
+  /**
+   * Google Cloud API key with the Picker API enabled. Public by design.
+   */
+  googleApiKey: readString(import.meta.env.VITE_GOOGLE_API_KEY, ''),
+  /** Optional numeric Cloud project number used as the Picker app id. */
+  googleAppId: readString(import.meta.env.VITE_GOOGLE_APP_ID, ''),
   isDevelopment: import.meta.env.DEV,
   isProduction: import.meta.env.PROD,
 } as const

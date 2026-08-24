@@ -1,4 +1,4 @@
-import { ArrowUpRight, BookOpen, Bus, GraduationCap, Plus, Settings2, Users } from 'lucide-react'
+import { ArrowUpRight, BookOpen, Bus, GraduationCap, Package, Plus, Settings2, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
@@ -8,6 +8,7 @@ import { useAuth } from '@/auth/useAuth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useAssetList } from '@/features/assets/hooks/useAssets'
 import { useLearnerList } from '@/features/learners/hooks/useLearners'
 import { useStaffList } from '@/features/staff/hooks/useStaff'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
@@ -54,15 +55,18 @@ export function AppPlaceholderPage(): ReactNode {
   const { user, token } = useAuth()
   const staff = useStaffList()
   const learners = useLearnerList()
+  const assets = useAssetList()
 
   if (!user || !token) return null
 
   const canWriteStaff = can(user.role, 'staff:write')
   const canWriteLearners = can(user.role, 'learner:write')
   const loading = staff.isLoading || learners.isLoading
+  const assetsLoading = assets.isLoading
 
   const learnerCount = learners.data?.length ?? 0
   const staffCount = staff.data?.length ?? 0
+  const assetCount = assets.data?.length ?? 0
   const activeLearners = (learners.data ?? []).filter((item) => isActiveStatus(item.status)).length
   const activeStaff = (staff.data ?? []).filter((item) => isActiveStatus(item.status)).length
 
@@ -133,11 +137,11 @@ export function AppPlaceholderPage(): ReactNode {
           loading={loading}
         />
         <StatCard
-          label="Active staff"
-          value={activeStaff.toLocaleString()}
-          hint="Status recorded as active"
-          icon={<Users className="size-5" aria-hidden="true" />}
-          loading={loading}
+          label="Assets"
+          value={assetCount.toLocaleString()}
+          hint="Registered inventory items"
+          icon={<Package className="size-5" aria-hidden="true" />}
+          loading={assetsLoading}
         />
       </div>
 
@@ -175,6 +179,13 @@ export function AppPlaceholderPage(): ReactNode {
               description="Transport zones and boarding houses"
               icon={<Bus className="size-5" aria-hidden="true" />}
               tone="navy"
+            />
+            <ModuleLink
+              to={paths.assets}
+              title="Asset Management"
+              description="Inventory, assignment, and categories"
+              icon={<Package className="size-5" aria-hidden="true" />}
+              tone="green"
             />
             <ModuleLink
               to={paths.system}
