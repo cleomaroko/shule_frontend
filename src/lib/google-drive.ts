@@ -10,6 +10,8 @@ export interface PickedDriveImage {
   id: string
   name: string
   url: string
+  /** False when Drive (or Workspace policy) blocked “anyone with the link”. */
+  linkShareEnabled: boolean
 }
 
 let scriptsPromise: Promise<void> | null = null
@@ -35,16 +37,55 @@ export function extractDriveFileId(url: string): string | null {
   return null
 }
 
-/** URL that works in `<img>` tags when the Drive file is shared with a link. */
-export function toDriveImageSrc(url: string | null | undefined): string | undefined {
-  if (!url?.trim()) return undefined
+/**
+ * `<img>` candidates for a saved Drive share URL.
+ * Google often blocks `drive.google.com/thumbnail` when the page sends a Referer
+ * (localhost / VPS). `lh3.googleusercontent.com` is the URL that actually renders
+ * after the file is shared with “anyone with the link”.
+ */
+export function driveImageSrcCandidates(url: string | null | undefined): string[] {
+  if (!url?.trim()) return []
   const id = extractDriveFileId(url)
-  if (!id) return url
-  return `https://drive.google.com/thumbnail?id=${id}&sz=w1000`
+  if (!id) return [url.trim()]
+  return [
+    `https://lh3.googleusercontent.com/d/${id}=s400`,
+    `https://drive.google.com/thumbnail?id=${id}&sz=w400`,
+    `https://drive.google.com/uc?export=view&id=${id}`,
+  ]
+}
+
+/** First display URL for a saved Drive share link. */
+export function toDriveImageSrc(url: string | null | undefined): string | undefined {
+  return driveImageSrcCandidates(url)[0]
 }
 
 export function toDriveShareUrl(fileId: string): string {
   return `https://drive.google.com/file/d/${fileId}/view?usp=sharing`
+}
+
+/** Required for staff/asset avatars: `<img>` cannot load a private Drive file. */
+async function enableAnyoneWithLink(fileId: string, accessToken: string): Promise<boolean> {
+  try {
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions?supportsAllDrives=true`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+      },
+    )
+    if (response.ok) return true
+    const body = await response.text()
+    if (response.status === 400 && /already exists|alreadyExists/i.test(body)) return true
+    logger.warn('Could not enable Drive link sharing', { status: response.status, body })
+    return false
+  } catch (error) {
+    logger.warn('Drive link sharing request failed', error)
+    return false
+  }
 }
 
 function loadScript(src: string): Promise<void> {
@@ -173,11 +214,23 @@ export async function pickGoogleDriveImage(): Promise<PickedDriveImage | null> {
             reject(new Error('Google Drive did not return a file id'))
             return
           }
-          resolve({
-            id,
-            name: String(record[pickerApi.Document.NAME] ?? 'Selected image'),
-            url: toDriveShareUrl(id),
-          })
+          void enableAnyoneWithLink(id, accessToken)
+            .then((linkShareEnabled) => {
+              resolve({
+                id,
+                name: String(record[pickerApi.Document.NAME] ?? 'Selected image'),
+                url: toDriveShareUrl(id),
+                linkShareEnabled,
+              })
+            })
+            .catch(() => {
+              resolve({
+                id,
+                name: String(record[pickerApi.Document.NAME] ?? 'Selected image'),
+                url: toDriveShareUrl(id),
+                linkShareEnabled: false,
+              })
+            })
         })
 
       if (env.googleAppId) {

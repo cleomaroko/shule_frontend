@@ -17,6 +17,7 @@ export const paths = {
   academics: '/academics',
   logistics: '/logistics',
   assets: '/assets',
+  store: '/store',
   system: '/system',
 } as const
 

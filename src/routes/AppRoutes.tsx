@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 
 import { AcademicsPage } from '@/features/academic/pages/AcademicsPage'
 import { AssetsPage } from '@/features/assets/pages/AssetsPage'
+import { StorePage } from '@/features/store/pages/StorePage'
 import { LearnerCreatePage } from '@/features/learners/pages/LearnerCreatePage'
 import { LearnerDetailsPage } from '@/features/learners/pages/LearnerDetailsPage'
 import { LearnerEditPage } from '@/features/learners/pages/LearnerEditPage'
@@ -51,6 +52,7 @@ export function AppRoutes(): ReactNode {
           <Route path={paths.academics} element={<AcademicsPage />} />
           <Route path={paths.logistics} element={<LogisticsPage />} />
           <Route path={paths.assets} element={<AssetsPage />} />
+          <Route path={paths.store} element={<StorePage />} />
           <Route path={paths.system} element={<SystemPage />} />
         </Route>
       </Route>

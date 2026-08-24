@@ -12,8 +12,14 @@ export function Avatar({ className, ...props }: ComponentProps<typeof AvatarPrim
   )
 }
 
-export function AvatarImage({ className, ...props }: ComponentProps<typeof AvatarPrimitive.Image>): ReactNode {
-  return <AvatarPrimitive.Image className={cn('aspect-square size-full object-cover', className)} {...props} />
+export function AvatarImage({ className, referrerPolicy = 'no-referrer', ...props }: ComponentProps<typeof AvatarPrimitive.Image>): ReactNode {
+  return (
+    <AvatarPrimitive.Image
+      {...props}
+      referrerPolicy={referrerPolicy}
+      className={cn('aspect-square size-full object-cover', className)}
+    />
+  )
 }
 
 export function AvatarFallback({

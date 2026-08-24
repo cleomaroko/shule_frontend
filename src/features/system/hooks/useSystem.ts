@@ -129,6 +129,42 @@ export function useSystemMutations() {
     },
   })
 
+  const createRole = useMutation({
+    mutationFn: (body: { name: string }) => lookupsApi.createRole(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.lookups.roles })
+      toast.success('Staff role created.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Create staff role failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
+  const updateRole = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: { name: string } }) => lookupsApi.updateRole(id, body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.lookups.roles })
+      toast.success('Staff role updated.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Update staff role failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
+  const deleteRole = useMutation({
+    mutationFn: (id: number) => lookupsApi.deleteRole(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.lookups.roles })
+      toast.success('Staff role removed.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Delete staff role failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
   return {
     reset,
     createCampus,
@@ -138,5 +174,8 @@ export function useSystemMutations() {
     updateDepartment,
     deleteDepartment,
     addLookup,
+    createRole,
+    updateRole,
+    deleteRole,
   }
 }

@@ -6,7 +6,9 @@ import { navigation } from '@/components/layout/navigation'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useAssetList } from '@/features/assets/hooks/useAssets'
+import { useStoreItems } from '@/features/store/hooks/useStore'
 import { useLearningAreaList } from '@/features/academic/hooks/useAcademic'
+import { useStaffRoles } from '@/features/lookups/useLookups'
 import { useLearnerList } from '@/features/learners/hooks/useLearners'
 import { useStaffList } from '@/features/staff/hooks/useStaff'
 import { formatPersonName } from '@/lib/format'
@@ -32,6 +34,8 @@ export function CommandSearch(): ReactNode {
   const learners = useLearnerList()
   const learningAreas = useLearningAreaList()
   const assets = useAssetList()
+  const storeItems = useStoreItems()
+  const staffRoles = useStaffRoles()
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -130,6 +134,32 @@ export function CommandSearch(): ReactNode {
       }))
   }, [assets.data, needle])
 
+  const storeHits = useMemo<SearchHit[]>(() => {
+    if (!needle) return []
+    return (storeItems.data ?? [])
+      .filter((item) => matches([item.name, item.category, item.unit?.name].join(' '), needle))
+      .slice(0, 6)
+      .map((item) => ({
+        id: `store-${item.id}`,
+        label: item.name,
+        hint: [item.category, item.unit?.name].filter(Boolean).join(' · ') || 'Store item',
+        to: `${paths.store}?tab=items`,
+      }))
+  }, [needle, storeItems.data])
+
+  const roleHits = useMemo<SearchHit[]>(() => {
+    if (!needle) return []
+    return (staffRoles.data ?? [])
+      .filter((item) => matches(item.name, needle))
+      .slice(0, 6)
+      .map((item) => ({
+        id: `role-${item.id}`,
+        label: item.name,
+        hint: 'Staff role',
+        to: `${paths.system}?tab=roles`,
+      }))
+  }, [needle, staffRoles.data])
+
   const go = (to: string) => {
     setOpen(false)
     void navigate(to)
@@ -140,7 +170,9 @@ export function CommandSearch(): ReactNode {
     staffHits.length > 0 ||
     learnerHits.length > 0 ||
     learningAreaHits.length > 0 ||
-    assetHits.length > 0
+    assetHits.length > 0 ||
+    storeHits.length > 0 ||
+    roleHits.length > 0
 
   return (
     <>
@@ -193,6 +225,8 @@ export function CommandSearch(): ReactNode {
                 <ResultGroup title="Staff" items={staffHits} onSelect={go} />
                 <ResultGroup title="Learning areas" items={learningAreaHits} onSelect={go} />
                 <ResultGroup title="Asset Management" items={assetHits} onSelect={go} />
+                <ResultGroup title="Store Management" items={storeHits} onSelect={go} />
+                <ResultGroup title="Staff roles" items={roleHits} onSelect={go} />
               </>
             )}
           </div>

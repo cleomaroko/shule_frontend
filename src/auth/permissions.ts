@@ -19,8 +19,17 @@ import type { UserRole } from '@/auth/auth.types'
  * Asset mutations (`AssetController.isAuthorized`):
  *   role contains `ADMIN` OR role contains `PROCUREMENT`
  *
+ * Store mutations (`StoreController`): no role check; Authorization is used for
+ * audit `recordedBy` / system logs. The UI still gates write actions.
+ *
  * System logs / reset / email usage (`SystemController.isSuperAdmin`):
  *   role equals `ROLE_SUPER_ADMIN`
+ *
+ * Academic year/term mutations (`AcademicController.isAuthorized`):
+ *   role contains `ADMIN` OR role contains `HEAD`. No DELETE in the controller.
+ *
+ * Staff role mutations (`LookupController`): no role check; Authorization is
+ * used for audit logging. GET `/lookups/roles` returns a raw array.
  *
  * Class, stream, zone and house POSTs have no role check in the controller but
  * require an Authorization header for audit logging. The UI still gates them.
@@ -35,6 +44,7 @@ export type Capability =
   | 'subject:write'
   | 'assignment:write'
   | 'asset:write'
+  | 'store:write'
   | 'system:super'
 
 export function hasRole(role: UserRole | null | undefined, expected: string): boolean {
@@ -70,6 +80,8 @@ export function can(role: UserRole | null | undefined, capability: Capability): 
       return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
     case 'asset:write':
       return roleContains(role, 'ADMIN') || roleContains(role, 'PROCUREMENT')
+    case 'store:write':
+      return roleContains(role, 'ADMIN') || roleContains(role, 'STORE') || roleContains(role, 'HEAD')
     case 'system:super':
       return hasRole(role, 'ROLE_SUPER_ADMIN')
   }

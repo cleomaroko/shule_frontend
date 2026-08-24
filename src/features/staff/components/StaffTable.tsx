@@ -2,7 +2,7 @@ import { MoreHorizontal, Pencil, Trash2, Eye } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -11,8 +11,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { DataTable, StatusBadge, type DataColumn } from '@/components/data/DataTable'
+import { DriveAvatarImage } from '@/components/media/DrivePhoto'
 import { formatPersonName, getInitials } from '@/lib/format'
-import { toDriveImageSrc } from '@/lib/google-drive'
 import { paths } from '@/routes/paths'
 import type { Staff } from '@/features/staff/types/staff.types'
 
@@ -117,11 +117,10 @@ export function StaffTable({
 
 function StaffIdentity({ staff }: { staff: Staff }): ReactNode {
   const name = formatPersonName(staff)
-  const photoSrc = toDriveImageSrc(staff.googleDrivePhotoLink)
   return (
     <Link to={paths.staffDetail(staff.id)} className="flex items-center gap-3 min-w-0 hover:underline">
       <Avatar>
-        {photoSrc ? <AvatarImage src={photoSrc} alt="" /> : null}
+        <DriveAvatarImage url={staff.googleDrivePhotoLink} alt="" />
         <AvatarFallback>{getInitials({ firstName: staff.firstName, lastName: staff.lastName, fallback: name })}</AvatarFallback>
       </Avatar>
       <span className="min-w-0">

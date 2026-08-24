@@ -1,42 +1,54 @@
-import { BookOpen, Bus, GraduationCap, LayoutDashboard, Package, Settings2, Users } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import {
+  BookOpen,
+  Bus,
+  GraduationCap,
+  LayoutDashboard,
+  Package,
+  Settings2,
+  Users,
+  Warehouse,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-import { paths } from '@/routes/paths'
+import { paths } from "@/routes/paths";
 
 export interface NavItem {
-  label: string
-  to: string
-  icon: LucideIcon
-  end?: boolean
+  label: string;
+  to: string;
+  icon: LucideIcon;
+  end?: boolean;
 }
 
 export interface NavSection {
-  title: string
-  items: NavItem[]
+  title: string;
+  items: NavItem[];
 }
 
 export const navigation: NavSection[] = [
   {
-    title: 'Overview',
-    items: [{ label: 'Dashboard', to: paths.app, icon: LayoutDashboard, end: true }],
-  },
-  {
-    title: 'People',
+    title: "Overview",
     items: [
-      { label: 'Learners', to: paths.learners, icon: GraduationCap },
-      { label: 'Staff', to: paths.staff, icon: Users },
+      { label: "Dashboard", to: paths.app, icon: LayoutDashboard, end: true },
     ],
   },
   {
-    title: 'School',
+    title: "People",
     items: [
-      { label: 'Academics', to: paths.academics, icon: BookOpen },
-      { label: 'Logistics', to: paths.logistics, icon: Bus },
-      { label: 'Asset Management', to: paths.assets, icon: Package },
+      { label: "Learners", to: paths.learners, icon: GraduationCap },
+      { label: "Staff", to: paths.staff, icon: Users },
     ],
   },
   {
-    title: 'Admin',
-    items: [{ label: 'System', to: paths.system, icon: Settings2 }],
+    title: "School",
+    items: [
+      { label: "Academics", to: paths.academics, icon: BookOpen },
+      { label: "Logistics", to: paths.logistics, icon: Bus },
+      { label: "Assets", to: paths.assets, icon: Package },
+      { label: "Stores", to: paths.store, icon: Warehouse },
+    ],
   },
-]
+  {
+    title: "Admin",
+    items: [{ label: "System", to: paths.system, icon: Settings2 }],
+  },
+];

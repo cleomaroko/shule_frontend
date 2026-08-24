@@ -1,4 +1,4 @@
-import { ArrowUpRight, BookOpen, Bus, GraduationCap, Package, Plus, Settings2, Users } from 'lucide-react'
+import { ArrowUpRight, BookOpen, Bus, GraduationCap, Package, Plus, Settings2, Users, Warehouse } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
@@ -186,6 +186,13 @@ export function AppPlaceholderPage(): ReactNode {
               description="Inventory, assignment, and categories"
               icon={<Package className="size-5" aria-hidden="true" />}
               tone="green"
+            />
+            <ModuleLink
+              to={paths.store}
+              title="Store Management"
+              description="Stock items, transfers, and weekly campus sheets"
+              icon={<Warehouse className="size-5" aria-hidden="true" />}
+              tone="navy"
             />
             <ModuleLink
               to={paths.system}

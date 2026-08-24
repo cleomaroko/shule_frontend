@@ -6,6 +6,8 @@ import { queryKeys } from '@/api/endpoints'
 import { academicApi } from '@/features/academic/api/academic.api'
 import type {
   AssignmentWritePayload,
+  AcademicTermWritePayload,
+  AcademicYearWritePayload,
   LearningAreaWritePayload,
 } from '@/features/academic/types/academic.types'
 import { logger } from '@/lib/logger'
@@ -35,6 +37,20 @@ export function useAssignmentList() {
   return useQuery({
     queryKey: queryKeys.academic.assignments,
     queryFn: academicApi.listAssignments,
+  })
+}
+
+export function useAcademicYearList() {
+  return useQuery({
+    queryKey: queryKeys.academic.years,
+    queryFn: academicApi.listYears,
+  })
+}
+
+export function useAcademicTermList() {
+  return useQuery({
+    queryKey: queryKeys.academic.terms,
+    queryFn: academicApi.listTerms,
   })
 }
 
@@ -190,6 +206,62 @@ export function useAcademicMutations() {
     },
   })
 
+  const createYear = useMutation({
+    mutationFn: (body: AcademicYearWritePayload) => academicApi.createYear(body),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.academic.years }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.academic.terms }),
+      ])
+      toast.success('Academic year created.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Create academic year failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
+  const updateYear = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: AcademicYearWritePayload }) =>
+      academicApi.updateYear(id, body),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.academic.years }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.academic.terms }),
+      ])
+      toast.success('Academic year updated.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Update academic year failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
+  const createTerm = useMutation({
+    mutationFn: (body: AcademicTermWritePayload) => academicApi.createTerm(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.academic.terms })
+      toast.success('Term created.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Create term failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
+  const updateTerm = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: AcademicTermWritePayload }) =>
+      academicApi.updateTerm(id, body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.academic.terms })
+      toast.success('Term updated.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Update term failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
   return {
     createClass,
     updateClass,
@@ -202,5 +274,9 @@ export function useAcademicMutations() {
     deleteLearningArea,
     createAssignment,
     deleteAssignment,
+    createYear,
+    updateYear,
+    createTerm,
+    updateTerm,
   }
 }

@@ -31,6 +31,10 @@ export function useDepartments(): UseQueryResult<Department[]> {
   return useLookupQuery(queryKeys.lookups.departments, lookupsApi.departments)
 }
 
+export function useStaffRoles(): UseQueryResult<NamedLookup[]> {
+  return useLookupQuery(queryKeys.lookups.roles, lookupsApi.roles)
+}
+
 export function useTitles(): UseQueryResult<NamedLookup[]> {
   return useLookupQuery(queryKeys.lookups.titles, lookupsApi.titles)
 }

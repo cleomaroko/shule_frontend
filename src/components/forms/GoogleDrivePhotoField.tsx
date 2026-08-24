@@ -3,13 +3,13 @@ import { useEffect, useId, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { FieldError } from '@/components/forms/FieldError'
+import { DrivePhoto } from '@/components/media/DrivePhoto'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
   isGoogleDrivePickerConfigured,
   pickGoogleDriveImage,
   preloadGooglePicker,
-  toDriveImageSrc,
 } from '@/lib/google-drive'
 import { logger } from '@/lib/logger'
 import { cn } from '@/lib/utils'
@@ -30,14 +30,13 @@ export function GoogleDrivePhotoField({
   onChange,
   disabled = false,
   error,
-  hint = 'Opens Google Drive so you can pick an image. The shareable link is saved automatically.',
+  hint = 'The photo is saved as a Drive link. After you pick it, Dira asks Drive to share it so the staff profile can display it.',
   containerClassName,
 }: GoogleDrivePhotoFieldProps): ReactNode {
   const id = useId()
   const errorId = `${id}-error`
   const hintId = `${id}-hint`
   const [picking, setPicking] = useState(false)
-  const previewSrc = toDriveImageSrc(value)
   const configured = isGoogleDrivePickerConfigured()
 
   useEffect(() => {
@@ -51,6 +50,11 @@ export function GoogleDrivePhotoField({
       const picked = await pickGoogleDriveImage()
       if (!picked) return
       onChange(picked.url)
+      if (!picked.linkShareEnabled) {
+        toast.warning(
+          'Photo saved, but Drive did not allow “anyone with the link”. Open the file in Drive, set sharing to Anyone with the link → Viewer, then save again.',
+        )
+      }
     } catch (cause) {
       logger.error('Google Drive photo pick failed', cause)
       toast.error(cause instanceof Error ? cause.message : 'Could not open Google Drive')
@@ -69,8 +73,8 @@ export function GoogleDrivePhotoField({
         )}
       >
         <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
-          {previewSrc ? (
-            <img src={previewSrc} alt="" className="size-full object-cover" />
+          {value ? (
+            <DrivePhoto url={value} />
           ) : (
             <ImagePlus className="size-6 text-muted-foreground" aria-hidden="true" />
           )}

@@ -2,6 +2,10 @@ import { api } from '@/api/client'
 import { endpoints } from '@/api/endpoints'
 import type {
   AcademicStream,
+  AcademicTerm,
+  AcademicTermWritePayload,
+  AcademicYear,
+  AcademicYearWritePayload,
   AssignmentWritePayload,
   LearningArea,
   LearningAreaWritePayload,
@@ -37,4 +41,16 @@ export const academicApi = {
     api.post<TeacherAssignment>(endpoints.academic.assignments.list, body).then((r) => r.data),
   deleteAssignment: (id: number) =>
     api.delete(endpoints.academic.assignments.byId(id)).then(() => undefined),
+
+  listYears: () => api.get<AcademicYear[]>(endpoints.academic.years).then((r) => r.data ?? []),
+  createYear: (body: AcademicYearWritePayload) =>
+    api.post<AcademicYear>(endpoints.academic.years, body).then((r) => r.data as AcademicYear),
+  updateYear: (id: number, body: AcademicYearWritePayload) =>
+    api.put<AcademicYear>(endpoints.academic.yearById(id), body).then((r) => r.data as AcademicYear),
+
+  listTerms: () => api.get<AcademicTerm[]>(endpoints.academic.terms).then((r) => r.data ?? []),
+  createTerm: (body: AcademicTermWritePayload) =>
+    api.post<AcademicTerm>(endpoints.academic.terms, body).then((r) => r.data as AcademicTerm),
+  updateTerm: (id: number, body: AcademicTermWritePayload) =>
+    api.put<AcademicTerm>(endpoints.academic.termById(id), body).then((r) => r.data as AcademicTerm),
 }

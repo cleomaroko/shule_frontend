@@ -41,6 +41,12 @@ export const endpoints = {
     /** GET raw `Stream[]`; POST/PUT/DELETE wrapped. */
     streams: '/academic/streams',
     streamById: (id: number) => `/academic/streams/${id}`,
+    /** GET wrapped. POST/PUT wrapped; require ADMIN or HEAD. No DELETE. */
+    years: '/academic/years',
+    yearById: (id: number) => `/academic/years/${id}`,
+    /** GET wrapped. POST/PUT wrapped; require ADMIN or HEAD. PUT does not change academicYear. No DELETE. */
+    terms: '/academic/terms',
+    termById: (id: number) => `/academic/terms/${id}`,
     assignments: {
       /** GET raw `TeacherAssignment[]`. */
       list: '/academic/assignments',
@@ -67,12 +73,22 @@ export const endpoints = {
     /** GET raw `AssetCategory[]`; POST wrapped. No PUT/DELETE in the controller. */
     categories: '/assets/categories',
   },
+  store: {
+    /** GET wrapped list; POST/PUT/DELETE require Authorization for audit logging. */
+    logs: '/store/logs',
+    logById: (id: number) => `/store/logs/${id}`,
+    /** GET/POST wrapped. No PUT/DELETE for items. No units list endpoint in the controller. */
+    items: '/store/items',
+  },
   system: {
     reset: '/system/reset-to-defaults',
     logs: '/system/logs',
     emailUsage: '/system/email-usage',
   },
   lookups: {
+    /** GET raw `StaffRole[]`. POST/PUT/DELETE wrapped; Authorization used for audit logging. */
+    roles: '/lookups/roles',
+    roleById: (id: number) => `/lookups/roles/${id}`,
     titles: '/lookups/titles',
     genders: '/lookups/genders',
     maritalStatuses: '/lookups/marital-statuses',
@@ -101,10 +117,16 @@ export const queryKeys = {
     streams: ['academic', 'streams'] as const,
     assignments: ['academic', 'assignments'] as const,
     subjects: ['academic', 'subjects'] as const,
+    years: ['academic', 'years'] as const,
+    terms: ['academic', 'terms'] as const,
   },
   assets: {
     all: ['assets'] as const,
     categories: ['assets', 'categories'] as const,
+  },
+  store: {
+    logs: ['store', 'logs'] as const,
+    items: ['store', 'items'] as const,
   },
   logistics: {
     zones: ['logistics', 'zones'] as const,
@@ -117,6 +139,7 @@ export const queryKeys = {
   lookups: {
     campuses: ['lookups', 'campuses'] as const,
     departments: ['lookups', 'departments'] as const,
+    roles: ['lookups', 'roles'] as const,
     titles: ['lookups', 'titles'] as const,
     genders: ['lookups', 'genders'] as const,
     maritalStatuses: ['lookups', 'marital-statuses'] as const,

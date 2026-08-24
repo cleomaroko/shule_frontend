@@ -19,6 +19,7 @@ import type {
 export const lookupsApi = {
   campuses: () => api.get<Campus[]>(endpoints.campuses.list).then((r) => r.data ?? []),
   departments: () => api.get<Department[]>(endpoints.departments.list).then((r) => r.data ?? []),
+  roles: () => api.getList<NamedLookup>(endpoints.lookups.roles),
   titles: () => api.getList<NamedLookup>(endpoints.lookups.titles),
   genders: () => api.getList<NamedLookup>(endpoints.lookups.genders),
   maritalStatuses: () => api.getList<NamedLookup>(endpoints.lookups.maritalStatuses),
@@ -48,6 +49,15 @@ export const lookupsApi = {
   },
   deleteDepartment(id: number): Promise<void> {
     return api.delete(endpoints.departments.byId(id)).then(() => undefined)
+  },
+  createRole(body: { name: string }): Promise<NamedLookup> {
+    return api.post<NamedLookup>(endpoints.lookups.roles, body).then((r) => r.data as NamedLookup)
+  },
+  updateRole(id: number, body: { name: string }): Promise<NamedLookup> {
+    return api.put<NamedLookup>(endpoints.lookups.roleById(id), body).then((r) => r.data as NamedLookup)
+  },
+  deleteRole(id: number): Promise<void> {
+    return api.delete(endpoints.lookups.roleById(id)).then(() => undefined)
   },
   addNamed(path: string, name: string): Promise<NamedLookup> {
     return api.post<NamedLookup>(path, { name }).then((r) => r.data as NamedLookup)

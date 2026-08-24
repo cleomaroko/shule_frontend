@@ -19,6 +19,7 @@ import {
   useMaritalStatuses,
   useTaxExemptReasons,
   useTitles,
+  useStaffRoles,
   namesOf,
 } from '@/features/lookups/useLookups'
 import {
@@ -29,6 +30,7 @@ import {
   type StaffFormValues,
 } from '@/features/staff/schemas/staff.schema'
 import type { Staff, StaffWritePayload } from '@/features/staff/types/staff.types'
+import { COUNTRIES, KENYAN_ETHNICITIES, withExistingOption } from '@/lib/demographics'
 import { paths } from '@/routes/paths'
 
 const YES_NO = ['Yes', 'No']
@@ -47,8 +49,11 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
   const departments = namesOf(useDepartments().data)
   const campuses = namesOf(useCampuses().data)
   const statuses = namesOf(useEmploymentStatuses().data)
+  const roles = namesOf(useStaffRoles().data)
   const banks = namesOf(useBanks().data)
   const taxReasons = namesOf(useTaxExemptReasons().data)
+  const nationalities = withExistingOption(COUNTRIES, staff?.nationality)
+  const ethnicities = withExistingOption(KENYAN_ETHNICITIES, staff?.ethnicity)
   const isEdit = Boolean(staff)
 
   const form = useForm<StaffFormValues>({
@@ -74,9 +79,25 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
         <LookupSelect control={form.control} name="gender" label="Gender" options={genders} error={form.formState.errors.gender?.message} disabled={isSubmitting} />
         <TextField label="Date of birth" type="date" error={form.formState.errors.dateOfBirth?.message} disabled={isSubmitting} {...form.register('dateOfBirth')} />
         <LookupSelect control={form.control} name="maritalStatus" label="Marital status" options={marital} error={form.formState.errors.maritalStatus?.message} disabled={isSubmitting} />
-        <TextField label="Nationality" error={form.formState.errors.nationality?.message} disabled={isSubmitting} {...form.register('nationality')} />
+        <LookupSelect
+          control={form.control}
+          name="nationality"
+          label="Nationality"
+          options={nationalities}
+          fallbackToText={false}
+          error={form.formState.errors.nationality?.message}
+          disabled={isSubmitting}
+        />
         <TextField label="National ID" error={form.formState.errors.nationalId?.message} disabled={isSubmitting} {...form.register('nationalId')} />
-        <TextField label="Ethnicity" error={form.formState.errors.ethnicity?.message} disabled={isSubmitting} {...form.register('ethnicity')} />
+        <LookupSelect
+          control={form.control}
+          name="ethnicity"
+          label="Ethnicity"
+          options={ethnicities}
+          fallbackToText={false}
+          error={form.formState.errors.ethnicity?.message}
+          disabled={isSubmitting}
+        />
       </FormSection>
 
       <FormSection title="Contact information">
@@ -115,12 +136,14 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
           error={form.formState.errors.status?.message}
           disabled={isSubmitting}
         />
-        <TextField
-          label="System role"
+        <LookupSelect
+          control={form.control}
+          name="systemRole"
+          label="Staff role"
+          options={roles}
           hint="Stored on the staff record only. New logins are always created as ROLE_STAFF; this field does not change the users table."
           error={form.formState.errors.systemRole?.message}
           disabled={isSubmitting}
-          {...form.register('systemRole')}
         />
         <LookupSelect control={form.control} name="institution" label="Institution / campus" options={campuses} error={form.formState.errors.institution?.message} disabled={isSubmitting} />
         <TextField label="Supervisor" error={form.formState.errors.supervisor?.message} disabled={isSubmitting} {...form.register('supervisor')} />

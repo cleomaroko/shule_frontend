@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form'
 import { Link } from 'react-router-dom'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { FormSection } from '@/components/forms/FormSection'
@@ -9,6 +9,8 @@ import { LookupSelect } from '@/components/forms/LookupSelect'
 import { SwitchField } from '@/components/forms/SwitchField'
 import { TextareaField } from '@/components/forms/TextareaField'
 import { TextField } from '@/components/forms/TextField'
+import { useAcademicTermList } from '@/features/academic/hooks/useAcademic'
+import { academicTermLabel, calendarIsCurrent } from '@/features/academic/types/academic.types'
 import {
   useCounties,
   useGenders,
@@ -27,6 +29,7 @@ import {
   type LearnerFormValues,
 } from '@/features/learners/schemas/learner.schema'
 import type { Learner } from '@/features/learners/types/learner.types'
+import { COUNTRIES, KENYAN_ETHNICITIES, withExistingOption } from '@/lib/demographics'
 import { cn } from '@/lib/utils'
 import { paths } from '@/routes/paths'
 import { toast } from 'sonner'
@@ -71,9 +74,25 @@ export function LearnerForm({ learner, isSubmitting, submitLabel, onSubmit }: Le
     .filter((name): name is string => Boolean(name))
   const uniqueClasses = Array.from(new Set(classes))
   const streams = (useStreams().data ?? []).map((item) => item.name).filter(Boolean)
+  const termList = useAcademicTermList()
+  const terms = useMemo(() => {
+    const labels = (termList.data ?? []).map(academicTermLabel).filter(Boolean)
+    const unique = Array.from(new Set(labels))
+    const existing = learner?.admissionTerm?.trim()
+    if (existing && !unique.includes(existing)) unique.unshift(existing)
+    return unique
+  }, [learner?.admissionTerm, termList.data])
   const counties = namesOf(useCounties().data)
   const houses = (useHouses().data ?? []).map((item) => item.houseName).filter(Boolean)
   const zones = (useZones().data ?? []).map((item) => item.zoneName).filter(Boolean)
+
+  useEffect(() => {
+    if (learner) return
+    if (form.getValues('admissionTerm')) return
+    const current = (termList.data ?? []).find(calendarIsCurrent)
+    if (!current) return
+    form.setValue('admissionTerm', academicTermLabel(current))
+  }, [form, learner, termList.data])
 
   const goNext = async () => {
     const fields = STEP_FIELDS[step] ?? []
@@ -104,9 +123,13 @@ export function LearnerForm({ learner, isSubmitting, submitLabel, onSubmit }: Le
     genders,
     uniqueClasses,
     streams,
+    terms,
+    termsLoading: termList.isLoading,
     counties,
     houses,
     zones,
+    nationalities: withExistingOption(COUNTRIES, learner?.nationality),
+    ethnicities: withExistingOption(KENYAN_ETHNICITIES, learner?.ethnicity),
     isEdit,
   }
 
@@ -171,9 +194,13 @@ interface StepProps {
   genders: string[]
   uniqueClasses: string[]
   streams: string[]
+  terms: string[]
+  termsLoading: boolean
   counties: string[]
   houses: string[]
   zones: string[]
+  nationalities: string[]
+  ethnicities: string[]
   isEdit: boolean
 }
 
@@ -199,13 +226,22 @@ function BasicStep({ register, control, errors, disabled, genders, uniqueClasses
   )
 }
 
-function AcademicStep({ register, control, errors, disabled, uniqueClasses, streams }: StepProps): ReactNode {
+function AcademicStep({ register, control, errors, disabled, uniqueClasses, streams, terms, termsLoading }: StepProps): ReactNode {
   return (
     <>
       <FormSection title="Placement">
         <LookupSelect control={control} name="currentClass" label="Current class" options={uniqueClasses} error={errors.currentClass?.message} disabled={disabled} />
         <LookupSelect control={control} name="stream" label="Stream" options={streams} error={errors.stream?.message} disabled={disabled} />
-        <TextField label="Admission term" error={errors.admissionTerm?.message} disabled={disabled} {...register('admissionTerm')} />
+        <LookupSelect
+          control={control}
+          name="admissionTerm"
+          label="Admission term"
+          options={terms}
+          hint="Loaded from the academic calendar."
+          fallbackToText={!termsLoading}
+          error={errors.admissionTerm?.message}
+          disabled={disabled || termsLoading}
+        />
         <TextField label="Admission date" type="date" error={errors.admissionDate?.message} disabled={disabled} {...register('admissionDate')} />
         <TextField label="Area of specialisation" error={errors.areaOfSpecialization?.message} disabled={disabled} {...register('areaOfSpecialization')} />
         <LookupSelect control={control} name="status" label="Status" options={['ACTIVE', 'INACTIVE', 'CLEARED']} fallbackToText={false} error={errors.status?.message} disabled={disabled} />
@@ -312,7 +348,7 @@ function LogisticsStep({ control, errors, disabled, houses, zones }: StepProps):
   )
 }
 
-function AdditionalStep({ register, control, errors, disabled, counties }: StepProps): ReactNode {
+function AdditionalStep({ register, control, errors, disabled, counties, nationalities, ethnicities }: StepProps): ReactNode {
   return (
     <>
       <FormSection title="Identification">
@@ -326,8 +362,24 @@ function AdditionalStep({ register, control, errors, disabled, counties }: StepP
         <TextField label="Sub-county" error={errors.subCounty?.message} disabled={disabled} {...register('subCounty')} />
         <TextField label="Ward" error={errors.ward?.message} disabled={disabled} {...register('ward')} />
         <TextField label="Constituency" error={errors.constituency?.message} disabled={disabled} {...register('constituency')} />
-        <TextField label="Nationality" error={errors.nationality?.message} disabled={disabled} {...register('nationality')} />
-        <TextField label="Ethnicity" error={errors.ethnicity?.message} disabled={disabled} {...register('ethnicity')} />
+        <LookupSelect
+          control={control}
+          name="nationality"
+          label="Nationality"
+          options={nationalities}
+          fallbackToText={false}
+          error={errors.nationality?.message}
+          disabled={disabled}
+        />
+        <LookupSelect
+          control={control}
+          name="ethnicity"
+          label="Ethnicity"
+          options={ethnicities}
+          fallbackToText={false}
+          error={errors.ethnicity?.message}
+          disabled={disabled}
+        />
         <TextField label="Religion" error={errors.religion?.message} disabled={disabled} {...register('religion')} />
         <TextField label="Languages spoken" error={errors.languagesSpoken?.message} disabled={disabled} {...register('languagesSpoken')} />
         <TextField label="Fee sponsor" error={errors.feeSponsor?.message} disabled={disabled} {...register('feeSponsor')} />

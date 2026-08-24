@@ -34,6 +34,8 @@ import {
   useTitles,
 } from '@/features/lookups/useLookups'
 import type { Campus, Department, NamedLookup } from '@/features/lookups/lookups.types'
+import { CalendarPanel } from '@/features/system/components/CalendarPanel'
+import { RolesPanel } from '@/features/system/components/RolesPanel'
 import { useAuditLogs, useEmailUsage, useSystemMutations } from '@/features/system/hooks/useSystem'
 import type { SystemLog } from '@/features/system/types/system.types'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
@@ -46,13 +48,14 @@ export function SystemPage(): ReactNode {
   const { user } = useAuth()
   const isSuper = can(user?.role, 'system:super')
   const canAdmin = can(user?.role, 'staff:write')
+  const canCalendar = can(user?.role, 'academic:setup')
   const [params, setParams] = useSearchParams()
 
-  const defaultTab = isSuper ? 'logs' : 'campuses'
+  const defaultTab = isSuper ? 'logs' : canAdmin ? 'campuses' : 'calendar'
   const requested = params.get('tab')
   const tab = requested ?? defaultTab
 
-  if (!isSuper && !canAdmin) {
+  if (!isSuper && !canAdmin && !canCalendar) {
     return (
       <div className="flex flex-col gap-6">
         <PageHeader title="System administration" description="Restricted to administrators." />
@@ -68,7 +71,7 @@ export function SystemPage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="System administration"
-        description="Audit activity, campuses, departments, and reference lists used across Dira."
+        description="Audit activity, campuses, calendar, staff roles, and reference lists used across Dira."
       />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
         <TabsList>
@@ -82,6 +85,12 @@ export function SystemPage(): ReactNode {
             <>
               <TabsTrigger value="campuses">Campuses</TabsTrigger>
               <TabsTrigger value="departments">Departments</TabsTrigger>
+            </>
+          ) : null}
+          {canCalendar ? <TabsTrigger value="calendar">Calendar</TabsTrigger> : null}
+          {canAdmin ? (
+            <>
+              <TabsTrigger value="roles">Staff roles</TabsTrigger>
               <TabsTrigger value="lookups">Reference lists</TabsTrigger>
             </>
           ) : null}
@@ -103,6 +112,18 @@ export function SystemPage(): ReactNode {
             </TabsContent>
             <TabsContent value="departments">
               <DepartmentsPanel />
+            </TabsContent>
+          </>
+        ) : null}
+        {canCalendar ? (
+          <TabsContent value="calendar">
+            <CalendarPanel canWrite={canCalendar} />
+          </TabsContent>
+        ) : null}
+        {canAdmin ? (
+          <>
+            <TabsContent value="roles">
+              <RolesPanel canWrite={canAdmin} />
             </TabsContent>
             <TabsContent value="lookups">
               <LookupsPanel />

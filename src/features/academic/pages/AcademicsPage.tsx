@@ -32,7 +32,7 @@ export function AcademicsPage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Academics"
-        description="Configure classes, learning areas, and teaching assignments."
+        description="Configure classes, learning areas, and teaching assignments. Class teacher is unique per class and stream."
       />
 
       <Tabs
