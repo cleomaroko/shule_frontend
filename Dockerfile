@@ -10,7 +10,7 @@ COPY . .
 # Inlined into the bundle at build time. `/api` stays same-origin on the VPS
 # so the existing nginx `location /` backend proxy (and no CORS) still work.
 ARG VITE_API_BASE_URL=/api
-ARG VITE_BASE_PATH=/dira/
+ARG VITE_BASE_PATH=/
 ARG VITE_APP_NAME=Dira
 ARG VITE_GOOGLE_CLIENT_ID=
 ARG VITE_GOOGLE_API_KEY=
@@ -27,5 +27,5 @@ RUN npm run build
 # Stage 2: static nginx
 FROM nginx:1.27-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/dist /usr/share/nginx/html/dira
+COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80

@@ -25,8 +25,8 @@ export const env = {
   apiBaseUrl,
   appName: readString(import.meta.env.VITE_APP_NAME, 'Dira'),
   /**
-   * React Router basename. Production on the VPS is `/dira` so the SPA can
-   * live next to the existing nginx `location /` backend proxy.
+   * React Router basename. Production on dira365.com is `/` (site root).
+   * Local `npm run dev` is also `/`.
    */
   routerBasename,
   /**
