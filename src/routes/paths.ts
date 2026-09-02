@@ -19,6 +19,9 @@ export const paths = {
   assets: '/assets',
   store: '/store',
   transport: '/transport',
+  suppliers: '/suppliers',
+  visitors: '/visitors',
+  admissions: '/admissions',
   system: '/system',
 } as const
 

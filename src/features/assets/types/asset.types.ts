@@ -1,7 +1,7 @@
 import type { Campus, Department } from '@/features/lookups/lookups.types'
 
-/** `com.lyrt.shule.asset.AssetCategory` */
-export interface AssetCategory {
+/** Named asset lookup (category, description, condition, status). */
+export interface AssetNamedLookup {
   id: number
   name: string
 }
@@ -15,6 +15,12 @@ export interface AssetAssignee {
   staffNumber: string | null
 }
 
+export interface AssetSupplierRef {
+  id: number
+  name?: string | null
+  supplierCode?: string | null
+}
+
 /**
  * Asset as returned by `GET /api/assets`.
  * Source: `com.lyrt.shule.asset.Asset`.
@@ -23,19 +29,21 @@ export interface AssetAssignee {
  */
 export interface Asset {
   id: number
-  assetTagId: string
-  description: string | null
+  assetTagId: string | null
+  description: AssetNamedLookup | null
   brand: string | null
   model: string | null
   serialNumber: string | null
-  category: AssetCategory | null
+  category: AssetNamedLookup | null
   campus: Campus | null
   department: Department | null
   assignedTo: AssetAssignee | null
   purchaseDate: string | null
   costPrice: number | null
-  assetCondition: string | null
-  status: string | null
+  assetCondition: AssetNamedLookup | null
+  status: AssetNamedLookup | null
+  supplier: AssetSupplierRef | null
+  supplierName: string | null
   isDepreciable?: boolean
   depreciable?: boolean
   assetLifeMonths: number | null
@@ -44,13 +52,20 @@ export interface Asset {
   googleDrivePhotoLink: string | null
 }
 
+export interface AssetLookups {
+  categories: AssetNamedLookup[]
+  descriptions: AssetNamedLookup[]
+  conditions: AssetNamedLookup[]
+  statuses: AssetNamedLookup[]
+}
+
 export interface AssetRelationRef {
   id: number
 }
 
 export interface AssetWritePayload {
   assetTagId?: string
-  description?: string
+  description?: AssetRelationRef
   brand?: string
   model?: string
   serialNumber?: string
@@ -60,14 +75,29 @@ export interface AssetWritePayload {
   assignedTo?: AssetRelationRef
   purchaseDate?: string
   costPrice?: number
-  assetCondition?: string
-  status?: string
+  assetCondition?: AssetRelationRef
+  status?: AssetRelationRef
+  supplier?: AssetRelationRef
   isDepreciable: boolean
   depreciable: boolean
   assetLifeMonths?: number
   salvageValue?: number
   comments?: string
   googleDrivePhotoLink?: string
+}
+
+export interface AssetSearchParams {
+  brand?: string
+  model?: string
+  serialNumber?: string
+  descriptionId?: number
+  categoryId?: number
+  campusId?: number
+  departmentId?: number
+  staffId?: number
+  conditionId?: number
+  statusId?: number
+  purchaseDate?: string
 }
 
 export function assetIsDepreciable(asset: Pick<Asset, 'isDepreciable' | 'depreciable'>): boolean {
@@ -79,4 +109,8 @@ export function formatAssetMoney(value: number | string | null | undefined): str
   const amount = typeof value === 'number' ? value : Number(value)
   if (!Number.isFinite(amount)) return String(value)
   return amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+}
+
+export function assetDescriptionLabel(asset: Asset): string {
+  return asset.description?.name?.trim() || asset.model?.trim() || asset.brand?.trim() || '—'
 }

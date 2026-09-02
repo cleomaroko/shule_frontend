@@ -2,9 +2,12 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
 import { AcademicsPage } from '@/features/academic/pages/AcademicsPage'
+import { AdmissionsPage } from '@/features/admissions/pages/AdmissionsPage'
 import { AssetsPage } from '@/features/assets/pages/AssetsPage'
 import { StorePage } from '@/features/store/pages/StorePage'
+import { SuppliersPage } from '@/features/suppliers/pages/SuppliersPage'
 import { TransportPage } from '@/features/transport/pages/TransportPage'
+import { VisitorsPage } from '@/features/visitors/pages/VisitorsPage'
 import { LearnerCreatePage } from '@/features/learners/pages/LearnerCreatePage'
 import { LearnerDetailsPage } from '@/features/learners/pages/LearnerDetailsPage'
 import { LearnerEditPage } from '@/features/learners/pages/LearnerEditPage'
@@ -55,6 +58,9 @@ export function AppRoutes(): ReactNode {
           <Route path={paths.assets} element={<AssetsPage />} />
           <Route path={paths.store} element={<StorePage />} />
           <Route path={paths.transport} element={<TransportPage />} />
+          <Route path={paths.suppliers} element={<SuppliersPage />} />
+          <Route path={paths.visitors} element={<VisitorsPage />} />
+          <Route path={paths.admissions} element={<AdmissionsPage />} />
           <Route path={paths.system} element={<SystemPage />} />
         </Route>
       </Route>

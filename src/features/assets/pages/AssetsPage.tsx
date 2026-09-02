@@ -1,53 +1,63 @@
 import { Pencil, Plus, Trash2 } from 'lucide-react'
-import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { toUserMessage } from '@/api/errors'
 import { can } from '@/auth/permissions'
 import { useAuth } from '@/auth/useAuth'
 import { DataTable, type DataColumn } from '@/components/data/DataTable'
+import { NamedLookupManager } from '@/components/data/NamedLookupManager'
 import { FilterChip, SearchField } from '@/components/data/FilterBar'
 import { ConfirmDialog } from '@/components/feedback/ConfirmDialog'
 import { EmptyState, ErrorState, PageHeader } from '@/components/feedback/PageStates'
-import { TextField } from '@/components/forms/TextField'
+import { SelectField } from '@/components/forms/SelectField'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AssetFormDialog } from '@/features/assets/components/AssetFormDialog'
-import { useAssetCategoryList, useAssetList, useAssetMutations } from '@/features/assets/hooks/useAssets'
-import type { Asset, AssetCategory, AssetWritePayload } from '@/features/assets/types/asset.types'
-import { formatAssetMoney } from '@/features/assets/types/asset.types'
+import {
+  useAssetCategoryList,
+  useAssetConditionList,
+  useAssetDescriptionList,
+  useAssetList,
+  useAssetLookups,
+  useAssetMutations,
+  useAssetStatusList,
+} from '@/features/assets/hooks/useAssets'
+import type { Asset, AssetWritePayload } from '@/features/assets/types/asset.types'
+import { assetDescriptionLabel, formatAssetMoney } from '@/features/assets/types/asset.types'
 import { useCampuses, useDepartments } from '@/features/lookups/useLookups'
 import { useStaffList } from '@/features/staff/hooks/useStaff'
+import { useSupplierList } from '@/features/suppliers/hooks/useSuppliers'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { displayValue, formatPersonName } from '@/lib/format'
 
 const PAGE_SIZE = 10
+const LOOKUP_TABS = ['categories', 'descriptions', 'conditions', 'statuses'] as const
 
 export function AssetsPage(): ReactNode {
   useDocumentTitle('Asset Management')
   const { user } = useAuth()
   const canWrite = can(user?.role, 'asset:write')
   const [params, setParams] = useSearchParams()
-  const tab = params.get('tab') === 'categories' ? 'categories' : 'inventory'
+  const tab = params.get('tab') === 'lookups' ? 'lookups' : 'inventory'
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Asset Management"
-        description="School inventory — equipment, vehicles, furniture, and other physical property."
+        description="Physical property with structured descriptions, conditions, statuses, and supplier snapshots."
       />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
         <TabsList>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
-          <TabsTrigger value="categories">Categories</TabsTrigger>
+          <TabsTrigger value="lookups">Lookups</TabsTrigger>
         </TabsList>
         <TabsContent value="inventory">
           <InventoryPanel canWrite={canWrite} />
         </TabsContent>
-        <TabsContent value="categories">
-          <CategoriesPanel canWrite={canWrite} />
+        <TabsContent value="lookups">
+          <LookupsPanel canWrite={canWrite} />
         </TabsContent>
       </Tabs>
     </div>
@@ -56,35 +66,32 @@ export function AssetsPage(): ReactNode {
 
 function InventoryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const list = useAssetList()
-  const categories = useAssetCategoryList()
+  const lookups = useAssetLookups()
   const campuses = useCampuses()
   const departments = useDepartments()
   const staff = useStaffList()
+  const suppliers = useSupplierList()
   const { createAsset, updateAsset, deleteAsset } = useAssetMutations()
 
   const [query, setQuery] = useState('')
-  const [status, setStatus] = useState('all')
+  const [statusId, setStatusId] = useState('all')
+  const [categoryId, setCategoryId] = useState('')
+  const [campusId, setCampusId] = useState('')
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Asset | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Asset | null>(null)
 
-  const statuses = useMemo(() => {
-    const values = new Set<string>()
-    for (const item of list.data ?? []) {
-      if (item.status?.trim()) values.add(item.status.trim())
-    }
-    return ['all', ...Array.from(values).sort()]
-  }, [list.data])
-
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
     return (list.data ?? []).filter((item) => {
-      if (status !== 'all' && (item.status ?? '').trim() !== status) return false
+      if (statusId !== 'all' && String(item.status?.id ?? '') !== statusId) return false
+      if (categoryId && String(item.category?.id ?? '') !== categoryId) return false
+      if (campusId && String(item.campus?.id ?? '') !== campusId) return false
       if (!needle) return true
-      const haystack = [
+      return [
         item.assetTagId,
-        item.description,
+        item.description?.name,
         item.brand,
         item.model,
         item.serialNumber,
@@ -92,24 +99,20 @@ function InventoryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         item.campus?.name,
         item.department?.name,
         item.assignedTo ? formatPersonName(item.assignedTo) : '',
-        item.assetCondition,
-        item.status,
+        item.supplierName,
+        item.status?.name,
+        item.assetCondition?.name,
       ]
         .join(' ')
         .toLowerCase()
-      return haystack.includes(needle)
+        .includes(needle)
     })
-  }, [list.data, query, status])
+  }, [campusId, categoryId, list.data, query, statusId])
 
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const openCreate = () => {
     setEditing(null)
-    setOpen(true)
-  }
-
-  const openEdit = (item: Asset) => {
-    setEditing(item)
     setOpen(true)
   }
 
@@ -124,41 +127,29 @@ function InventoryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const columns: Array<DataColumn<Asset>> = [
     {
       id: 'tag',
-      header: 'Tag',
-      cell: (row) => <span className="font-medium">{row.assetTagId}</span>,
-    },
-    {
-      id: 'item',
-      header: 'Item',
+      header: 'Asset',
       cell: (row) => (
         <span>
-          <span className="block">{displayValue(row.description)}</span>
-          <span className="type-caption text-muted-foreground">
-            {[row.brand, row.model].filter(Boolean).join(' · ') || '—'}
-          </span>
+          <span className="block font-medium">{displayValue(row.assetTagId)}</span>
+          <span className="type-caption text-muted-foreground">{assetDescriptionLabel(row)}</span>
         </span>
       ),
     },
+    { id: 'category', header: 'Category', cell: (row) => displayValue(row.category?.name) },
+    { id: 'campus', header: 'Campus', cell: (row) => displayValue(row.campus?.name) },
     {
-      id: 'category',
-      header: 'Category',
-      cell: (row) => displayValue(row.category?.name),
+      id: 'assigned',
+      header: 'Assigned to',
+      hideOnMobile: true,
+      cell: (row) => (row.assignedTo ? formatPersonName(row.assignedTo) : '—'),
     },
-    {
-      id: 'campus',
-      header: 'Campus',
-      cell: (row) => displayValue(row.campus?.name),
-    },
-    {
-      id: 'condition',
-      header: 'Condition',
-      cell: (row) => displayValue(row.assetCondition),
-    },
+    { id: 'condition', header: 'Condition', hideOnMobile: true, cell: (row) => displayValue(row.assetCondition?.name) },
     {
       id: 'status',
       header: 'Status',
-      cell: (row) => (row.status ? <Badge variant="neutral">{row.status}</Badge> : '—'),
+      cell: (row) => (row.status?.name ? <Badge variant="neutral">{row.status.name}</Badge> : '—'),
     },
+    { id: 'value', header: 'Value', hideOnMobile: true, cell: (row) => formatAssetMoney(row.costPrice) },
     {
       id: 'actions',
       header: '',
@@ -166,13 +157,21 @@ function InventoryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
       cell: (row) =>
         canWrite ? (
           <span className="flex justify-end gap-1">
-            <Button variant="ghost" size="icon" aria-label={`Edit ${row.assetTagId}`} onClick={() => openEdit(row)}>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Edit ${row.assetTagId ?? 'asset'}`}
+              onClick={() => {
+                setEditing(row)
+                setOpen(true)
+              }}
+            >
               <Pencil aria-hidden="true" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              aria-label={`Delete ${row.assetTagId}`}
+              aria-label={`Delete ${row.assetTagId ?? 'asset'}`}
               onClick={() => setPendingDelete(row)}
             >
               <Trash2 aria-hidden="true" />
@@ -191,23 +190,58 @@ function InventoryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3">
         <SearchField
           value={query}
           onChange={(value) => {
             setQuery(value)
             setPage(1)
           }}
-          placeholder="Search assets…"
+          placeholder="Search tag, brand, serial, assignee…"
         />
+        <div className="grid gap-3 sm:grid-cols-3">
+          <SelectField
+            label="Category"
+            value={categoryId}
+            onChange={(value) => {
+              setCategoryId(value)
+              setPage(1)
+            }}
+            options={(lookups.data?.categories ?? []).map((item) => ({
+              value: String(item.id),
+              label: item.name,
+            }))}
+            placeholder="All categories"
+            emptyLabel="All categories"
+          />
+          <SelectField
+            label="Campus"
+            value={campusId}
+            onChange={(value) => {
+              setCampusId(value)
+              setPage(1)
+            }}
+            options={(campuses.data ?? []).map((item) => ({ value: String(item.id), label: item.name }))}
+            placeholder="All campuses"
+            emptyLabel="All campuses"
+          />
+        </div>
         <div className="flex flex-wrap items-center gap-2">
-          {statuses.map((value) => (
+          <FilterChip
+            label="All statuses"
+            active={statusId === 'all'}
+            onClick={() => {
+              setStatusId('all')
+              setPage(1)
+            }}
+          />
+          {(lookups.data?.statuses ?? []).map((item) => (
             <FilterChip
-              key={value}
-              label={value === 'all' ? 'All' : value}
-              active={status === value}
+              key={item.id}
+              label={item.name}
+              active={statusId === String(item.id)}
               onClick={() => {
-                setStatus(value)
+                setStatusId(String(item.id))
                 setPage(1)
               }}
             />
@@ -224,11 +258,11 @@ function InventoryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
       {isEmpty ? (
         <EmptyState
           title="No assets yet"
-          description="Register equipment, vehicles, or furniture with a unique tag ID."
+          description="Register equipment with a description and category from the lookups tab."
           {...(canWrite ? { actionLabel: 'Register asset', onAction: openCreate } : {})}
         />
       ) : noMatches ? (
-        <EmptyState title="No matching assets" description="Try a different search or status filter." />
+        <EmptyState title="No matching assets" description="Try a different search or filter." />
       ) : (
         <DataTable
           columns={columns}
@@ -243,10 +277,10 @@ function InventoryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
             <div className="flex flex-col gap-2">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="type-heading truncate">{row.assetTagId}</p>
-                  <p className="type-caption text-muted-foreground">{displayValue(row.description)}</p>
+                  <p className="type-heading truncate">{displayValue(row.assetTagId)}</p>
+                  <p className="type-caption text-muted-foreground">{assetDescriptionLabel(row)}</p>
                 </div>
-                {row.status ? <Badge variant="neutral">{row.status}</Badge> : null}
+                {row.status?.name ? <Badge variant="neutral">{row.status.name}</Badge> : null}
               </div>
               <dl className="grid grid-cols-2 gap-2 type-caption text-muted-foreground">
                 <div>
@@ -255,7 +289,7 @@ function InventoryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
                 </div>
                 <div>
                   <dt>Condition</dt>
-                  <dd className="font-medium text-foreground">{displayValue(row.assetCondition)}</dd>
+                  <dd className="font-medium text-foreground">{displayValue(row.assetCondition?.name)}</dd>
                 </div>
                 <div>
                   <dt>Campus</dt>
@@ -275,10 +309,14 @@ function InventoryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         open={open}
         onOpenChange={setOpen}
         editing={editing}
-        categories={categories.data ?? []}
+        categories={lookups.data?.categories ?? []}
+        descriptions={lookups.data?.descriptions ?? []}
+        conditions={lookups.data?.conditions ?? []}
+        statuses={lookups.data?.statuses ?? []}
         campuses={campuses.data ?? []}
         departments={departments.data ?? []}
         staff={staff.data ?? []}
+        suppliers={suppliers.data ?? []}
         isSaving={createAsset.isPending || updateAsset.isPending}
         onSubmit={handleSubmit}
       />
@@ -291,7 +329,7 @@ function InventoryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         title="Delete asset?"
         description={
           pendingDelete
-            ? `This will permanently remove ${pendingDelete.assetTagId}${pendingDelete.description ? ` (${pendingDelete.description})` : ''}.`
+            ? `This will permanently remove ${pendingDelete.assetTagId ?? `asset ${pendingDelete.id}`}${pendingDelete.description?.name ? ` (${pendingDelete.description.name})` : ''}.`
             : ''
         }
         confirmLabel="Delete"
@@ -306,82 +344,120 @@ function InventoryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   )
 }
 
-function CategoriesPanel({ canWrite }: { canWrite: boolean }): ReactNode {
-  const list = useAssetCategoryList()
-  const { createCategory } = useAssetMutations()
-  const [name, setName] = useState('')
-  const [page, setPage] = useState(1)
+function LookupsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
+  const [params, setParams] = useSearchParams()
+  const requested = params.get('lookup')
+  const lookup = LOOKUP_TABS.includes(requested as (typeof LOOKUP_TABS)[number])
+    ? (requested as (typeof LOOKUP_TABS)[number])
+    : 'categories'
 
-  const rows = list.data ?? []
-  const paged = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const categories = useAssetCategoryList()
+  const descriptions = useAssetDescriptionList()
+  const conditions = useAssetConditionList()
+  const statuses = useAssetStatusList()
+  const mutations = useAssetMutations()
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault()
-    const trimmed = name.trim()
-    if (!trimmed) return
-    createCategory.mutate(
-      { name: trimmed },
-      {
-        onSuccess: () => setName(''),
-      },
-    )
-  }
-
-  const columns: Array<DataColumn<AssetCategory>> = [
-    { id: 'name', header: 'Category', cell: (row) => row.name },
-  ]
-
-  if (list.isError) {
-    return <ErrorState message={toUserMessage(list.error)} onRetry={() => void list.refetch()} />
+  const setLookup = (value: string) => {
+    setParams({ tab: 'lookups', lookup: value }, { replace: true })
   }
 
   return (
     <div className="flex flex-col gap-4">
       <p className="type-caption text-muted-foreground">
-        Categories can be listed and added. The backend does not expose update or delete for them.
+        These lists feed the register-asset form. Add them here before recording inventory.
       </p>
-      {canWrite ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="type-section-title">Add category</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <TextField
-                label="Name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Lab Equipment"
-                containerClassName="flex-1"
-                required
-              />
-              <Button type="submit" isLoading={createCategory.isPending} loadingLabel="Adding">
-                <Plus aria-hidden="true" />
-                Add
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {rows.length === 0 && !list.isLoading ? (
-        <EmptyState
-          title="No categories yet"
-          description="Add a category such as ICT, Vehicles, or Furniture before registering assets."
-        />
-      ) : (
-        <DataTable
-          columns={columns}
-          rows={paged}
-          getRowId={(row) => row.id}
-          isLoading={list.isLoading}
-          page={page}
-          pageSize={PAGE_SIZE}
-          total={rows.length}
-          onPageChange={setPage}
-          mobileCard={(row) => <p className="type-heading">{row.name}</p>}
-        />
-      )}
+      <Tabs value={lookup} onValueChange={setLookup}>
+        <TabsList>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
+          <TabsTrigger value="descriptions">Descriptions</TabsTrigger>
+          <TabsTrigger value="conditions">Conditions</TabsTrigger>
+          <TabsTrigger value="statuses">Statuses</TabsTrigger>
+        </TabsList>
+        <TabsContent value="categories">
+          <NamedLookupManager
+            title="Category"
+            description="Groups such as ICT, Furniture, or Vehicles."
+            emptyTitle="No categories yet"
+            emptyDescription="Add a category before registering assets."
+            items={categories.data}
+            isLoading={categories.isLoading}
+            isError={categories.isError}
+            errorMessage={toUserMessage(categories.error)}
+            onRetry={() => void categories.refetch()}
+            canWrite={canWrite}
+            canUpdate
+            canDelete
+            isSaving={mutations.createCategory.isPending || mutations.updateCategory.isPending}
+            isDeleting={mutations.deleteCategory.isPending}
+            onCreate={(name) => mutations.createCategory.mutate({ name })}
+            onUpdate={(id, name) => mutations.updateCategory.mutate({ id, name })}
+            onDelete={(id) => mutations.deleteCategory.mutate(id)}
+          />
+        </TabsContent>
+        <TabsContent value="descriptions">
+          <NamedLookupManager
+            title="Description"
+            description="What the item is, for example Laptop or Projector."
+            emptyTitle="No descriptions yet"
+            emptyDescription="Add descriptions used on the register form."
+            items={descriptions.data}
+            isLoading={descriptions.isLoading}
+            isError={descriptions.isError}
+            errorMessage={toUserMessage(descriptions.error)}
+            onRetry={() => void descriptions.refetch()}
+            canWrite={canWrite}
+            canUpdate
+            canDelete
+            isSaving={mutations.createDescription.isPending || mutations.updateDescription.isPending}
+            isDeleting={mutations.deleteDescription.isPending}
+            onCreate={(name) => mutations.createDescription.mutate({ name })}
+            onUpdate={(id, name) => mutations.updateDescription.mutate({ id, name })}
+            onDelete={(id) => mutations.deleteDescription.mutate(id)}
+          />
+        </TabsContent>
+        <TabsContent value="conditions">
+          <NamedLookupManager
+            title="Condition"
+            description="Physical state, for example New or Needs repair."
+            emptyTitle="No conditions yet"
+            emptyDescription="Add condition values used on assets."
+            items={conditions.data}
+            isLoading={conditions.isLoading}
+            isError={conditions.isError}
+            errorMessage={toUserMessage(conditions.error)}
+            onRetry={() => void conditions.refetch()}
+            canWrite={canWrite}
+            canUpdate
+            canDelete
+            isSaving={mutations.createCondition.isPending || mutations.updateCondition.isPending}
+            isDeleting={mutations.deleteCondition.isPending}
+            onCreate={(name) => mutations.createCondition.mutate({ name })}
+            onUpdate={(id, name) => mutations.updateCondition.mutate({ id, name })}
+            onDelete={(id) => mutations.deleteCondition.mutate(id)}
+          />
+        </TabsContent>
+        <TabsContent value="statuses">
+          <NamedLookupManager
+            title="Status"
+            description="Operational status, for example In use or Disposed."
+            emptyTitle="No statuses yet"
+            emptyDescription="Add status values used on assets."
+            items={statuses.data}
+            isLoading={statuses.isLoading}
+            isError={statuses.isError}
+            errorMessage={toUserMessage(statuses.error)}
+            onRetry={() => void statuses.refetch()}
+            canWrite={canWrite}
+            canUpdate
+            canDelete
+            isSaving={mutations.createStatus.isPending || mutations.updateStatus.isPending}
+            isDeleting={mutations.deleteStatus.isPending}
+            onCreate={(name) => mutations.createStatus.mutate({ name })}
+            onUpdate={(id, name) => mutations.updateStatus.mutate({ id, name })}
+            onDelete={(id) => mutations.deleteStatus.mutate(id)}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

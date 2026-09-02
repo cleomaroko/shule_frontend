@@ -14,6 +14,14 @@ export function useStaffList() {
   })
 }
 
+/** Teaching staff for assignment dropdowns (`GET /api/staff/teachers`). */
+export function useTeacherList() {
+  return useQuery({
+    queryKey: queryKeys.staff.teachers,
+    queryFn: staffApi.listTeachers,
+  })
+}
+
 export function useStaff(id: number | undefined) {
   const list = useStaffList()
   const staff = list.data?.find((item) => item.id === id)
@@ -28,7 +36,11 @@ export function useStaff(id: number | undefined) {
 export function useStaffMutations() {
   const queryClient = useQueryClient()
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: queryKeys.staff.all })
+  const invalidate = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.staff.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.staff.teachers }),
+    ])
 
   const create = useMutation({
     mutationFn: (body: StaffWritePayload) => staffApi.register(body),

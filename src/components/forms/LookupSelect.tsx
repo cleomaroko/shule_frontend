@@ -2,22 +2,38 @@ import { Controller, type Control, type FieldPath, type FieldValues } from 'reac
 import type { ReactNode } from 'react'
 
 import { SelectField } from '@/components/forms/SelectField'
-import { toSelectOptions } from '@/components/forms/select-utils'
+import type { SelectOption } from '@/components/forms/select-utils'
 import { TextField } from '@/components/forms/TextField'
+
+export type LookupSelectOption = string | SelectOption
 
 export interface LookupSelectProps<T extends FieldValues> {
   control: Control<T>
   name: FieldPath<T>
   label: string
-  options: string[]
+  options: LookupSelectOption[]
   placeholder?: string | undefined
   error?: string | undefined
   hint?: string | undefined
   disabled?: boolean | undefined
-  /** When the lookup list is empty, fall back to a free-text field. */
+  isLoading?: boolean | undefined
+  /** When the lookup list is empty, fall back to a free-text field. Off by default so backend lists stay dropdowns. */
   fallbackToText?: boolean
   emptyMessage?: string | undefined
   allowEmpty?: boolean
+}
+
+function normalizeOptions(options: LookupSelectOption[]): SelectOption[] {
+  const seen = new Set<string>()
+  const result: SelectOption[] = []
+  for (const item of options) {
+    const option = typeof item === 'string' ? { value: item, label: item } : item
+    const value = option.value.trim()
+    if (!value || seen.has(value)) continue
+    seen.add(value)
+    result.push({ value, label: option.label?.trim() || value })
+  }
+  return result
 }
 
 /**
@@ -33,11 +49,14 @@ export function LookupSelect<T extends FieldValues>({
   error,
   hint,
   disabled,
-  fallbackToText = true,
+  isLoading = false,
+  fallbackToText = false,
   emptyMessage,
   allowEmpty,
 }: LookupSelectProps<T>): ReactNode {
-  if (fallbackToText && options.length === 0) {
+  const normalized = normalizeOptions(options)
+
+  if (fallbackToText && !isLoading && normalized.length === 0) {
     return (
       <Controller
         control={control}
@@ -68,12 +87,12 @@ export function LookupSelect<T extends FieldValues>({
           name={field.name}
           value={String(field.value ?? '')}
           onChange={field.onChange}
-          options={toSelectOptions(options)}
-          placeholder={placeholder}
+          options={normalized}
+          placeholder={isLoading ? 'Loading…' : (placeholder ?? 'Select…')}
           error={error}
           hint={hint}
-          disabled={disabled}
-          emptyMessage={emptyMessage}
+          disabled={disabled || isLoading}
+          emptyMessage={isLoading ? undefined : emptyMessage}
           {...(allowEmpty === undefined ? {} : { allowEmpty })}
         />
       )}

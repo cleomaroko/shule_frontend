@@ -3,6 +3,7 @@ import type { ErrorInfo, ReactNode } from 'react'
 
 import { DiraWordmark } from '@/components/branding/DiraWordmark'
 import { Button } from '@/components/ui/button'
+import { env } from '@/lib/env'
 import { logger } from '@/lib/logger'
 
 interface RootErrorBoundaryProps {
@@ -46,12 +47,12 @@ export class RootErrorBoundary extends Component<RootErrorBoundaryProps, RootErr
         <div className="flex flex-col gap-2">
           <h1 className="type-page-title">Something went wrong</h1>
           <p className="type-body max-w-sm text-muted-foreground">
-            Dira hit an unexpected problem and could not finish loading this page. Reloading usually
+            {env.appName} hit an unexpected problem and could not finish loading this page. Reloading usually
             resolves it.
           </p>
         </div>
 
-        <Button onClick={() => window.location.reload()}>Reload Dira</Button>
+        <Button onClick={() => window.location.reload()}>Reload {env.appName}</Button>
       </div>
     )
   }

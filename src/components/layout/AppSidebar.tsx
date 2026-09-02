@@ -7,7 +7,8 @@ import { formatRoleLabel, getUserInitials } from '@/auth/user-display'
 import { DiraMark } from '@/components/branding/DiraMark'
 import { navigation } from '@/components/layout/navigation'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { formatAcademicYear } from '@/lib/academic-year'
+import { useCurrentAcademicCalendar } from '@/features/academic/hooks/useAcademic'
+import { formatAcademicYearDisplay } from '@/features/academic/types/academic.types'
 import { env } from '@/lib/env'
 import { cn } from '@/lib/utils'
 
@@ -17,6 +18,12 @@ export interface AppSidebarProps {
 }
 
 export function AppSidebar({ user, onNavigate }: AppSidebarProps): ReactNode {
+  const calendar = useCurrentAcademicCalendar()
+  const yearLabel = calendar.isLoading
+    ? 'Loading…'
+    : (formatAcademicYearDisplay(calendar.yearName) ?? 'Not set')
+  const termLabel = calendar.isLoading ? 'Loading…' : (calendar.termName ?? 'No active term')
+
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground">
       <div
@@ -68,11 +75,15 @@ export function AppSidebar({ user, onNavigate }: AppSidebarProps): ReactNode {
       </nav>
 
       <div className="relative mt-auto space-y-3 border-t border-sidebar-border px-4 py-4">
-        <div className="flex items-center gap-2.5 rounded-lg border border-sidebar-border bg-white/5 px-3 py-2">
+        <div
+          className="flex items-center gap-2.5 rounded-lg border border-sidebar-border bg-white/5 px-3 py-2"
+          aria-label={`Academic year ${yearLabel}, ${termLabel}`}
+        >
           <CalendarDays className="size-4 shrink-0 text-sidebar-accent" aria-hidden="true" />
           <div className="min-w-0">
             <p className="type-caption text-sidebar-muted">Academic year</p>
-            <p className="type-label truncate text-white">{formatAcademicYear()}</p>
+            <p className="type-label truncate text-white">{yearLabel}</p>
+            <p className="type-caption truncate text-sidebar-muted">{termLabel}</p>
           </div>
         </div>
 

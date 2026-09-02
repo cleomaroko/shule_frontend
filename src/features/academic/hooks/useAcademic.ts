@@ -4,11 +4,13 @@ import { toast } from 'sonner'
 import { toUserMessage } from '@/api/errors'
 import { queryKeys } from '@/api/endpoints'
 import { academicApi } from '@/features/academic/api/academic.api'
-import type {
-  AssignmentWritePayload,
-  AcademicTermWritePayload,
-  AcademicYearWritePayload,
-  LearningAreaWritePayload,
+import {
+  resolveCurrentAcademicYear,
+  resolveCurrentTerm,
+  type AcademicTermWritePayload,
+  type AcademicYearWritePayload,
+  type AssignmentWritePayload,
+  type LearningAreaWritePayload,
 } from '@/features/academic/types/academic.types'
 import { logger } from '@/lib/logger'
 
@@ -52,6 +54,20 @@ export function useAcademicTermList() {
     queryKey: queryKeys.academic.terms,
     queryFn: academicApi.listTerms,
   })
+}
+
+/** Current year/term for the shell, from GET /api/academic/years and /terms. */
+export function useCurrentAcademicCalendar() {
+  const years = useAcademicYearList()
+  const terms = useAcademicTermList()
+  const currentTerm = resolveCurrentTerm(terms.data ?? [])
+  const currentYear = resolveCurrentAcademicYear(years.data ?? [], currentTerm)
+
+  return {
+    yearName: currentYear?.name?.trim() || null,
+    termName: currentTerm?.name?.trim() || null,
+    isLoading: years.isLoading || terms.isLoading,
+  }
 }
 
 export function useAcademicMutations() {

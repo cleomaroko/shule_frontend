@@ -12,6 +12,7 @@ import { TextField } from '@/components/forms/TextField'
 import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { logger } from '@/lib/logger'
+import { env } from '@/lib/env'
 import { paths } from '@/routes/paths'
 
 /**
@@ -50,7 +51,7 @@ export function ForgotPasswordForm(): ReactNode {
           Reset your password
         </h1>
         <p className="type-body mt-1.5 text-muted-foreground">
-          Enter the email address on your Dira account and we will send you a 6-digit verification code.
+          Enter the email address on your {env.appName} account and we will send you a 6-digit verification code.
         </p>
       </header>
 

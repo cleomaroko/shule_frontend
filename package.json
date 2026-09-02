@@ -2,7 +2,7 @@
   "name": "dira-frontend",
   "private": true,
   "version": "0.1.0",
-  "description": "Dira — School Management System frontend",
+  "description": "Dira 365 — School Management System frontend",
   "type": "module",
   "scripts": {
     "dev": "vite",

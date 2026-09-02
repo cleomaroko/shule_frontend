@@ -17,13 +17,16 @@ import type { UserRole } from '@/auth/auth.types'
  *   role contains `ADMIN` OR role contains `HEAD`
  *
  * Asset mutations (`AssetController.isAuthorized`):
- *   role contains `ADMIN` OR role contains `PROCUREMENT`
+ *   role contains `ADMIN` OR `PROCUREMENT` OR `IT`
  *
  * Transport mutations (`TransportController.isAuthorized`):
  *   role contains `ADMIN` OR role contains `OPERATOR`
  *
- * Store mutations (`StoreController`): no role check; Authorization is used for
- * audit `recordedBy` / system logs. The UI still gates write actions.
+ * Store mutations (`StoreController.isAuthorized`):
+ *   role contains `ADMIN` OR `MANAGER` OR `OPERATOR`
+ *
+ * Supplier and visitor writes require an Authorization header for audit
+ * logging but have no role check. The UI still gates them.
  *
  * System logs / reset / email usage (`SystemController.isSuperAdmin`):
  *   role equals `ROLE_SUPER_ADMIN`
@@ -52,6 +55,9 @@ export type Capability =
   | 'asset:write'
   | 'store:write'
   | 'transport:write'
+  | 'supplier:write'
+  | 'visitor:write'
+  | 'admissions:write'
   | 'system:super'
   | 'system:analytics'
 
@@ -87,11 +93,29 @@ export function can(role: UserRole | null | undefined, capability: Capability): 
     case 'assignment:write':
       return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
     case 'asset:write':
-      return roleContains(role, 'ADMIN') || roleContains(role, 'PROCUREMENT')
+      return (
+        roleContains(role, 'ADMIN') ||
+        roleContains(role, 'PROCUREMENT') ||
+        roleContains(role, 'IT')
+      )
     case 'store:write':
-      return roleContains(role, 'ADMIN') || roleContains(role, 'STORE') || roleContains(role, 'HEAD')
+      return (
+        roleContains(role, 'ADMIN') ||
+        roleContains(role, 'MANAGER') ||
+        roleContains(role, 'OPERATOR')
+      )
     case 'transport:write':
       return roleContains(role, 'ADMIN') || roleContains(role, 'OPERATOR')
+    case 'supplier:write':
+      return (
+        roleContains(role, 'ADMIN') ||
+        roleContains(role, 'PROCUREMENT') ||
+        roleContains(role, 'MANAGER')
+      )
+    case 'visitor:write':
+      return roleContains(role, 'ADMIN') || roleContains(role, 'OPERATOR') || roleContains(role, 'HEAD')
+    case 'admissions:write':
+      return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
     case 'system:super':
       return hasRole(role, 'ROLE_SUPER_ADMIN')
     case 'system:analytics':

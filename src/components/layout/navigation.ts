@@ -1,11 +1,14 @@
 import {
   BookOpen,
+  Building2,
   Bus,
+  ClipboardList,
   GraduationCap,
   LayoutDashboard,
   Package,
   Settings2,
   Truck,
+  UserRound,
   Users,
   Warehouse,
 } from "lucide-react";
@@ -37,6 +40,8 @@ export const navigation: NavSection[] = [
     items: [
       { label: "Learners", to: paths.learners, icon: GraduationCap },
       { label: "Staff", to: paths.staff, icon: Users },
+      { label: "Admissions", to: paths.admissions, icon: ClipboardList },
+      { label: "Visitors", to: paths.visitors, icon: UserRound },
     ],
   },
   {
@@ -47,6 +52,7 @@ export const navigation: NavSection[] = [
       { label: "Transport", to: paths.transport, icon: Truck },
       { label: "Assets", to: paths.assets, icon: Package },
       { label: "Stores", to: paths.store, icon: Warehouse },
+      { label: "Suppliers", to: paths.suppliers, icon: Building2 },
     ],
   },
   {

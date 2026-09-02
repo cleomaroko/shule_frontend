@@ -123,15 +123,15 @@ export function CommandSearch(): ReactNode {
     return (assets.data ?? [])
       .filter((item) =>
         matches(
-          [item.assetTagId, item.description, item.brand, item.serialNumber, item.category?.name].join(' '),
+          [item.assetTagId, item.description?.name, item.brand, item.serialNumber, item.category?.name].join(' '),
           needle,
         ),
       )
       .slice(0, 6)
       .map((item) => ({
         id: `asset-${item.id}`,
-        label: item.assetTagId,
-        hint: item.description || item.category?.name || 'Asset',
+        label: item.assetTagId || item.description?.name || `Asset ${item.id}`,
+        hint: item.description?.name || item.category?.name || 'Asset',
         to: paths.assets,
       }))
   }, [assets.data, needle])
@@ -139,12 +139,12 @@ export function CommandSearch(): ReactNode {
   const storeHits = useMemo<SearchHit[]>(() => {
     if (!needle) return []
     return (storeItems.data ?? [])
-      .filter((item) => matches([item.name, item.category, item.unit?.name].join(' '), needle))
+      .filter((item) => matches([item.name, item.itemCode, item.category?.name, item.unit?.name].join(' '), needle))
       .slice(0, 6)
       .map((item) => ({
         id: `store-${item.id}`,
         label: item.name,
-        hint: [item.category, item.unit?.name].filter(Boolean).join(' · ') || 'Store item',
+        hint: [item.itemCode, item.category?.name, item.unit?.name].filter(Boolean).join(' · ') || 'Store item',
         to: `${paths.store}?tab=items`,
       }))
   }, [needle, storeItems.data])

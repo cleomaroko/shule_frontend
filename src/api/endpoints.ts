@@ -13,18 +13,25 @@ export const endpoints = {
   staff: {
     /** GET — `ApiResponse<Staff[]>` */
     list: '/staff',
-    /** POST — requires Authorization; creates Staff and a User login (username = workEmail, role ROLE_STAFF). */
+    /** GET — `ApiResponse<Staff[]>` teachers/heads/deans (StaffRepository.findAllTeachers). */
+    teachers: '/staff/teachers',
+    /** POST — requires Authorization; creates Staff and a User login. */
     register: '/staff/register',
-    /** PUT — requires Authorization; full overwrite of copied fields. Does not update workEmail or password. */
+    /** PUT / DELETE — requires Authorization */
     byId: (id: number) => `/staff/${id}`,
   },
   learners: {
-    /** GET — `ApiResponse<Learner[]>` (exists in source; omitted from older docs) */
     list: '/learners',
-    /** POST — requires Authorization */
     register: '/learners/register',
-    /** PUT / DELETE — requires Authorization */
     byId: (id: number) => `/learners/${id}`,
+  },
+  admissions: {
+    /** POST public — website lead capture. */
+    submit: '/admissions/submit',
+    /** GET wrapped pending leads (`processed == false`). Requires Authorization. */
+    list: '/admissions/list',
+    /** PATCH wrapped. Requires Authorization. */
+    process: (id: number) => `/admissions/process/${id}`,
   },
   campuses: {
     list: '/campuses',
@@ -35,71 +42,102 @@ export const endpoints = {
     byId: (id: number) => `/departments/${id}`,
   },
   academic: {
-    /** GET raw `SchoolClass[]`; POST/PUT/DELETE wrapped, Authorization used for audit logging. */
     classes: '/academic/classes',
     classById: (id: number) => `/academic/classes/${id}`,
-    /** GET raw `Stream[]`; POST/PUT/DELETE wrapped. */
     streams: '/academic/streams',
     streamById: (id: number) => `/academic/streams/${id}`,
-    /** GET wrapped. POST/PUT wrapped; require ADMIN or HEAD. No DELETE. */
     years: '/academic/years',
     yearById: (id: number) => `/academic/years/${id}`,
-    /** GET wrapped. POST/PUT wrapped; require ADMIN or HEAD. PUT does not change academicYear. No DELETE. */
     terms: '/academic/terms',
     termById: (id: number) => `/academic/terms/${id}`,
     assignments: {
-      /** GET raw `TeacherAssignment[]`. */
       list: '/academic/assignments',
-      /** DELETE wrapped; POST/DELETE require ADMIN or HEAD. */
       byId: (id: number) => `/academic/assignments/${id}`,
     },
   },
   subjects: {
-    /** GET wrapped `ApiResponse<Subject[]>`. Mutations: SUPER_ADMIN / IT_ADMIN / HEAD_OF_SCHOOL / SECTION_HEAD. */
     list: '/subjects',
     byId: (id: number) => `/subjects/${id}`,
   },
   logistics: {
-    /** GET raw arrays; POST/PUT/DELETE wrapped and Authorization is required for logging. */
     zones: '/logistics/zones',
     zoneById: (id: number) => `/logistics/zones/${id}`,
     houses: '/logistics/houses',
     houseById: (id: number) => `/logistics/houses/${id}`,
   },
   assets: {
-    /** GET wrapped `ApiResponse<Asset[]>`. POST/PUT/DELETE require ADMIN or PROCUREMENT. */
+    /** GET wrapped `ApiResponse<Asset[]>`. POST/PUT/DELETE: ADMIN, PROCUREMENT, or IT. */
     list: '/assets',
     byId: (id: number) => `/assets/${id}`,
-    /** GET raw `AssetCategory[]`; POST wrapped. No PUT/DELETE in the controller. */
+    byTag: (tagId: string) => `/assets/tag/${encodeURIComponent(tagId)}`,
+    /** GET wrapped. Optional query: brand, model, serialNumber, *Id filters, purchaseDate. */
+    search: '/assets/search',
+    /** GET wrapped map: categories, descriptions, conditions, statuses. */
+    lookups: '/assets/lookups',
+    /** GET raw arrays. POST/PUT/DELETE wrapped. */
     categories: '/assets/categories',
+    categoryById: (id: number) => `/assets/categories/${id}`,
+    descriptions: '/assets/descriptions',
+    descriptionById: (id: number) => `/assets/descriptions/${id}`,
+    conditions: '/assets/conditions',
+    conditionById: (id: number) => `/assets/conditions/${id}`,
+    statuses: '/assets/statuses',
+    statusById: (id: number) => `/assets/statuses/${id}`,
   },
   store: {
-    /** GET wrapped list; POST/PUT/DELETE require Authorization for audit logging. */
+    /** GET wrapped. POST/DELETE wrapped. No PUT. Auth: ADMIN, MANAGER, or OPERATOR. */
+    locations: '/store/locations',
+    locationById: (id: number) => `/store/locations/${id}`,
+    /** GET wrapped. POST/DELETE wrapped. Optional parentCategory on POST. */
+    categories: '/store/categories',
+    categoryById: (id: number) => `/store/categories/${id}`,
+    /** GET wrapped. POST/PUT/DELETE wrapped. No units list endpoint. */
+    items: '/store/items',
+    itemById: (id: number) => `/store/items/${id}`,
+    /** GET wrapped. Filter only when storeId, termId, startDate, and endDate are all set. */
     logs: '/store/logs',
     logById: (id: number) => `/store/logs/${id}`,
-    /** GET/POST wrapped. No PUT/DELETE for items. No units list endpoint in the controller. */
-    items: '/store/items',
+    /** GET wrapped. Required: storeId, termId, startDate, endDate. Source-store logs in range. */
+    stockTake: '/store/stock-take',
   },
   transport: {
-    /** GET wrapped. POST/PUT/DELETE require ADMIN or OPERATOR. */
     vehicles: '/transport/vehicles',
     vehicleById: (id: number) => `/transport/vehicles/${id}`,
-    /** GET wrapped. POST/PUT/DELETE require ADMIN or OPERATOR. */
+    /** GET wrapped. Optional query: logType, vehicleId, driverId, serviceTypeId, start, end. */
     logs: '/transport/logs',
     logById: (id: number) => `/transport/logs/${id}`,
-    /** GET raw `BusStop[]`. POST/PUT/DELETE wrapped; require ADMIN or OPERATOR. */
+    /** GET wrapped. POST wrapped. No PUT/DELETE. */
     stops: '/transport/stops',
-    stopById: (id: number) => `/transport/stops/${id}`,
+    /** GET raw. POST wrapped. No PUT/DELETE. */
+    serviceTypes: '/transport/service-types',
+  },
+  suppliers: {
+    /** GET raw `Supplier[]`. POST/PUT wrapped. Authorization used for audit logging. */
+    list: '/suppliers',
+    byId: (id: number) => `/suppliers/${id}`,
+    /** GET raw. POST wrapped. */
+    types: '/suppliers/types',
+    contractsBySupplier: (id: number) => `/suppliers/${id}/contracts`,
+    contracts: '/suppliers/contracts',
+    /** PATCH `?status=` */
+    contractStatus: (id: number) => `/suppliers/contracts/${id}/status`,
+  },
+  visitors: {
+    /** GET wrapped. POST check-in wrapped. DELETE wrapped. */
+    list: '/visitors',
+    byId: (id: number) => `/visitors/${id}`,
+    checkOut: (id: number) => `/visitors/${id}/check-out`,
+    /** GET raw. POST wrapped. */
+    categories: '/visitors/categories',
+    purposes: '/visitors/purposes',
   },
   system: {
     reset: '/system/reset-to-defaults',
     logs: '/system/logs',
     emailUsage: '/system/email-usage',
-    /** GET wrapped. SUPER_ADMIN, IT_ADMIN, or IT_OFFICER. Data is null when there are no logs. */
     analytics: '/system/analytics',
   },
   lookups: {
-    /** GET raw `StaffRole[]`. POST/PUT/DELETE wrapped; Authorization used for audit logging. */
     roles: '/lookups/roles',
     roleById: (id: number) => `/lookups/roles/${id}`,
     titles: '/lookups/titles',
@@ -121,9 +159,13 @@ export const endpoints = {
 export const queryKeys = {
   staff: {
     all: ['staff'] as const,
+    teachers: ['staff', 'teachers'] as const,
   },
   learners: {
     all: ['learners'] as const,
+  },
+  admissions: {
+    pending: ['admissions', 'pending'] as const,
   },
   academic: {
     classes: ['academic', 'classes'] as const,
@@ -135,9 +177,15 @@ export const queryKeys = {
   },
   assets: {
     all: ['assets'] as const,
+    lookups: ['assets', 'lookups'] as const,
     categories: ['assets', 'categories'] as const,
+    descriptions: ['assets', 'descriptions'] as const,
+    conditions: ['assets', 'conditions'] as const,
+    statuses: ['assets', 'statuses'] as const,
   },
   store: {
+    locations: ['store', 'locations'] as const,
+    categories: ['store', 'categories'] as const,
     logs: ['store', 'logs'] as const,
     items: ['store', 'items'] as const,
   },
@@ -145,6 +193,17 @@ export const queryKeys = {
     vehicles: ['transport', 'vehicles'] as const,
     logs: ['transport', 'logs'] as const,
     stops: ['transport', 'stops'] as const,
+    serviceTypes: ['transport', 'service-types'] as const,
+  },
+  suppliers: {
+    all: ['suppliers'] as const,
+    types: ['suppliers', 'types'] as const,
+    contracts: (supplierId: number) => ['suppliers', 'contracts', supplierId] as const,
+  },
+  visitors: {
+    all: ['visitors'] as const,
+    categories: ['visitors', 'categories'] as const,
+    purposes: ['visitors', 'purposes'] as const,
   },
   logistics: {
     zones: ['logistics', 'zones'] as const,

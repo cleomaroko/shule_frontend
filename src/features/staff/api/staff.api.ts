@@ -15,6 +15,10 @@ export const staffApi = {
     return api.get<Staff[]>(endpoints.staff.list).then((result) => result.data ?? [])
   },
 
+  listTeachers(): Promise<Staff[]> {
+    return api.get<Staff[]>(endpoints.staff.teachers).then((result) => result.data ?? [])
+  },
+
   register(body: StaffWritePayload): Promise<Staff> {
     return api.post<Staff>(endpoints.staff.register, body).then((result) =>
       requireData(result.data, 'Staff was created but the response had no record'),

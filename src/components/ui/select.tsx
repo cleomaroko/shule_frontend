@@ -25,6 +25,7 @@ export function SelectTrigger({
         className,
       )}
       {...props}
+      type="button"
     >
       {children}
       <SelectPrimitive.Icon asChild>

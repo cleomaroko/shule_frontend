@@ -1,6 +1,6 @@
-# Dira — School Management System (Frontend)
+# Dira 365 — School Management System (Frontend)
 
-The web frontend for **Dira**, a modern school ERP platform. This is the client for the
+The web frontend for **Dira 365**, a modern school ERP platform. This is the client for the
 Spring Boot backend that lives in the repository root.
 
 > **Current scope: authentication, staff, and learners.**
@@ -90,7 +90,7 @@ the JavaScript bundle and is therefore public — never put a secret in one.**
 | ----------------------- | ----------------------- | -------------------------------------------------------------- |
 | `VITE_API_BASE_URL`     | `/api`                  | Base URL for the API, **including** the `/api` prefix.          |
 | `VITE_DEV_PROXY_TARGET` | `http://localhost:8080` | Where the Vite dev server forwards `/api`. Development only.    |
-| `VITE_APP_NAME`         | `Dira`                  | Product name in the UI, page titles and brand lockup.          |
+| `VITE_APP_NAME`         | `Dira 365`              | Product name in the UI, page titles and brand lockup.          |
 
 All variables are read in exactly one place, [`src/lib/env.ts`](src/lib/env.ts). Nothing
 else in the codebase touches `import.meta.env`.
@@ -243,7 +243,7 @@ becomes a single normalised `ApiError` with a `kind`:
 | -------------- | ------------------------------------------- | -------------------------------------------------------------- |
 | `business`     | Backend declined it (`success: false`)      | The backend's own curated message                              |
 | `offline`      | Browser reports no connectivity             | "You appear to be offline…"                                    |
-| `network`      | No response at all (backend down, CORS)     | "We could not reach the Dira server…"                          |
+| `network`      | No response at all (backend down, CORS)     | "We could not reach the Dira 365 server…"                          |
 | `timeout`      | Aborted after 20 s                          | "The request took too long…"                                   |
 | `unauthorized` | 401/403                                     | "Your session has expired…" (also tears down the session)      |
 | `notFound`     | 404                                         | "That feature is unavailable right now…"                       |
@@ -447,7 +447,7 @@ Each of these was exercised against the running backend.
 | Successful login               | `mgaschool` / `12345678`                                | Redirect to `/app`, toast, user + role + expiry shown                     |
 | Invalid credentials            | Any wrong password                                      | Inline error alert, password cleared and refocused, no redirect           |
 | Empty fields                   | Submit the empty form                                   | Per-field messages; no request is sent                                    |
-| Backend unavailable            | Stop the backend, then sign in                          | "We could not reach the Dira server…"                                    |
+| Backend unavailable            | Stop the backend, then sign in                          | "We could not reach the Dira 365 server…"                                    |
 | Offline                        | DevTools → Network → Offline                            | "You appear to be offline…"                                              |
 | Refresh while authenticated    | Reload on `/app`                                        | Stays on `/app`; no flash of the login screen                            |
 | Protected route, signed out    | Visit `/app` signed out                                 | Redirect to `/login`, then back to `/app` after signing in               |

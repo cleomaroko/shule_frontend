@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { logger } from '@/lib/logger'
+import { env } from '@/lib/env'
 import { DEFAULT_AUTHENTICATED_PATH, paths } from '@/routes/paths'
 
 /** Route state written by `ProtectedRoute` when it deflects an unauthenticated visit. */
@@ -81,7 +82,7 @@ export function LoginForm(): ReactNode {
         <h1 id="login-heading" className="type-page-title">
           Welcome back
         </h1>
-        <p className="type-body mt-1.5 text-muted-foreground">Sign in to continue to your Dira workspace.</p>
+        <p className="type-body mt-1.5 text-muted-foreground">Sign in to continue to your {env.appName} workspace.</p>
       </header>
 
       {/* Announces asynchronous outcomes without stealing focus from the form. */}
@@ -106,7 +107,7 @@ export function LoginForm(): ReactNode {
           autoCapitalize="none"
           spellCheck={false}
           enterKeyHint="next"
-          placeholder="Your Dira username"
+          placeholder={`Your ${env.appName} username`}
           startIcon={<User />}
           disabled={isSubmitting}
           error={form.formState.errors.username?.message}

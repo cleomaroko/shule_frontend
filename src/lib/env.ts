@@ -23,7 +23,7 @@ const routerBasename = import.meta.env.BASE_URL.replace(/\/+$/, '') || '/'
 
 export const env = {
   apiBaseUrl,
-  appName: readString(import.meta.env.VITE_APP_NAME, 'Dira'),
+  appName: readString(import.meta.env.VITE_APP_NAME, 'Dira 365'),
   /**
    * React Router basename. Production on dira365.com is `/` (site root).
    * Local `npm run dev` is also `/`.

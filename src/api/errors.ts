@@ -68,7 +68,7 @@ export function isApiError(error: unknown): error is ApiError {
  */
 export const GENERIC_ERROR_MESSAGES: Record<Exclude<ApiErrorKind, 'business'>, string> = {
   offline: 'You appear to be offline. Check your connection and try again.',
-  network: 'We could not reach the Dira server. Please try again in a moment.',
+  network: 'We could not reach the Dira 365 server. Please try again in a moment.',
   timeout: 'The request took too long to complete. Please try again.',
   unauthorized: 'Your session has expired. Please sign in again.',
   notFound: 'That feature is unavailable right now. Please contact your administrator.',

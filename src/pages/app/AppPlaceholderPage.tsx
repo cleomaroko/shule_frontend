@@ -1,4 +1,4 @@
-import { ArrowUpRight, BookOpen, Bus, GraduationCap, Package, Plus, Settings2, Truck, Users, Warehouse } from 'lucide-react'
+import { ArrowUpRight, BookOpen, Building2, Bus, ClipboardList, GraduationCap, Package, Plus, Settings2, Truck, UserRound, Users, Warehouse } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
@@ -163,11 +163,25 @@ export function AppPlaceholderPage(): ReactNode {
           </CardHeader>
           <CardContent className="grid gap-3 p-5 pt-3 sm:grid-cols-2">
             <ModuleLink
+              to={paths.admissions}
+              title="Admissions"
+              description="Pending website applications"
+              icon={<ClipboardList className="size-5" aria-hidden="true" />}
+              tone="navy"
+            />
+            <ModuleLink
               to={paths.learners}
               title="Learners"
               description="Student records and enrolment information"
               icon={<GraduationCap className="size-5" aria-hidden="true" />}
-              tone="navy"
+              tone="green"
+            />
+            <ModuleLink
+              to={paths.visitors}
+              title="Visitors"
+              description="Check-in, check-out, and stay duration"
+              icon={<UserRound className="size-5" aria-hidden="true" />}
+              tone="green"
             />
             <ModuleLink
               to={paths.staff}
@@ -200,16 +214,23 @@ export function AppPlaceholderPage(): ReactNode {
             <ModuleLink
               to={paths.assets}
               title="Asset Management"
-              description="Inventory, assignment, and categories"
+              description="Inventory with descriptions, conditions, and suppliers"
               icon={<Package className="size-5" aria-hidden="true" />}
               tone="green"
             />
             <ModuleLink
               to={paths.store}
               title="Store Management"
-              description="Stock items, transfers, and weekly campus sheets"
+              description="Locations, transfers, consumption, and weekly sheets"
               icon={<Warehouse className="size-5" aria-hidden="true" />}
               tone="navy"
+            />
+            <ModuleLink
+              to={paths.suppliers}
+              title="Suppliers"
+              description="Vendors and contract expiry tracking"
+              icon={<Building2 className="size-5" aria-hidden="true" />}
+              tone="green"
             />
             <ModuleLink
               to={paths.system}

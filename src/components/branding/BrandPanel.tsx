@@ -42,14 +42,14 @@ export function BrandPanel(): ReactNode {
             Intelligent direction for <span className="text-mint-300">every school.</span>
           </h1>
           <p className="type-body mt-5 max-w-sm text-pretty text-white/70">
-            Dira connects every part of your institution and gives your team the clarity to make better
+            Dira 365 connects every part of your institution and gives your team the clarity to make better
             decisions, every day.
           </p>
 
           <div className="mt-8 h-px w-16 bg-gradient-to-r from-mint-300/80 to-transparent" />
         </div>
 
-        <ul className="flex flex-wrap gap-2" aria-label="Planned Dira modules">
+        <ul className="flex flex-wrap gap-2" aria-label="Planned Dira 365 modules">
           {capabilities.map(({ label, icon: Icon }) => (
             <li
               key={label}

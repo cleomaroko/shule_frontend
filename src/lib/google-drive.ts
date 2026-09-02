@@ -153,7 +153,7 @@ function requestAccessToken(): Promise<string> {
           if (code === 'access_denied') {
             reject(
               new Error(
-                'This Google account is not a tester for Dira yet. Add it under Google Cloud → OAuth consent screen → Test users, then try again.',
+                'This Google account is not a tester for Dira 365 yet. Add it under Google Cloud → OAuth consent screen → Test users, then try again.',
               ),
             )
             return

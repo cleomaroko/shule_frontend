@@ -11,6 +11,11 @@ import { SelectField } from '@/components/forms/SelectField'
 import { toSelectOptions } from '@/components/forms/select-utils'
 import { TextField } from '@/components/forms/TextField'
 import {
+  campusLookupOptions,
+  emptyLookupMessage,
+  namedLookupOptions,
+} from '@/features/lookups/lookup-options'
+import {
   useBanks,
   useCampuses,
   useDepartments,
@@ -20,7 +25,6 @@ import {
   useTaxExemptReasons,
   useTitles,
   useStaffRoles,
-  namesOf,
 } from '@/features/lookups/useLookups'
 import {
   emptyStaffForm,
@@ -43,18 +47,28 @@ export interface StaffFormProps {
 }
 
 export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffFormProps): ReactNode {
-  const titles = namesOf(useTitles().data)
-  const genders = namesOf(useGenders().data)
-  const marital = namesOf(useMaritalStatuses().data)
-  const departments = namesOf(useDepartments().data)
-  const campuses = namesOf(useCampuses().data)
-  const statuses = namesOf(useEmploymentStatuses().data)
-  const roles = namesOf(useStaffRoles().data)
-  const banks = namesOf(useBanks().data)
-  const taxReasons = namesOf(useTaxExemptReasons().data)
+  const titlesQuery = useTitles()
+  const gendersQuery = useGenders()
+  const maritalQuery = useMaritalStatuses()
+  const departmentsQuery = useDepartments()
+  const campusesQuery = useCampuses()
+  const statusesQuery = useEmploymentStatuses()
+  const rolesQuery = useStaffRoles()
+  const banksQuery = useBanks()
+  const taxReasonsQuery = useTaxExemptReasons()
+  const titles = namedLookupOptions(titlesQuery.data, staff?.title)
+  const genders = namedLookupOptions(gendersQuery.data, staff?.gender)
+  const marital = namedLookupOptions(maritalQuery.data, staff?.maritalStatus)
+  const departments = namedLookupOptions(departmentsQuery.data, staff?.department)
+  const campuses = campusLookupOptions(campusesQuery.data, staff?.institution)
+  const statuses = namedLookupOptions(statusesQuery.data, staff?.status ?? 'Active')
+  const roles = namedLookupOptions(rolesQuery.data, staff?.systemRole)
+  const banks = namedLookupOptions(banksQuery.data, staff?.bankName)
+  const taxReasons = namedLookupOptions(taxReasonsQuery.data, staff?.taxExemptReason)
   const nationalities = withExistingOption(COUNTRIES, staff?.nationality)
   const ethnicities = withExistingOption(KENYAN_ETHNICITIES, staff?.ethnicity)
   const isEdit = Boolean(staff)
+  const systemLists = 'System → Reference lists'
 
   const form = useForm<StaffFormValues>({
     resolver: zodResolver(staffFormSchema),
@@ -75,10 +89,37 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
         <TextField label="First name" autoComplete="given-name" error={form.formState.errors.firstName?.message} disabled={isSubmitting} {...form.register('firstName')} />
         <TextField label="Second name" error={form.formState.errors.secondName?.message} disabled={isSubmitting} {...form.register('secondName')} />
         <TextField label="Last name" autoComplete="family-name" error={form.formState.errors.lastName?.message} disabled={isSubmitting} {...form.register('lastName')} />
-        <LookupSelect control={form.control} name="title" label="Title" options={titles} error={form.formState.errors.title?.message} disabled={isSubmitting} />
-        <LookupSelect control={form.control} name="gender" label="Gender" options={genders} error={form.formState.errors.gender?.message} disabled={isSubmitting} />
+        <LookupSelect
+          control={form.control}
+          name="title"
+          label="Title"
+          options={titles}
+          isLoading={titlesQuery.isLoading}
+          emptyMessage={emptyLookupMessage('titles', systemLists)}
+          error={form.formState.errors.title?.message}
+          disabled={isSubmitting}
+        />
+        <LookupSelect
+          control={form.control}
+          name="gender"
+          label="Gender"
+          options={genders}
+          isLoading={gendersQuery.isLoading}
+          emptyMessage={emptyLookupMessage('genders', systemLists)}
+          error={form.formState.errors.gender?.message}
+          disabled={isSubmitting}
+        />
         <TextField label="Date of birth" type="date" error={form.formState.errors.dateOfBirth?.message} disabled={isSubmitting} {...form.register('dateOfBirth')} />
-        <LookupSelect control={form.control} name="maritalStatus" label="Marital status" options={marital} error={form.formState.errors.maritalStatus?.message} disabled={isSubmitting} />
+        <LookupSelect
+          control={form.control}
+          name="maritalStatus"
+          label="Marital status"
+          options={marital}
+          isLoading={maritalQuery.isLoading}
+          emptyMessage={emptyLookupMessage('marital statuses', systemLists)}
+          error={form.formState.errors.maritalStatus?.message}
+          disabled={isSubmitting}
+        />
         <LookupSelect
           control={form.control}
           name="nationality"
@@ -124,15 +165,25 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
         <TextField label="Staff number" hint="Payroll number" error={form.formState.errors.staffNumber?.message} disabled={isSubmitting} {...form.register('staffNumber')} />
         <TextField label="Date of employment" type="date" error={form.formState.errors.dateOfEmployment?.message} disabled={isSubmitting} {...form.register('dateOfEmployment')} />
         <TextField label="Date left" type="date" error={form.formState.errors.dateLeft?.message} disabled={isSubmitting} {...form.register('dateLeft')} />
-        <LookupSelect control={form.control} name="department" label="Department" options={departments} error={form.formState.errors.department?.message} disabled={isSubmitting} />
+        <LookupSelect
+          control={form.control}
+          name="department"
+          label="Department"
+          options={departments}
+          isLoading={departmentsQuery.isLoading}
+          emptyMessage={emptyLookupMessage('departments', 'System → Departments')}
+          error={form.formState.errors.department?.message}
+          disabled={isSubmitting}
+        />
         <TextField label="Profession" error={form.formState.errors.profession?.message} disabled={isSubmitting} {...form.register('profession')} />
         <TextField label="School rank" error={form.formState.errors.schoolRank?.message} disabled={isSubmitting} {...form.register('schoolRank')} />
         <LookupSelect
           control={form.control}
           name="status"
           label="Status"
-          options={statuses.length > 0 ? statuses : ['Active', 'Inactive']}
-          fallbackToText={false}
+          options={statuses}
+          isLoading={statusesQuery.isLoading}
+          emptyMessage={emptyLookupMessage('employment statuses', systemLists)}
           error={form.formState.errors.status?.message}
           disabled={isSubmitting}
         />
@@ -141,16 +192,36 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
           name="systemRole"
           label="Staff role"
           options={roles}
+          isLoading={rolesQuery.isLoading}
+          emptyMessage={emptyLookupMessage('staff roles', 'System → Staff roles')}
           hint="Stored on the staff record only. New logins are always created as ROLE_STAFF; this field does not change the users table."
           error={form.formState.errors.systemRole?.message}
           disabled={isSubmitting}
         />
-        <LookupSelect control={form.control} name="institution" label="Institution / campus" options={campuses} error={form.formState.errors.institution?.message} disabled={isSubmitting} />
+        <LookupSelect
+          control={form.control}
+          name="institution"
+          label="Institution / campus"
+          options={campuses}
+          isLoading={campusesQuery.isLoading}
+          emptyMessage={emptyLookupMessage('campuses', 'System → Campuses')}
+          error={form.formState.errors.institution?.message}
+          disabled={isSubmitting}
+        />
         <TextField label="Supervisor" error={form.formState.errors.supervisor?.message} disabled={isSubmitting} {...form.register('supervisor')} />
       </FormSection>
 
       <FormSection title="Financial and statutory information">
-        <LookupSelect control={form.control} name="bankName" label="Bank" options={banks} error={form.formState.errors.bankName?.message} disabled={isSubmitting} />
+        <LookupSelect
+          control={form.control}
+          name="bankName"
+          label="Bank"
+          options={banks}
+          isLoading={banksQuery.isLoading}
+          emptyMessage={emptyLookupMessage('banks', systemLists)}
+          error={form.formState.errors.bankName?.message}
+          disabled={isSubmitting}
+        />
         <TextField label="Bank branch" error={form.formState.errors.bankBranch?.message} disabled={isSubmitting} {...form.register('bankBranch')} />
         <TextField label="Bank account" error={form.formState.errors.bankAccount?.message} disabled={isSubmitting} {...form.register('bankAccount')} />
         <TextField label="M-Pesa number" error={form.formState.errors.mpesaNumber?.message} disabled={isSubmitting} {...form.register('mpesaNumber')} />
@@ -174,7 +245,16 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
           )}
         />
         {taxExempt === 'Yes' ? (
-          <LookupSelect control={form.control} name="taxExemptReason" label="Tax exempt reason" options={taxReasons} error={form.formState.errors.taxExemptReason?.message} disabled={isSubmitting} />
+          <LookupSelect
+            control={form.control}
+            name="taxExemptReason"
+            label="Tax exempt reason"
+            options={taxReasons}
+            isLoading={taxReasonsQuery.isLoading}
+            emptyMessage={emptyLookupMessage('tax exempt reasons', systemLists)}
+            error={form.formState.errors.taxExemptReason?.message}
+            disabled={isSubmitting}
+          />
         ) : null}
         <Controller
           control={form.control}

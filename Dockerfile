@@ -11,7 +11,7 @@ COPY . .
 # so the existing nginx `location /` backend proxy (and no CORS) still work.
 ARG VITE_API_BASE_URL=/api
 ARG VITE_BASE_PATH=/
-ARG VITE_APP_NAME=Dira
+ARG VITE_APP_NAME="Dira 365"
 ARG VITE_GOOGLE_CLIENT_ID=
 ARG VITE_GOOGLE_API_KEY=
 ARG VITE_GOOGLE_APP_ID=

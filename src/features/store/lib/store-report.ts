@@ -8,16 +8,15 @@ export function toIsoDate(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
-/** Default reporting window from the README: Monday through Friday of the current week. */
 export function mondayToFriday(from = new Date()): { startDate: string; endDate: string } {
   const date = new Date(from.getFullYear(), from.getMonth(), from.getDate())
   const weekday = date.getDay()
   const toMonday = weekday === 0 ? -6 : 1 - weekday
   const monday = new Date(date)
   monday.setDate(date.getDate() + toMonday)
-  const friday = new Date(monday)
-  friday.setDate(monday.getDate() + 4)
-  return { startDate: toIsoDate(monday), endDate: toIsoDate(friday) }
+  const saturday = new Date(monday)
+  saturday.setDate(monday.getDate() + 5)
+  return { startDate: toIsoDate(monday), endDate: toIsoDate(saturday) }
 }
 
 export function datesInRange(startDate: string, endDate: string): string[] {
@@ -36,10 +35,6 @@ export function weekdayLabel(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' })
 }
 
-function isCampusLog(log: StockLog, campusId: number): boolean {
-  return log.campus?.id === campusId
-}
-
 function isBefore(date: string | null | undefined, boundary: string): boolean {
   return Boolean(date) && date! < boundary
 }
@@ -52,16 +47,25 @@ function inRange(date: string | null | undefined, startDate: string, endDate: st
   return Boolean(date) && date! >= startDate && date! <= endDate
 }
 
+function isIncomingTransfer(log: StockLog, storeId: number): boolean {
+  return log.type === 'TRANSFER' && log.destinationStore?.id === storeId
+}
+
+function isOutgoingFromStore(log: StockLog, storeId: number): boolean {
+  return log.sourceStore?.id === storeId
+}
+
 /**
- * Campus weekly sheet from hub-and-spoke stock logs.
+ * Weekly sheet for a store.
  *
- * Main-store `ADDITION` is not campus stock. `GET /api/store/logs` with week
- * filters only returns rows inside the window, so callers should pass every log.
+ * Balance B/F and consumption use this store as `sourceStore`. Additional stock
+ * is incoming `TRANSFER` where this store is `destinationStore`, plus `ADDITION`
+ * recorded against this store.
  */
-export function computeCampusWeekReport(args: {
+export function computeStoreWeekReport(args: {
   items: StoreItem[]
   logs: StockLog[]
-  campusId: number
+  storeId: number
   termId: number
   startDate: string
   endDate: string
@@ -69,37 +73,52 @@ export function computeCampusWeekReport(args: {
   const days = datesInRange(args.startDate, args.endDate)
 
   return args.items.map((item) => {
-    const campusLogs = args.logs.filter((log) => log.item?.id === item.id && isCampusLog(log, args.campusId))
-    const termBf = campusLogs.find((log) => log.type === 'BALANCE_BF' && log.term?.id === args.termId)
+    const itemLogs = args.logs.filter((log) => log.item?.id === item.id)
+    const storeLogs = itemLogs.filter(
+      (log) => isOutgoingFromStore(log, args.storeId) || isIncomingTransfer(log, args.storeId),
+    )
+    const termBf = storeLogs.find(
+      (log) => log.type === 'BALANCE_BF' && log.term?.id === args.termId && isOutgoingFromStore(log, args.storeId),
+    )
 
     let balanceBf = 0
     if (termBf) {
       balanceBf = logQuantity(termBf)
       const bfDate = termBf.logDate ?? ''
-      for (const log of campusLogs) {
+      for (const log of storeLogs) {
         if (log.id === termBf.id) continue
         if (!isBefore(log.logDate, args.startDate)) continue
         if (bfDate && !isOnOrAfter(log.logDate, bfDate)) continue
-        if (log.type === 'TRANSFER') balanceBf += logQuantity(log)
-        if (log.type === 'CONSUMPTION') balanceBf -= logQuantity(log)
+        if (log.type === 'ADDITION' && isOutgoingFromStore(log, args.storeId)) balanceBf += logQuantity(log)
+        if (isIncomingTransfer(log, args.storeId)) balanceBf += logQuantity(log)
+        if (log.type === 'CONSUMPTION' && isOutgoingFromStore(log, args.storeId)) balanceBf -= logQuantity(log)
+        if (log.type === 'TRANSFER' && isOutgoingFromStore(log, args.storeId)) balanceBf -= logQuantity(log)
       }
     } else {
-      for (const log of campusLogs) {
+      for (const log of storeLogs) {
         if (!isBefore(log.logDate, args.startDate)) continue
-        if (log.type === 'TRANSFER' || log.type === 'BALANCE_BF') balanceBf += logQuantity(log)
-        if (log.type === 'CONSUMPTION') balanceBf -= logQuantity(log)
+        if (log.type === 'BALANCE_BF' && isOutgoingFromStore(log, args.storeId)) balanceBf += logQuantity(log)
+        if (log.type === 'ADDITION' && isOutgoingFromStore(log, args.storeId)) balanceBf += logQuantity(log)
+        if (isIncomingTransfer(log, args.storeId)) balanceBf += logQuantity(log)
+        if (log.type === 'CONSUMPTION' && isOutgoingFromStore(log, args.storeId)) balanceBf -= logQuantity(log)
+        if (log.type === 'TRANSFER' && isOutgoingFromStore(log, args.storeId)) balanceBf -= logQuantity(log)
       }
     }
 
-    const weekLogs = campusLogs.filter((log) => inRange(log.logDate, args.startDate, args.endDate))
+    const weekLogs = storeLogs.filter((log) => inRange(log.logDate, args.startDate, args.endDate))
     const additionalStock = weekLogs
-      .filter((log) => log.type === 'TRANSFER')
+      .filter(
+        (log) =>
+          isIncomingTransfer(log, args.storeId) ||
+          (log.type === 'ADDITION' && isOutgoingFromStore(log, args.storeId)),
+      )
       .reduce((sum, log) => sum + logQuantity(log), 0)
 
     const byDate: Record<string, number> = {}
     for (const day of days) byDate[day] = 0
     for (const log of weekLogs) {
-      if (log.type !== 'CONSUMPTION' || !log.logDate || !(log.logDate in byDate)) continue
+      if (log.type !== 'CONSUMPTION' || !isOutgoingFromStore(log, args.storeId)) continue
+      if (!log.logDate || !(log.logDate in byDate)) continue
       byDate[log.logDate] = (byDate[log.logDate] ?? 0) + logQuantity(log)
     }
 

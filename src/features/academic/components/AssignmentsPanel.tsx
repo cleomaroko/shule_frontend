@@ -30,7 +30,7 @@ import {
   type AssignmentWritePayload,
   type TeacherAssignment,
 } from '@/features/academic/types/academic.types'
-import { useStaffList } from '@/features/staff/hooks/useStaff'
+import { useTeacherList } from '@/features/staff/hooks/useStaff'
 import { formatClassLabel, formatPersonName } from '@/lib/format'
 
 const PAGE_SIZE = 10
@@ -45,7 +45,7 @@ export function AssignmentsPanel({ canWrite }: { canWrite: boolean }): ReactNode
   const classes = useClassList()
   const streams = useStreamList()
   const subjects = useLearningAreaList()
-  const staff = useStaffList()
+  const staff = useTeacherList()
   const { createAssignment, deleteAssignment } = useAcademicMutations()
 
   const [query, setQuery] = useState('')
@@ -285,7 +285,10 @@ export function AssignmentsPanel({ canWrite }: { canWrite: boolean }): ReactNode
                 value={teacherId}
                 onChange={setTeacherId}
                 allowEmpty={false}
-                placeholder="Select staff"
+                placeholder={staff.isLoading ? 'Loading teachers…' : 'Select teacher'}
+                hint="Loaded from teaching staff only (teachers, heads, and deans)."
+                disabled={staff.isLoading}
+                emptyMessage="No teaching staff available"
                 options={(staff.data ?? []).map((item) => ({
                   value: String(item.id),
                   label: [formatPersonName(item), item.staffNumber].filter(Boolean).join(' · '),

@@ -5,11 +5,27 @@ import { toUserMessage } from '@/api/errors'
 import { queryKeys } from '@/api/endpoints'
 import { storeApi } from '@/features/store/api/store.api'
 import type {
+  InventoryCategoryWritePayload,
   StockLogCreatePayload,
   StockLogUpdatePayload,
   StoreItemWritePayload,
+  StoreLocationWritePayload,
 } from '@/features/store/types/store.types'
 import { logger } from '@/lib/logger'
+
+export function useStoreLocations() {
+  return useQuery({
+    queryKey: queryKeys.store.locations,
+    queryFn: storeApi.listLocations,
+  })
+}
+
+export function useStoreCategories() {
+  return useQuery({
+    queryKey: queryKeys.store.categories,
+    queryFn: storeApi.listCategories,
+  })
+}
 
 export function useStoreItems() {
   return useQuery({
@@ -29,6 +45,42 @@ export function useStoreMutations() {
   const queryClient = useQueryClient()
   const invalidateItems = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.items })
   const invalidateLogs = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.logs })
+  const invalidateLocations = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.locations })
+  const invalidateCategories = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.categories })
+
+  const createLocation = useMutation({
+    mutationFn: (body: StoreLocationWritePayload) => storeApi.createLocation(body),
+    onSuccess: async () => {
+      await invalidateLocations()
+      toast.success('Store location added.')
+    },
+    onError: (error: unknown) => toast.error(toUserMessage(error)),
+  })
+  const deleteLocation = useMutation({
+    mutationFn: (id: number) => storeApi.deleteLocation(id),
+    onSuccess: async () => {
+      await invalidateLocations()
+      toast.success('Store location removed.')
+    },
+    onError: (error: unknown) => toast.error(toUserMessage(error)),
+  })
+
+  const createCategory = useMutation({
+    mutationFn: (body: InventoryCategoryWritePayload) => storeApi.createCategory(body),
+    onSuccess: async () => {
+      await invalidateCategories()
+      toast.success('Category added.')
+    },
+    onError: (error: unknown) => toast.error(toUserMessage(error)),
+  })
+  const deleteCategory = useMutation({
+    mutationFn: (id: number) => storeApi.deleteCategory(id),
+    onSuccess: async () => {
+      await invalidateCategories()
+      toast.success('Category removed.')
+    },
+    onError: (error: unknown) => toast.error(toUserMessage(error)),
+  })
 
   const createItem = useMutation({
     mutationFn: (body: StoreItemWritePayload) => storeApi.createItem(body),
@@ -40,6 +92,22 @@ export function useStoreMutations() {
       logger.error('Create store item failed', error)
       toast.error(toUserMessage(error))
     },
+  })
+  const updateItem = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: StoreItemWritePayload }) => storeApi.updateItem(id, body),
+    onSuccess: async () => {
+      await invalidateItems()
+      toast.success('Store item updated.')
+    },
+    onError: (error: unknown) => toast.error(toUserMessage(error)),
+  })
+  const deleteItem = useMutation({
+    mutationFn: (id: number) => storeApi.deleteItem(id),
+    onSuccess: async () => {
+      await invalidateItems()
+      toast.success('Store item removed.')
+    },
+    onError: (error: unknown) => toast.error(toUserMessage(error)),
   })
 
   const createLog = useMutation({
@@ -53,7 +121,6 @@ export function useStoreMutations() {
       toast.error(toUserMessage(error))
     },
   })
-
   const updateLog = useMutation({
     mutationFn: ({ id, body }: { id: number; body: StockLogUpdatePayload }) => storeApi.updateLog(id, body),
     onSuccess: async () => {
@@ -65,7 +132,6 @@ export function useStoreMutations() {
       toast.error(toUserMessage(error))
     },
   })
-
   const deleteLog = useMutation({
     mutationFn: (id: number) => storeApi.removeLog(id),
     onSuccess: async () => {
@@ -78,5 +144,16 @@ export function useStoreMutations() {
     },
   })
 
-  return { createItem, createLog, updateLog, deleteLog }
+  return {
+    createLocation,
+    deleteLocation,
+    createCategory,
+    deleteCategory,
+    createItem,
+    updateItem,
+    deleteItem,
+    createLog,
+    updateLog,
+    deleteLog,
+  }
 }

@@ -1,4 +1,4 @@
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
@@ -6,9 +6,11 @@ import { toUserMessage } from '@/api/errors'
 import { can } from '@/auth/permissions'
 import { useAuth } from '@/auth/useAuth'
 import { DataTable, StatusBadge, type DataColumn } from '@/components/data/DataTable'
+import { NamedLookupManager } from '@/components/data/NamedLookupManager'
 import { FilterChip, SearchField } from '@/components/data/FilterBar'
 import { ConfirmDialog } from '@/components/feedback/ConfirmDialog'
 import { EmptyState, ErrorState, PageHeader } from '@/components/feedback/PageStates'
+import { TextField } from '@/components/forms/TextField'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -22,6 +24,7 @@ import {
   useTransportMutations,
   useVehicleList,
   useVehicleLogList,
+  useVehicleServiceTypeList,
 } from '@/features/transport/hooks/useTransport'
 import type {
   BusStop,
@@ -46,7 +49,7 @@ import { displayValue, formatDate, formatDateTime, formatPersonName } from '@/li
 
 const PAGE_SIZE = 10
 
-const TABS = ['fleet', 'logs', 'stops'] as const
+const TABS = ['fleet', 'logs', 'stops', 'service-types'] as const
 type TransportTab = (typeof TABS)[number]
 
 function tabFromParam(value: string | null): TransportTab {
@@ -75,13 +78,14 @@ export function TransportPage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Transport"
-        description="Fleet, fuel and mileage logs, and bus stops used on school routes."
+        description="Fleet, fuel and mileage logs, service records, and bus stops used on school routes."
       />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
         <TabsList>
           <TabsTrigger value="fleet">Fleet</TabsTrigger>
-          <TabsTrigger value="logs">Fuel & mileage</TabsTrigger>
+          <TabsTrigger value="logs">Logs</TabsTrigger>
           <TabsTrigger value="stops">Bus stops</TabsTrigger>
+          <TabsTrigger value="service-types">Service types</TabsTrigger>
         </TabsList>
         <TabsContent value="fleet">
           <FleetPanel canWrite={canWrite} />
@@ -92,6 +96,9 @@ export function TransportPage(): ReactNode {
         <TabsContent value="stops">
           <StopsPanel canWrite={canWrite} />
         </TabsContent>
+        <TabsContent value="service-types">
+          <ServiceTypesPanel canWrite={canWrite} />
+        </TabsContent>
       </Tabs>
     </div>
   )
@@ -99,12 +106,11 @@ export function TransportPage(): ReactNode {
 
 function FleetPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const list = useVehicleList()
-  const { createVehicle, updateVehicle, deleteVehicle } = useTransportMutations()
+  const { createVehicle, deleteVehicle } = useTransportMutations()
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('all')
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<Vehicle | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Vehicle | null>(null)
 
   const filtered = useMemo(() => {
@@ -122,20 +128,10 @@ function FleetPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const openCreate = () => {
-    setEditing(null)
-    setOpen(true)
-  }
-
-  const openEdit = (vehicle: Vehicle) => {
-    setEditing(vehicle)
     setOpen(true)
   }
 
   const handleSubmit = (body: VehicleWritePayload) => {
-    if (editing) {
-      updateVehicle.mutate({ id: editing.id, body }, { onSuccess: () => setOpen(false) })
-      return
-    }
     createVehicle.mutate(body, { onSuccess: () => setOpen(false) })
   }
 
@@ -158,22 +154,17 @@ function FleetPanel({ canWrite }: { canWrite: boolean }): ReactNode {
     {
       id: 'actions',
       header: '',
-      className: 'w-24 text-right',
+      className: 'w-16 text-right',
       cell: (row) =>
         canWrite ? (
-          <span className="flex justify-end gap-1">
-            <Button variant="ghost" size="icon" aria-label={`Edit ${row.numberPlate}`} onClick={() => openEdit(row)}>
-              <Pencil aria-hidden="true" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={`Delete ${row.numberPlate}`}
-              onClick={() => setPendingDelete(row)}
-            >
-              <Trash2 aria-hidden="true" />
-            </Button>
-          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Delete ${row.numberPlate}`}
+            onClick={() => setPendingDelete(row)}
+          >
+            <Trash2 aria-hidden="true" />
+          </Button>
         ) : null,
     },
   ]
@@ -281,8 +272,7 @@ function FleetPanel({ canWrite }: { canWrite: boolean }): ReactNode {
       <VehicleDialog
         open={open}
         onOpenChange={setOpen}
-        editing={editing}
-        isSaving={createVehicle.isPending || updateVehicle.isPending}
+        isSaving={createVehicle.isPending}
         onSubmit={handleSubmit}
       />
       <ConfirmDialog
@@ -309,15 +299,20 @@ function FleetPanel({ canWrite }: { canWrite: boolean }): ReactNode {
 }
 
 function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
-  const logs = useVehicleLogList()
+  const [typeFilter, setTypeFilter] = useState<'all' | string>('all')
+  const [start, setStart] = useState('')
+  const [end, setEnd] = useState('')
+  const logs = useVehicleLogList({
+    ...(typeFilter !== 'all' ? { logType: typeFilter } : {}),
+    ...(start && end ? { start, end } : {}),
+  })
   const vehicles = useVehicleList()
   const staff = useStaffList()
-  const { createLog, updateLog, deleteLog } = useTransportMutations()
+  const serviceTypes = useVehicleServiceTypeList()
+  const { createLog, deleteLog } = useTransportMutations()
   const [query, setQuery] = useState('')
-  const [typeFilter, setTypeFilter] = useState<'all' | string>('all')
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<VehicleLog | null>(null)
   const [pendingDelete, setPendingDelete] = useState<VehicleLog | null>(null)
 
   const filtered = useMemo(() => {
@@ -343,25 +338,15 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const canCreate = canWrite && (vehicles.data?.length ?? 0) > 0
 
   const openCreate = () => {
-    setEditing(null)
-    setOpen(true)
-  }
-
-  const openEdit = (log: VehicleLog) => {
-    setEditing(log)
     setOpen(true)
   }
 
   const handleSubmit = (body: VehicleLogWritePayload) => {
-    if (editing) {
-      updateLog.mutate({ id: editing.id, body }, { onSuccess: () => setOpen(false) })
-      return
-    }
     createLog.mutate(body, { onSuccess: () => setOpen(false) })
   }
 
   const columns: Array<DataColumn<VehicleLog>> = [
-    { id: 'when', header: 'Recorded', cell: (row) => formatDateTime(row.logTimestamp) },
+    { id: 'when', header: 'Recorded', cell: (row) => formatDateTime(row.createdAt) },
     {
       id: 'type',
       header: 'Type',
@@ -377,29 +362,38 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
       header: 'Driver',
       cell: (row) => (row.driver ? formatPersonName(row.driver) : '—'),
     },
-    { id: 'mileage', header: 'Mileage', cell: (row) => formatKm(row.mileageAfter ?? row.mileageBefore) },
-    { id: 'fuel', header: 'Fuel', cell: (row) => formatLitres(row.fuelQuantityLitres) },
-    { id: 'cost', header: 'Cost', cell: (row) => formatMoneyKes(row.fuelCost) },
+    {
+      id: 'mileage',
+      header: 'Mileage',
+      cell: (row) =>
+        formatKm(row.logType === 'SERVICE' ? row.mileageAtService : (row.mileageAfter ?? row.mileageBefore)),
+    },
+    {
+      id: 'detail',
+      header: 'Detail',
+      cell: (row) =>
+        row.logType === 'SERVICE' ? displayValue(row.serviceType?.name) : formatLitres(row.fuelQuantityLitres),
+    },
+    {
+      id: 'cost',
+      header: 'Cost',
+      cell: (row) => formatMoneyKes(row.logType === 'SERVICE' ? row.serviceCost : row.fuelCost),
+    },
     { id: 'eff', header: 'km/L', cell: (row) => formatEfficiency(row.efficiency) },
     {
       id: 'actions',
       header: '',
-      className: 'w-24 text-right',
+      className: 'w-16 text-right',
       cell: (row) =>
         canWrite ? (
-          <span className="flex justify-end gap-1">
-            <Button variant="ghost" size="icon" aria-label={`Edit log ${row.id}`} onClick={() => openEdit(row)}>
-              <Pencil aria-hidden="true" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={`Delete log ${row.id}`}
-              onClick={() => setPendingDelete(row)}
-            >
-              <Trash2 aria-hidden="true" />
-            </Button>
-          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Delete log ${row.id}`}
+            onClick={() => setPendingDelete(row)}
+          >
+            <Trash2 aria-hidden="true" />
+          </Button>
         ) : null,
     },
   ]
@@ -454,6 +448,27 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
             />
           ))}
         </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <TextField
+            label="From"
+            type="date"
+            value={start}
+            onChange={(event) => {
+              setStart(event.target.value)
+              setPage(1)
+            }}
+          />
+          <TextField
+            label="To"
+            type="date"
+            value={end}
+            onChange={(event) => {
+              setEnd(event.target.value)
+              setPage(1)
+            }}
+            hint="Both dates are sent together to GET /api/transport/logs."
+          />
+        </div>
       </div>
 
       {canWrite && !canCreate && !vehicles.isLoading ? (
@@ -483,7 +498,7 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="type-heading truncate">{displayValue(row.vehicle?.numberPlate)}</p>
-                  <p className="type-caption text-muted-foreground">{formatDateTime(row.logTimestamp)}</p>
+                  <p className="type-caption text-muted-foreground">{formatDateTime(row.createdAt)}</p>
                 </div>
                 <Badge variant={logBadgeVariant(row.logType)}>{vehicleLogTypeLabel(row.logType)}</Badge>
               </div>
@@ -496,15 +511,23 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
                 </div>
                 <div>
                   <dt>Mileage</dt>
-                  <dd className="font-medium text-foreground">{formatKm(row.mileageAfter ?? row.mileageBefore)}</dd>
+                  <dd className="font-medium text-foreground">
+                    {formatKm(row.logType === 'SERVICE' ? row.mileageAtService : (row.mileageAfter ?? row.mileageBefore))}
+                  </dd>
                 </div>
                 <div>
-                  <dt>Fuel</dt>
-                  <dd className="font-medium text-foreground">{formatLitres(row.fuelQuantityLitres)}</dd>
+                  <dt>{row.logType === 'SERVICE' ? 'Service' : 'Fuel'}</dt>
+                  <dd className="font-medium text-foreground">
+                    {row.logType === 'SERVICE'
+                      ? displayValue(row.serviceType?.name)
+                      : formatLitres(row.fuelQuantityLitres)}
+                  </dd>
                 </div>
                 <div>
                   <dt>Cost</dt>
-                  <dd className="font-medium text-foreground">{formatMoneyKes(row.fuelCost)}</dd>
+                  <dd className="font-medium text-foreground">
+                    {formatMoneyKes(row.logType === 'SERVICE' ? row.serviceCost : row.fuelCost)}
+                  </dd>
                 </div>
                 <div className="col-span-2">
                   <dt>Efficiency</dt>
@@ -519,10 +542,10 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
       <VehicleLogDialog
         open={open}
         onOpenChange={setOpen}
-        editing={editing}
         vehicles={vehicles.data ?? []}
         drivers={staff.data ?? []}
-        isSaving={createLog.isPending || updateLog.isPending}
+        serviceTypes={serviceTypes.data ?? []}
+        isSaving={createLog.isPending}
         onSubmit={handleSubmit}
       />
       <ConfirmDialog
@@ -551,12 +574,10 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
 function StopsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const list = useBusStopList()
   const zones = useZoneList()
-  const { createStop, updateStop, deleteStop } = useTransportMutations()
+  const { createStop } = useTransportMutations()
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<BusStop | null>(null)
-  const [pendingDelete, setPendingDelete] = useState<BusStop | null>(null)
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -569,20 +590,10 @@ function StopsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const openCreate = () => {
-    setEditing(null)
-    setOpen(true)
-  }
-
-  const openEdit = (stop: BusStop) => {
-    setEditing(stop)
     setOpen(true)
   }
 
   const handleSubmit = (body: BusStopWritePayload) => {
-    if (editing) {
-      updateStop.mutate({ id: editing.id, body }, { onSuccess: () => setOpen(false) })
-      return
-    }
     createStop.mutate(body, { onSuccess: () => setOpen(false) })
   }
 
@@ -594,32 +605,6 @@ function StopsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
     },
     { id: 'code', header: 'Code', cell: (row) => displayValue(row.stopCode) },
     { id: 'zone', header: 'Zone', cell: (row) => displayValue(row.zone?.zoneName) },
-    {
-      id: 'actions',
-      header: '',
-      className: 'w-24 text-right',
-      cell: (row) =>
-        canWrite ? (
-          <span className="flex justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={`Edit ${row.stopName ?? 'stop'}`}
-              onClick={() => openEdit(row)}
-            >
-              <Pencil aria-hidden="true" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={`Delete ${row.stopName ?? 'stop'}`}
-              onClick={() => setPendingDelete(row)}
-            >
-              <Trash2 aria-hidden="true" />
-            </Button>
-          </span>
-        ) : null,
-    },
   ]
 
   if (list.isError) {
@@ -632,7 +617,7 @@ function StopsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   return (
     <div className="flex flex-col gap-4">
       <p className="type-caption text-muted-foreground">
-        Stops are linked to a transport zone. Add zones under Logistics if the list is empty.
+        Stops are linked to a transport zone. They can be added; the backend has no update or delete for stops.
       </p>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SearchField
@@ -683,26 +668,32 @@ function StopsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
       <BusStopDialog
         open={open}
         onOpenChange={setOpen}
-        editing={editing}
         zones={zones.data ?? []}
-        isSaving={createStop.isPending || updateStop.isPending}
+        isSaving={createStop.isPending}
         onSubmit={handleSubmit}
       />
-      <ConfirmDialog
-        open={pendingDelete !== null}
-        onOpenChange={(next) => {
-          if (!next) setPendingDelete(null)
-        }}
-        title="Delete bus stop?"
-        description={pendingDelete ? `This will remove ${pendingDelete.stopName ?? 'this stop'}.` : ''}
-        confirmLabel="Delete"
-        loadingLabel="Deleting"
-        isConfirming={deleteStop.isPending}
-        onConfirm={() => {
-          if (!pendingDelete) return
-          deleteStop.mutate(pendingDelete.id, { onSuccess: () => setPendingDelete(null) })
-        }}
-      />
     </div>
+  )
+}
+
+function ServiceTypesPanel({ canWrite }: { canWrite: boolean }): ReactNode {
+  const list = useVehicleServiceTypeList()
+  const { createServiceType } = useTransportMutations()
+
+  return (
+    <NamedLookupManager
+      title="Service type"
+      description="Used on SERVICE vehicle logs, for example Oil change or Brake pads."
+      emptyTitle="No service types yet"
+      emptyDescription="Add types before recording a service log."
+      items={list.data}
+      isLoading={list.isLoading}
+      isError={list.isError}
+      errorMessage={toUserMessage(list.error)}
+      onRetry={() => void list.refetch()}
+      canWrite={canWrite}
+      isSaving={createServiceType.isPending}
+      onCreate={(name) => createServiceType.mutate({ name })}
+    />
   )
 }

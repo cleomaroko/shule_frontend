@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { useAuth } from '@/auth/useAuth'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { AppSidebar } from '@/components/layout/AppSidebar'
+import { env } from '@/lib/env'
 
 /**
  * Shell for authenticated screens: navy sidebar on desktop, drawer on mobile.
@@ -16,7 +17,7 @@ export function AppLayout(): ReactNode {
 
   const handleSignOut = () => {
     logout('user')
-    toast.success('Signed out', { description: 'You have been signed out of Dira.' })
+    toast.success('Signed out', { description: `You have been signed out of ${env.appName}.` })
   }
 
   return (

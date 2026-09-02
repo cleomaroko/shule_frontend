@@ -11,6 +11,11 @@ export type FuelType = (typeof FUEL_TYPES)[number]
 export type VehicleStatus = (typeof VEHICLE_STATUSES)[number]
 export type VehicleLogType = (typeof VEHICLE_LOG_TYPES)[number]
 
+export interface VehicleServiceType {
+  id: number
+  name: string
+}
+
 export interface Vehicle {
   id: number
   numberPlate: string
@@ -38,24 +43,46 @@ export interface VehicleLog {
   id: number
   vehicle?: Vehicle | null
   driver?: LogDriver | null
+  logType?: string | null
   mileageBefore?: number | null
   mileageAfter?: number | null
   fuelQuantityLitres?: number | null
   fuelCost?: number | null
-  logType?: string | null
-  logTimestamp?: string | null
-  /** Jackson getter on VehicleLog. Display only — never POST/PUT. */
+  serviceType?: VehicleServiceType | null
+  serviceCost?: number | null
+  serviceDate?: string | null
+  mileageAtService?: number | null
+  nextServiceDate?: string | null
+  servicedByName?: string | null
+  serviceReport?: string | null
+  createdAt?: string | null
+  /** Jackson getter on VehicleLog. Display only — never POST. */
   efficiency?: number | null
 }
 
 export interface VehicleLogWritePayload {
   vehicle: { id: number }
   driver?: { id: number }
+  logType: string
   mileageBefore?: number | null
   mileageAfter?: number | null
   fuelQuantityLitres?: number | null
   fuelCost?: number | null
-  logType: string
+  serviceType?: { id: number }
+  serviceCost?: number | null
+  serviceDate?: string | null
+  mileageAtService?: number | null
+  nextServiceDate?: string | null
+  serviceReport?: string | null
+}
+
+export interface VehicleLogQuery {
+  logType?: string
+  vehicleId?: number
+  driverId?: number
+  serviceTypeId?: number
+  start?: string
+  end?: string
 }
 
 export interface BusStop {

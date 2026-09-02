@@ -30,7 +30,7 @@ export function GoogleDrivePhotoField({
   onChange,
   disabled = false,
   error,
-  hint = 'The photo is saved as a Drive link. After you pick it, Dira asks Drive to share it so the staff profile can display it.',
+  hint = 'The photo is saved as a Drive link. After you pick it, Dira 365 asks Drive to share it so the staff profile can display it.',
   containerClassName,
 }: GoogleDrivePhotoFieldProps): ReactNode {
   const id = useId()

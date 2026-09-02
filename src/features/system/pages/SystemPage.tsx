@@ -73,7 +73,7 @@ export function SystemPage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="System administration"
-        description="Audit activity, module usage, campuses, calendar, staff roles, and reference lists used across Dira."
+        description="Audit activity, module usage, campuses, calendar, staff roles, and reference lists used across Dira 365."
       />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
         <TabsList>

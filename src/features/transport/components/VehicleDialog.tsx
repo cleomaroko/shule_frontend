@@ -16,14 +16,12 @@ import {
   VEHICLE_STATUSES,
   VEHICLE_TYPES,
   vehicleTypeLabel,
-  type Vehicle,
   type VehicleWritePayload,
 } from '@/features/transport/types/transport.types'
 
 export interface VehicleDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  editing: Vehicle | null
   isSaving: boolean
   onSubmit: (body: VehicleWritePayload) => void
 }
@@ -50,22 +48,9 @@ function emptyForm(): FormState {
   }
 }
 
-function formFromVehicle(vehicle: Vehicle): FormState {
-  return {
-    numberPlate: vehicle.numberPlate ?? '',
-    vehicleType: vehicle.vehicleType || 'BUS',
-    capacity: vehicle.capacity == null ? '' : String(vehicle.capacity),
-    makeModel: vehicle.makeModel ?? '',
-    dateAcquired: vehicle.dateAcquired ?? '',
-    fuelType: vehicle.fuelType || 'Diesel',
-    status: vehicle.status || 'ACTIVE',
-  }
-}
-
 export function VehicleDialog({
   open,
   onOpenChange,
-  editing,
   isSaving,
   onSubmit,
 }: VehicleDialogProps): ReactNode {
@@ -73,8 +58,8 @@ export function VehicleDialog({
 
   useEffect(() => {
     if (!open) return
-    setForm(editing ? formFromVehicle(editing) : emptyForm())
-  }, [editing, open])
+    setForm(emptyForm())
+  }, [open])
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -99,9 +84,9 @@ export function VehicleDialog({
       <DialogContent className="flex max-h-[92dvh] w-[calc(100%-1rem)] max-w-lg flex-col overflow-hidden p-0">
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
           <DialogHeader className="px-5 pt-6 sm:px-6">
-            <DialogTitle>{editing ? 'Edit vehicle' : 'Add vehicle'}</DialogTitle>
+            <DialogTitle>Add vehicle</DialogTitle>
             <DialogDescription>
-              Number plates must be unique. Status is ACTIVE, UNDER_REPAIR, or DISPOSED.
+              Number plates must be unique. Vehicles can be added or removed; the backend has no update endpoint.
             </DialogDescription>
           </DialogHeader>
           <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4 sm:px-6">
@@ -164,7 +149,7 @@ export function VehicleDialog({
               Cancel
             </Button>
             <Button type="submit" isLoading={isSaving} loadingLabel="Saving">
-              {editing ? 'Save vehicle' : 'Add vehicle'}
+              Add vehicle
             </Button>
           </DialogFooter>
         </form>

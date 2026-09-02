@@ -1,16 +1,25 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form'
 import { Link } from 'react-router-dom'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { FormSection } from '@/components/forms/FormSection'
 import { LookupSelect } from '@/components/forms/LookupSelect'
+import type { SelectOption } from '@/components/forms/select-utils'
 import { SwitchField } from '@/components/forms/SwitchField'
 import { TextareaField } from '@/components/forms/TextareaField'
 import { TextField } from '@/components/forms/TextField'
 import { useAcademicTermList } from '@/features/academic/hooks/useAcademic'
 import { academicTermLabel, calendarIsCurrent } from '@/features/academic/types/academic.types'
+import {
+  classLookupOptions,
+  emptyLookupMessage,
+  houseLookupOptions,
+  namedLookupOptions,
+  streamLookupOptions,
+  zoneLookupOptions,
+} from '@/features/lookups/lookup-options'
 import {
   useCounties,
   useGenders,
@@ -18,7 +27,6 @@ import {
   useSchoolClasses,
   useStreams,
   useZones,
-  namesOf,
 } from '@/features/lookups/useLookups'
 import {
   emptyLearnerForm,
@@ -68,20 +76,18 @@ export function LearnerForm({ learner, isSubmitting, submitLabel, onSubmit }: Le
     mode: 'onSubmit',
   })
 
-  const genders = namesOf(useGenders().data)
-  const classes = (useSchoolClasses().data ?? [])
-    .map((item) => item.className)
-    .filter((name): name is string => Boolean(name))
-  const uniqueClasses = Array.from(new Set(classes))
+  const gendersQuery = useGenders()
+  const classesQuery = useSchoolClasses()
   const streamQuery = useStreams()
-  const streams = useMemo(
-    () =>
-      withExistingOption(
-        Array.from(new Set((streamQuery.data ?? []).map((item) => item.name).filter(Boolean))),
-        learner?.stream,
-      ),
-    [learner?.stream, streamQuery.data],
+  const countiesQuery = useCounties()
+  const housesQuery = useHouses()
+  const zonesQuery = useZones()
+  const genders = namedLookupOptions(gendersQuery.data, learner?.gender)
+  const classOptions = useMemo(
+    () => classLookupOptions(classesQuery.data, [learner?.admissionClass, learner?.currentClass]),
+    [classesQuery.data, learner?.admissionClass, learner?.currentClass],
   )
+  const streams = useMemo(() => streamLookupOptions(streamQuery.data, learner?.stream), [learner?.stream, streamQuery.data])
   const termList = useAcademicTermList()
   const terms = useMemo(() => {
     const labels = (termList.data ?? []).map(academicTermLabel).filter(Boolean)
@@ -90,9 +96,9 @@ export function LearnerForm({ learner, isSubmitting, submitLabel, onSubmit }: Le
     if (existing && !unique.includes(existing)) unique.unshift(existing)
     return unique
   }, [learner?.admissionTerm, termList.data])
-  const counties = namesOf(useCounties().data)
-  const houses = (useHouses().data ?? []).map((item) => item.houseName).filter(Boolean)
-  const zones = (useZones().data ?? []).map((item) => item.zoneName).filter(Boolean)
+  const counties = namedLookupOptions(countiesQuery.data, learner?.county)
+  const houses = useMemo(() => houseLookupOptions(housesQuery.data, learner?.hostelName), [housesQuery.data, learner?.hostelName])
+  const zones = useMemo(() => zoneLookupOptions(zonesQuery.data, learner?.transportZone), [learner?.transportZone, zonesQuery.data])
 
   useEffect(() => {
     if (learner) return
@@ -102,14 +108,17 @@ export function LearnerForm({ learner, isSubmitting, submitLabel, onSubmit }: Le
     form.setValue('admissionTerm', academicTermLabel(current))
   }, [form, learner, termList.data])
 
+  const lastStepIndex = STEPS.length - 1
+  const isLastStep = step === lastStepIndex
+
   const goNext = async () => {
     const fields = STEP_FIELDS[step] ?? []
     const valid = fields.length === 0 ? true : await form.trigger(fields)
     if (!valid) return
-    setStep((current) => Math.min(current + 1, STEPS.length - 1))
+    setStep((current) => Math.min(current + 1, lastStepIndex))
   }
 
-  const handleSubmit = form.handleSubmit((values) => {
+  const saveLearner = form.handleSubmit((values) => {
     if (isSubmitting) return
     if (isEdit && learner) {
       const patch = learnerFormToPatchPayload(values, learner)
@@ -123,27 +132,41 @@ export function LearnerForm({ learner, isSubmitting, submitLabel, onSubmit }: Le
     onSubmit(learnerFormToCreatePayload(values))
   })
 
+  const onFormSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!isLastStep) {
+      void goNext()
+      return
+    }
+    void saveLearner(event)
+  }
+
   const ctx = {
     register: form.register,
     control: form.control,
     errors: form.formState.errors,
     disabled: isSubmitting,
     genders,
-    uniqueClasses,
+    gendersLoading: gendersQuery.isLoading,
+    classOptions,
+    classesLoading: classesQuery.isLoading,
     streams,
     streamsLoading: streamQuery.isLoading,
     terms,
     termsLoading: termList.isLoading,
     counties,
+    countiesLoading: countiesQuery.isLoading,
     houses,
+    housesLoading: housesQuery.isLoading,
     zones,
+    zonesLoading: zonesQuery.isLoading,
     nationalities: withExistingOption(COUNTRIES, learner?.nationality),
     ethnicities: withExistingOption(KENYAN_ETHNICITIES, learner?.ethnicity),
     isEdit,
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+    <form onSubmit={onFormSubmit} noValidate className="flex flex-col gap-5">
       <ol className="flex flex-wrap gap-2" aria-label="Registration steps">
         {STEPS.map((item, index) => (
           <li key={item.id}>
@@ -180,15 +203,24 @@ export function LearnerForm({ learner, isSubmitting, submitLabel, onSubmit }: Le
               Back
             </Button>
           ) : null}
-          {step < STEPS.length - 1 ? (
-            <Button type="button" onClick={() => void goNext()}>
-              Continue
-            </Button>
-          ) : (
-            <Button type="submit" isLoading={isSubmitting} loadingLabel="Saving">
-              {submitLabel}
-            </Button>
-          )}
+          <Button
+            type="button"
+            {...(isLastStep ? { className: 'hidden', tabIndex: -1 } : {})}
+            aria-hidden={isLastStep}
+            onClick={() => void goNext()}
+          >
+            Continue
+          </Button>
+          <Button
+            type="button"
+            {...(isLastStep ? {} : { className: 'hidden', tabIndex: -1 })}
+            aria-hidden={!isLastStep}
+            isLoading={isSubmitting}
+            loadingLabel="Saving"
+            onClick={() => void saveLearner()}
+          >
+            {submitLabel}
+          </Button>
         </div>
       </div>
     </form>
@@ -200,27 +232,52 @@ interface StepProps {
   control: Control<LearnerFormValues>
   errors: FieldErrors<LearnerFormValues>
   disabled: boolean
-  genders: string[]
-  uniqueClasses: string[]
-  streams: string[]
+  genders: SelectOption[]
+  gendersLoading: boolean
+  classOptions: SelectOption[]
+  classesLoading: boolean
+  streams: SelectOption[]
   streamsLoading: boolean
   terms: string[]
   termsLoading: boolean
-  counties: string[]
-  houses: string[]
-  zones: string[]
+  counties: SelectOption[]
+  countiesLoading: boolean
+  houses: SelectOption[]
+  housesLoading: boolean
+  zones: SelectOption[]
+  zonesLoading: boolean
   nationalities: string[]
   ethnicities: string[]
   isEdit: boolean
 }
 
-function BasicStep({ register, control, errors, disabled, genders, uniqueClasses, isEdit }: StepProps): ReactNode {
+function BasicStep({
+  register,
+  control,
+  errors,
+  disabled,
+  genders,
+  gendersLoading,
+  classOptions,
+  classesLoading,
+  isEdit,
+}: StepProps): ReactNode {
   return (
     <FormSection title="Basic information" description="Required details for enrolment.">
       <TextField label="First name" error={errors.firstName?.message} disabled={disabled} {...register('firstName')} />
       <TextField label="Middle name" error={errors.middleName?.message} disabled={disabled} {...register('middleName')} />
       <TextField label="Last name" error={errors.lastName?.message} disabled={disabled} {...register('lastName')} />
-      <LookupSelect control={control} name="gender" label="Gender" options={genders} error={errors.gender?.message} disabled={disabled} />
+      <LookupSelect
+        control={control}
+        name="gender"
+        label="Gender"
+        options={genders}
+        isLoading={gendersLoading}
+        emptyMessage={emptyLookupMessage('genders', 'System → Reference lists')}
+        allowEmpty={false}
+        error={errors.gender?.message}
+        disabled={disabled}
+      />
       <TextField label="Date of birth" type="date" error={errors.dateOfBirth?.message} disabled={disabled} {...register('dateOfBirth')} />
       <TextField
         label="Admission number"
@@ -229,49 +286,71 @@ function BasicStep({ register, control, errors, disabled, genders, uniqueClasses
         disabled={disabled || isEdit}
         {...register('admissionNumber')}
       />
-      <LookupSelect control={control} name="admissionClass" label="Admission class" options={uniqueClasses} error={errors.admissionClass?.message} disabled={disabled} />
+      <LookupSelect
+        control={control}
+        name="admissionClass"
+        label="Admission class"
+        options={classOptions}
+        isLoading={classesLoading}
+        emptyMessage={emptyLookupMessage('classes', 'Academics')}
+        error={errors.admissionClass?.message}
+        disabled={disabled}
+      />
       <TextField label="Phone number" type="tel" error={errors.phoneNumber?.message} disabled={disabled} {...register('phoneNumber')} />
       <TextField label="Email" type="email" error={errors.email?.message} disabled={disabled} {...register('email')} />
     </FormSection>
   )
 }
 
-function AcademicStep({ register, control, errors, disabled, uniqueClasses, streams, streamsLoading, terms, termsLoading }: StepProps): ReactNode {
-  const streamPlaceholder = streamsLoading
-    ? 'Loading streams…'
-    : streams.length === 0
-      ? 'No streams available'
-      : 'Select stream'
-
+function AcademicStep({
+  register,
+  control,
+  errors,
+  disabled,
+  classOptions,
+  classesLoading,
+  streams,
+  streamsLoading,
+  terms,
+  termsLoading,
+}: StepProps): ReactNode {
   return (
     <>
       <FormSection title="Placement">
-        <LookupSelect control={control} name="currentClass" label="Current class" options={uniqueClasses} error={errors.currentClass?.message} disabled={disabled} />
+        <LookupSelect
+          control={control}
+          name="currentClass"
+          label="Current class"
+          options={classOptions}
+          isLoading={classesLoading}
+          emptyMessage={emptyLookupMessage('classes', 'Academics')}
+          error={errors.currentClass?.message}
+          disabled={disabled}
+        />
         <LookupSelect
           control={control}
           name="stream"
           label="Stream"
           options={streams}
-          placeholder={streamPlaceholder}
-          emptyMessage="No streams available"
-          fallbackToText={false}
-          allowEmpty={streams.length > 0}
+          isLoading={streamsLoading}
+          emptyMessage={emptyLookupMessage('streams', 'Academics')}
           error={errors.stream?.message}
-          disabled={disabled || streamsLoading}
+          disabled={disabled}
         />
         <LookupSelect
           control={control}
           name="admissionTerm"
           label="Admission term"
           options={terms}
+          isLoading={termsLoading}
           hint="Loaded from the academic calendar."
-          fallbackToText={!termsLoading}
+          emptyMessage={emptyLookupMessage('terms', 'System → Calendar')}
           error={errors.admissionTerm?.message}
-          disabled={disabled || termsLoading}
+          disabled={disabled}
         />
         <TextField label="Admission date" type="date" error={errors.admissionDate?.message} disabled={disabled} {...register('admissionDate')} />
         <TextField label="Area of specialisation" error={errors.areaOfSpecialization?.message} disabled={disabled} {...register('areaOfSpecialization')} />
-        <LookupSelect control={control} name="status" label="Status" options={['ACTIVE', 'INACTIVE', 'CLEARED']} fallbackToText={false} error={errors.status?.message} disabled={disabled} />
+        <LookupSelect control={control} name="status" label="Status" options={['ACTIVE', 'INACTIVE', 'CLEARED']} allowEmpty={false} error={errors.status?.message} disabled={disabled} />
       </FormSection>
       <FormSection title="Academic history">
         <TextField label="KCPE score" error={errors.kcpeScore?.message} disabled={disabled} {...register('kcpeScore')} />
@@ -359,23 +438,50 @@ function MedicalStep({ register, control, errors, disabled }: StepProps): ReactN
   )
 }
 
-function LogisticsStep({ control, errors, disabled, houses, zones }: StepProps): ReactNode {
+function LogisticsStep({ control, errors, disabled, houses, housesLoading, zones, zonesLoading }: StepProps): ReactNode {
   return (
     <>
       <FormSection title="Boarding">
         <div className="sm:col-span-2">
           <BooleanField control={control} name="boarding" label="Boarding learner" description="Day scholars should leave this off." disabled={disabled} />
         </div>
-        <LookupSelect control={control} name="hostelName" label="Hostel / house" options={houses} error={errors.hostelName?.message} disabled={disabled} />
+        <LookupSelect
+          control={control}
+          name="hostelName"
+          label="Hostel / house"
+          options={houses}
+          isLoading={housesLoading}
+          emptyMessage={emptyLookupMessage('houses', 'Logistics')}
+          error={errors.hostelName?.message}
+          disabled={disabled}
+        />
       </FormSection>
       <FormSection title="Transport">
-        <LookupSelect control={control} name="transportZone" label="Transport zone" options={zones} error={errors.transportZone?.message} disabled={disabled} />
+        <LookupSelect
+          control={control}
+          name="transportZone"
+          label="Transport zone"
+          options={zones}
+          isLoading={zonesLoading}
+          emptyMessage={emptyLookupMessage('transport zones', 'Logistics')}
+          error={errors.transportZone?.message}
+          disabled={disabled}
+        />
       </FormSection>
     </>
   )
 }
 
-function AdditionalStep({ register, control, errors, disabled, counties, nationalities, ethnicities }: StepProps): ReactNode {
+function AdditionalStep({
+  register,
+  control,
+  errors,
+  disabled,
+  counties,
+  countiesLoading,
+  nationalities,
+  ethnicities,
+}: StepProps): ReactNode {
   return (
     <>
       <FormSection title="Identification">
@@ -385,7 +491,16 @@ function AdditionalStep({ register, control, errors, disabled, counties, nationa
         <TextField label="Photo link" error={errors.photoLink?.message} disabled={disabled} {...register('photoLink')} />
       </FormSection>
       <FormSection title="Background">
-        <LookupSelect control={control} name="county" label="County" options={counties} error={errors.county?.message} disabled={disabled} />
+        <LookupSelect
+          control={control}
+          name="county"
+          label="County"
+          options={counties}
+          isLoading={countiesLoading}
+          emptyMessage="No counties available."
+          error={errors.county?.message}
+          disabled={disabled}
+        />
         <TextField label="Sub-county" error={errors.subCounty?.message} disabled={disabled} {...register('subCounty')} />
         <TextField label="Ward" error={errors.ward?.message} disabled={disabled} {...register('ward')} />
         <TextField label="Constituency" error={errors.constituency?.message} disabled={disabled} {...register('constituency')} />
@@ -454,7 +569,6 @@ function BooleanField({
           checked={Boolean(field.value)}
           onCheckedChange={field.onChange}
           disabled={disabled}
-          name={field.name}
         />
       )}
     />

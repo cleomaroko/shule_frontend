@@ -100,6 +100,50 @@ export function calendarIsCurrent(row: { current?: boolean; isCurrent?: boolean 
   return row.current === true || row.isCurrent === true
 }
 
+function todayIso(date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/** True when today falls on the term’s start/end dates (inclusive). */
+export function termContainsDate(term: AcademicTerm, today = todayIso()): boolean {
+  const start = term.startDate?.trim()
+  const end = term.endDate?.trim()
+  if (!start || !end) return false
+  return start <= today && today <= end
+}
+
+export function resolveCurrentTerm(terms: AcademicTerm[]): AcademicTerm | null {
+  return terms.find(calendarIsCurrent) ?? terms.find((term) => termContainsDate(term)) ?? null
+}
+
+export function resolveCurrentAcademicYear(
+  years: AcademicYear[],
+  currentTerm?: AcademicTerm | null,
+): AcademicYear | null {
+  const flagged = years.find(calendarIsCurrent)
+  if (flagged) return flagged
+  const fromTerm = currentTerm?.academicYear
+  if (fromTerm?.id) {
+    return years.find((year) => year.id === fromTerm.id) ?? fromTerm
+  }
+  if (years.length === 1) return years[0] ?? null
+  return null
+}
+
+/** Display-only: `2027` → `2027/2028`. Names already containing a range are left as-is. */
+export function formatAcademicYearDisplay(name: string | null | undefined): string | null {
+  const trimmed = name?.trim()
+  if (!trimmed) return null
+  if (/^\d{4}$/.test(trimmed)) {
+    const year = Number(trimmed)
+    return `${year}/${year + 1}`
+  }
+  return trimmed
+}
+
 export function academicTermLabel(term: AcademicTerm): string {
   const name = term.name?.trim()
   const year = term.academicYear?.name?.trim()

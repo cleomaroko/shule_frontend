@@ -15,27 +15,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import type { Asset, AssetWritePayload } from '@/features/assets/types/asset.types'
+import type { Asset, AssetNamedLookup, AssetWritePayload } from '@/features/assets/types/asset.types'
 import { assetIsDepreciable } from '@/features/assets/types/asset.types'
 import type { Campus, Department } from '@/features/lookups/lookups.types'
 import type { Staff } from '@/features/staff/types/staff.types'
+import type { Supplier } from '@/features/suppliers/types/supplier.types'
 import { formatPersonName } from '@/lib/format'
 
 export interface AssetFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   editing: Asset | null
-  categories: Array<{ id: number; name: string }>
+  categories: AssetNamedLookup[]
+  descriptions: AssetNamedLookup[]
+  conditions: AssetNamedLookup[]
+  statuses: AssetNamedLookup[]
   campuses: Campus[]
   departments: Department[]
   staff: Staff[]
+  suppliers: Supplier[]
   isSaving: boolean
   onSubmit: (body: AssetWritePayload) => void
 }
 
 interface AssetFormState {
   assetTagId: string
-  description: string
+  descriptionId: string
   brand: string
   model: string
   serialNumber: string
@@ -43,10 +48,11 @@ interface AssetFormState {
   campusId: string
   departmentId: string
   assignedToId: string
+  supplierId: string
   purchaseDate: string
   costPrice: string
-  assetCondition: string
-  status: string
+  conditionId: string
+  statusId: string
   isDepreciable: boolean
   assetLifeMonths: string
   salvageValue: string
@@ -56,7 +62,7 @@ interface AssetFormState {
 
 const emptyForm = (): AssetFormState => ({
   assetTagId: '',
-  description: '',
+  descriptionId: '',
   brand: '',
   model: '',
   serialNumber: '',
@@ -64,10 +70,11 @@ const emptyForm = (): AssetFormState => ({
   campusId: '',
   departmentId: '',
   assignedToId: '',
+  supplierId: '',
   purchaseDate: '',
   costPrice: '',
-  assetCondition: '',
-  status: '',
+  conditionId: '',
+  statusId: '',
   isDepreciable: false,
   assetLifeMonths: '',
   salvageValue: '',
@@ -78,7 +85,7 @@ const emptyForm = (): AssetFormState => ({
 function formFromAsset(asset: Asset): AssetFormState {
   return {
     assetTagId: asset.assetTagId ?? '',
-    description: asset.description ?? '',
+    descriptionId: asset.description?.id ? String(asset.description.id) : '',
     brand: asset.brand ?? '',
     model: asset.model ?? '',
     serialNumber: asset.serialNumber ?? '',
@@ -86,10 +93,11 @@ function formFromAsset(asset: Asset): AssetFormState {
     campusId: asset.campus?.id ? String(asset.campus.id) : '',
     departmentId: asset.department?.id ? String(asset.department.id) : '',
     assignedToId: asset.assignedTo?.id ? String(asset.assignedTo.id) : '',
+    supplierId: asset.supplier?.id ? String(asset.supplier.id) : '',
     purchaseDate: asset.purchaseDate ?? '',
     costPrice: asset.costPrice == null ? '' : String(asset.costPrice),
-    assetCondition: asset.assetCondition ?? '',
-    status: asset.status ?? '',
+    conditionId: asset.assetCondition?.id ? String(asset.assetCondition.id) : '',
+    statusId: asset.status?.id ? String(asset.status.id) : '',
     isDepreciable: assetIsDepreciable(asset),
     assetLifeMonths: asset.assetLifeMonths == null ? '' : String(asset.assetLifeMonths),
     salvageValue: asset.salvageValue == null ? '' : String(asset.salvageValue),
@@ -122,10 +130,11 @@ function buildPayload(form: AssetFormState, includeTag: boolean): AssetWritePayl
   }
 
   if (includeTag) {
-    payload.assetTagId = form.assetTagId.trim()
+    const tag = optionalText(form.assetTagId)
+    if (tag) payload.assetTagId = tag
   }
 
-  const description = optionalText(form.description)
+  const description = optionalRelation(form.descriptionId)
   if (description) payload.description = description
   const brand = optionalText(form.brand)
   if (brand) payload.brand = brand
@@ -141,13 +150,15 @@ function buildPayload(form: AssetFormState, includeTag: boolean): AssetWritePayl
   if (department) payload.department = department
   const assignedTo = optionalRelation(form.assignedToId)
   if (assignedTo) payload.assignedTo = assignedTo
+  const supplier = optionalRelation(form.supplierId)
+  if (supplier) payload.supplier = supplier
   const purchaseDate = optionalText(form.purchaseDate)
   if (purchaseDate) payload.purchaseDate = purchaseDate
   const costPrice = optionalNumber(form.costPrice)
   if (costPrice !== undefined) payload.costPrice = costPrice
-  const assetCondition = optionalText(form.assetCondition)
+  const assetCondition = optionalRelation(form.conditionId)
   if (assetCondition) payload.assetCondition = assetCondition
-  const status = optionalText(form.status)
+  const status = optionalRelation(form.statusId)
   if (status) payload.status = status
   const assetLifeMonths = optionalNumber(form.assetLifeMonths)
   if (assetLifeMonths !== undefined) payload.assetLifeMonths = Math.round(assetLifeMonths)
@@ -166,9 +177,13 @@ export function AssetFormDialog({
   onOpenChange,
   editing,
   categories,
+  descriptions,
+  conditions,
+  statuses,
   campuses,
   departments,
   staff,
+  suppliers,
   isSaving,
   onSubmit,
 }: AssetFormDialogProps): ReactNode {
@@ -186,7 +201,6 @@ export function AssetFormDialog({
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
-    if (!isEdit && !form.assetTagId.trim()) return
     onSubmit(buildPayload(form, !isEdit))
   }
 
@@ -198,8 +212,8 @@ export function AssetFormDialog({
             <DialogTitle>{isEdit ? 'Edit asset' : 'Register asset'}</DialogTitle>
             <DialogDescription>
               {isEdit
-                ? 'Tag ID cannot be changed. Empty fields are left as they are.'
-                : 'Tag ID must be unique. Optional fields can be filled in later.'}
+                ? 'Tag ID is not sent on update. Empty fields are left as they are.'
+                : 'Tag ID is optional. If provided, it must be unique. Supplier name is snapshotted by the backend.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -211,15 +225,17 @@ export function AssetFormDialog({
                   value={form.assetTagId}
                   onChange={(event) => setField('assetTagId', event.target.value)}
                   placeholder="MGA-ICT-2026-001"
-                  required={!isEdit}
                   disabled={isEdit}
-                  hint={isEdit ? 'The backend does not allow changing the tag ID.' : undefined}
+                  hint={isEdit ? 'Tag ID is not changed on update.' : 'Leave blank to let the record exist without a tag.'}
                 />
-                <TextField
+                <SelectField
                   label="Description"
-                  value={form.description}
-                  onChange={(event) => setField('description', event.target.value)}
-                  placeholder="HP ProBook 450 G10"
+                  value={form.descriptionId}
+                  onChange={(value) => setField('descriptionId', value)}
+                  options={descriptions.map((item) => ({ value: String(item.id), label: item.name }))}
+                  placeholder={descriptions.length ? 'Select description' : 'No descriptions available'}
+                  emptyMessage="No descriptions available"
+                  emptyLabel="Not set"
                 />
                 <TextField
                   label="Brand"
@@ -243,7 +259,8 @@ export function AssetFormDialog({
                   value={form.categoryId}
                   onChange={(value) => setField('categoryId', value)}
                   options={categories.map((item) => ({ value: String(item.id), label: item.name }))}
-                  placeholder="Select category"
+                  placeholder={categories.length ? 'Select category' : 'No categories available'}
+                  emptyMessage="No categories available"
                   emptyLabel="Not set"
                 />
               </FormSection>
@@ -277,20 +294,40 @@ export function AssetFormDialog({
                   emptyLabel="Not set"
                   containerClassName="sm:col-span-2"
                 />
+                <SelectField
+                  label="Supplier"
+                  value={form.supplierId}
+                  onChange={(value) => setField('supplierId', value)}
+                  options={suppliers.map((item) => ({
+                    value: String(item.id),
+                    label: [item.name, item.supplierCode].filter(Boolean).join(' · '),
+                  }))}
+                  placeholder={suppliers.length ? 'Select supplier' : 'No suppliers yet'}
+                  emptyMessage="No suppliers available"
+                  emptyLabel="Not set"
+                  hint="The supplier name is stored as a snapshot for history."
+                  containerClassName="sm:col-span-2"
+                />
               </FormSection>
 
               <FormSection title="Condition and value" className="shadow-none">
-                <TextField
+                <SelectField
                   label="Condition"
-                  value={form.assetCondition}
-                  onChange={(event) => setField('assetCondition', event.target.value)}
-                  placeholder="Good"
+                  value={form.conditionId}
+                  onChange={(value) => setField('conditionId', value)}
+                  options={conditions.map((item) => ({ value: String(item.id), label: item.name }))}
+                  placeholder={conditions.length ? 'Select condition' : 'No conditions available'}
+                  emptyMessage="No conditions available"
+                  emptyLabel="Not set"
                 />
-                <TextField
+                <SelectField
                   label="Status"
-                  value={form.status}
-                  onChange={(event) => setField('status', event.target.value)}
-                  placeholder="In Use"
+                  value={form.statusId}
+                  onChange={(value) => setField('statusId', value)}
+                  options={statuses.map((item) => ({ value: String(item.id), label: item.name }))}
+                  placeholder={statuses.length ? 'Select status' : 'No statuses available'}
+                  emptyMessage="No statuses available"
+                  emptyLabel="Not set"
                 />
                 <TextField
                   label="Purchase date"
