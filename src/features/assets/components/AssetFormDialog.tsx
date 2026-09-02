@@ -188,10 +188,14 @@ export function AssetFormDialog({
   onSubmit,
 }: AssetFormDialogProps): ReactNode {
   const [form, setForm] = useState<AssetFormState>(emptyForm)
+  const [pickerOpen, setPickerOpen] = useState(false)
   const isEdit = editing !== null
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setPickerOpen(false)
+      return
+    }
     setForm(editing ? formFromAsset(editing) : emptyForm())
   }, [open, editing])
 
@@ -205,7 +209,7 @@ export function AssetFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} modal={!pickerOpen}>
       <DialogContent className="flex max-h-[92dvh] w-[calc(100%-1rem)] max-w-2xl flex-col overflow-hidden p-0">
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
           <DialogHeader className="px-5 pt-6 sm:px-6">
@@ -378,6 +382,7 @@ export function AssetFormDialog({
                 <GoogleDrivePhotoField
                   value={form.googleDrivePhotoLink}
                   onChange={(url) => setField('googleDrivePhotoLink', url)}
+                  onPickingChange={setPickerOpen}
                   containerClassName="sm:col-span-2"
                 />
                 <TextareaField

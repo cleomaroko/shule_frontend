@@ -145,10 +145,14 @@ export function StoreLogDialog({
   onUpdate,
 }: StoreLogDialogProps): ReactNode {
   const [form, setForm] = useState<LogFormState>(() => emptyForm(items, stores, terms))
+  const [pickerOpen, setPickerOpen] = useState(false)
   const isEdit = editing !== null
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setPickerOpen(false)
+      return
+    }
     setForm(editing ? formFromLog(editing) : emptyForm(items, stores, terms))
   }, [editing, items, open, stores, terms])
 
@@ -207,7 +211,7 @@ export function StoreLogDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} modal={!pickerOpen}>
       <DialogContent className="flex max-h-[92dvh] w-[calc(100%-1rem)] max-w-lg flex-col overflow-hidden p-0">
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
           <DialogHeader className="px-5 pt-6 sm:px-6">
@@ -411,6 +415,7 @@ export function StoreLogDialog({
               label="Receipt"
               value={form.receiptLink}
               onChange={(url) => setField('receiptLink', url)}
+              onPickingChange={setPickerOpen}
               hint="Optional. Typically used for supplier additions."
             />
           </div>

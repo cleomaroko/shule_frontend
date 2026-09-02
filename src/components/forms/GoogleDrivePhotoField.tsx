@@ -22,6 +22,7 @@ export interface GoogleDrivePhotoFieldProps {
   error?: string | undefined
   hint?: string
   containerClassName?: string
+  onPickingChange?: (picking: boolean) => void
 }
 
 export function GoogleDrivePhotoField({
@@ -32,6 +33,7 @@ export function GoogleDrivePhotoField({
   error,
   hint = 'The photo is saved as a Drive link. After you pick it, Dira 365 asks Drive to share it so the staff profile can display it.',
   containerClassName,
+  onPickingChange,
 }: GoogleDrivePhotoFieldProps): ReactNode {
   const id = useId()
   const errorId = `${id}-error`
@@ -46,6 +48,7 @@ export function GoogleDrivePhotoField({
   const handlePick = async () => {
     if (disabled || picking) return
     setPicking(true)
+    onPickingChange?.(true)
     try {
       const picked = await pickGoogleDriveImage()
       if (!picked) return
@@ -60,6 +63,7 @@ export function GoogleDrivePhotoField({
       toast.error(cause instanceof Error ? cause.message : 'Could not open Google Drive')
     } finally {
       setPicking(false)
+      onPickingChange?.(false)
     }
   }
 

@@ -1,4 +1,5 @@
 import { env } from '@/lib/env'
+import { watchGooglePickerLayer } from '@/lib/google-picker-layer'
 import { logger } from '@/lib/logger'
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client'
@@ -183,6 +184,13 @@ export async function pickGoogleDriveImage(): Promise<PickedDriveImage | null> {
   }
 
   return new Promise((resolve, reject) => {
+    let releaseLayer: (() => void) | undefined
+    const finish = (next: () => void) => {
+      releaseLayer?.()
+      releaseLayer = undefined
+      next()
+    }
+
     try {
       const view = new pickerApi.DocsView(pickerApi.ViewId.DOCS_IMAGES)
         .setIncludeFolders(true)
@@ -198,39 +206,41 @@ export async function pickGoogleDriveImage(): Promise<PickedDriveImage | null> {
         .setCallback((data) => {
           const action = data[pickerApi.Response.ACTION]
           if (action === pickerApi.Action.CANCEL) {
-            resolve(null)
+            finish(() => resolve(null))
             return
           }
           if (action !== pickerApi.Action.PICKED) return
           const documents = data[pickerApi.Response.DOCUMENTS]
           const doc = Array.isArray(documents) ? documents[0] : undefined
           if (!doc || typeof doc !== 'object') {
-            reject(new Error('No image was selected'))
+            finish(() => reject(new Error('No image was selected')))
             return
           }
           const record = doc as Record<string, unknown>
           const id = String(record[pickerApi.Document.ID] ?? '')
           if (!id) {
-            reject(new Error('Google Drive did not return a file id'))
+            finish(() => reject(new Error('Google Drive did not return a file id')))
             return
           }
-          void enableAnyoneWithLink(id, accessToken)
-            .then((linkShareEnabled) => {
-              resolve({
-                id,
-                name: String(record[pickerApi.Document.NAME] ?? 'Selected image'),
-                url: toDriveShareUrl(id),
-                linkShareEnabled,
+          finish(() => {
+            void enableAnyoneWithLink(id, accessToken)
+              .then((linkShareEnabled) => {
+                resolve({
+                  id,
+                  name: String(record[pickerApi.Document.NAME] ?? 'Selected image'),
+                  url: toDriveShareUrl(id),
+                  linkShareEnabled,
+                })
               })
-            })
-            .catch(() => {
-              resolve({
-                id,
-                name: String(record[pickerApi.Document.NAME] ?? 'Selected image'),
-                url: toDriveShareUrl(id),
-                linkShareEnabled: false,
+              .catch(() => {
+                resolve({
+                  id,
+                  name: String(record[pickerApi.Document.NAME] ?? 'Selected image'),
+                  url: toDriveShareUrl(id),
+                  linkShareEnabled: false,
+                })
               })
-            })
+          })
         })
 
       if (env.googleAppId) {
@@ -238,7 +248,9 @@ export async function pickGoogleDriveImage(): Promise<PickedDriveImage | null> {
       }
 
       builder.build().setVisible(true)
+      releaseLayer = watchGooglePickerLayer()
     } catch (error) {
+      releaseLayer?.()
       logger.error('Failed to open Google Drive picker', error)
       reject(error instanceof Error ? error : new Error('Failed to open Google Drive'))
     }
