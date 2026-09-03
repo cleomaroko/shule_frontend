@@ -16,14 +16,14 @@ export function SheetContent({
 }: ComponentProps<typeof DialogPrimitive.Content> & { side?: 'left' | 'right' }): ReactNode {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-navy-950/45 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0" />
+      <DialogPrimitive.Overlay className="sheet-overlay fixed inset-0 z-50 touch-none bg-navy-950/45 backdrop-blur-[2px]" />
       <DialogPrimitive.Content
         className={cn(
-          'fixed z-50 flex h-full w-[min(20rem,88vw)] flex-col bg-card shadow-panel',
-          'data-[state=open]:animate-in data-[state=closed]:animate-out',
+          'sheet-drawer fixed z-50 flex h-full w-[min(20rem,88vw)] flex-col bg-card shadow-panel',
+          'transform-gpu backface-hidden will-change-transform',
           side === 'left'
-            ? 'inset-y-0 left-0 border-r border-border data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left'
-            : 'inset-y-0 right-0 border-l border-border data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right',
+            ? 'sheet-drawer-left inset-y-0 left-0 border-r border-border'
+            : 'sheet-drawer-right inset-y-0 right-0 border-l border-border',
           className,
         )}
         {...props}
