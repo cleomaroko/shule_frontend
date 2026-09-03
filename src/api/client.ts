@@ -169,6 +169,22 @@ export const api = {
   post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<ApiResult<T>> {
     return apiRequest<T>({ ...config, url, method: 'POST', data })
   },
+  postMultipart<T>(url: string, data: FormData, config?: AxiosRequestConfig): Promise<ApiResult<T>> {
+    return apiRequest<T>({
+      ...config,
+      url,
+      method: 'POST',
+      data,
+      transformRequest: [
+        (body, headers) => {
+          if (headers && typeof headers.delete === 'function') {
+            headers.delete('Content-Type')
+          }
+          return body
+        },
+      ],
+    })
+  },
   put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<ApiResult<T>> {
     return apiRequest<T>({ ...config, url, method: 'PUT', data })
   },

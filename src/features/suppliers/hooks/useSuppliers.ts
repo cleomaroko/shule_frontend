@@ -4,7 +4,11 @@ import { toast } from 'sonner'
 import { toUserMessage } from '@/api/errors'
 import { queryKeys } from '@/api/endpoints'
 import { suppliersApi } from '@/features/suppliers/api/suppliers.api'
-import type { SupplierContractWritePayload, SupplierWritePayload } from '@/features/suppliers/types/supplier.types'
+import type {
+  SupplierContractUpdatePayload,
+  SupplierContractWritePayload,
+  SupplierWritePayload,
+} from '@/features/suppliers/types/supplier.types'
 import { logger } from '@/lib/logger'
 
 export function useSupplierList() {
@@ -59,11 +63,38 @@ export function useSupplierMutations() {
     },
   })
 
+  const deleteSupplier = useMutation({
+    mutationFn: (id: number) => suppliersApi.remove(id),
+    onSuccess: async () => {
+      await invalidateSuppliers()
+      toast.success('Supplier deleted.')
+    },
+    onError: (error: unknown) => toast.error(toUserMessage(error)),
+  })
+
   const createType = useMutation({
     mutationFn: (body: { name: string }) => suppliersApi.createType(body),
     onSuccess: async () => {
       await invalidateTypes()
       toast.success('Business type added.')
+    },
+    onError: (error: unknown) => toast.error(toUserMessage(error)),
+  })
+
+  const updateType = useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) => suppliersApi.updateType(id, { name }),
+    onSuccess: async () => {
+      await invalidateTypes()
+      toast.success('Business type updated.')
+    },
+    onError: (error: unknown) => toast.error(toUserMessage(error)),
+  })
+
+  const deleteType = useMutation({
+    mutationFn: (id: number) => suppliersApi.removeType(id),
+    onSuccess: async () => {
+      await invalidateTypes()
+      toast.success('Business type removed.')
     },
     onError: (error: unknown) => toast.error(toUserMessage(error)),
   })
@@ -80,6 +111,16 @@ export function useSupplierMutations() {
     },
   })
 
+  const updateContract = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: SupplierContractUpdatePayload }) =>
+      suppliersApi.updateContract(id, body),
+    onSuccess: async () => {
+      await invalidateContracts()
+      toast.success('Contract updated.')
+    },
+    onError: (error: unknown) => toast.error(toUserMessage(error)),
+  })
+
   const updateContractStatus = useMutation({
     mutationFn: ({ id, status }: { id: number; status: string }) => suppliersApi.updateContractStatus(id, status),
     onSuccess: async () => {
@@ -89,5 +130,25 @@ export function useSupplierMutations() {
     onError: (error: unknown) => toast.error(toUserMessage(error)),
   })
 
-  return { createSupplier, updateSupplier, createType, createContract, updateContractStatus }
+  const deleteContract = useMutation({
+    mutationFn: (id: number) => suppliersApi.removeContract(id),
+    onSuccess: async () => {
+      await invalidateContracts()
+      toast.success('Contract deleted.')
+    },
+    onError: (error: unknown) => toast.error(toUserMessage(error)),
+  })
+
+  return {
+    createSupplier,
+    updateSupplier,
+    deleteSupplier,
+    createType,
+    updateType,
+    deleteType,
+    createContract,
+    updateContract,
+    updateContractStatus,
+    deleteContract,
+  }
 }

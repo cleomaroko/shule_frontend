@@ -91,6 +91,7 @@ the JavaScript bundle and is therefore public — never put a secret in one.**
 | `VITE_API_BASE_URL`     | `/api`                  | Base URL for the API, **including** the `/api` prefix.          |
 | `VITE_DEV_PROXY_TARGET` | `http://localhost:8080` | Where the Vite dev server forwards `/api`. Development only.    |
 | `VITE_APP_NAME`         | `Dira 365`              | Product name in the UI, page titles and brand lockup.          |
+| `VITE_GOOGLE_DRIVE_UPLOAD_URL` | _(empty)_        | Apps Script web app that saves photos to Drive. Java stores only the returned link. |
 
 All variables are read in exactly one place, [`src/lib/env.ts`](src/lib/env.ts). Nothing
 else in the codebase touches `import.meta.env`.

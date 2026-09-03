@@ -277,19 +277,3 @@
   letter-spacing: 0.3em;
   text-transform: uppercase;
 }
-
-/*
-  Google Drive Picker is appended to `body`. Radix modal dialogs (assets, store
-  logs) set `pointer-events: none` on body, so clicks would pass through the
-  picker onto the form underneath.
-*/
-.picker-dialog,
-.picker-dialog-bg,
-.picker {
-  pointer-events: auto !important;
-  z-index: 2147483646 !important;
-}
-
-html[data-google-picker-open] [data-app-dialog] {
-  pointer-events: none !important;
-}

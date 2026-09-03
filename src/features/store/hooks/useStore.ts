@@ -41,10 +41,36 @@ export function useStoreLogs() {
   })
 }
 
+export function useStoreStockTake(params: {
+  storeId: number
+  termId: number
+  startDate: string
+  endDate: string
+} | null) {
+  return useQuery({
+    queryKey: queryKeys.store.stockTake(params ?? { storeId: 0, termId: 0, startDate: '', endDate: '' }),
+    queryFn: () => storeApi.stockTake(params as { storeId: number; termId: number; startDate: string; endDate: string }),
+    enabled: params != null,
+  })
+}
+
+export function useItemMovements(itemId: number | null) {
+  return useQuery({
+    queryKey: queryKeys.store.itemMovements(itemId ?? 0),
+    queryFn: () => storeApi.itemMovements(itemId as number),
+    enabled: itemId != null,
+  })
+}
+
 export function useStoreMutations() {
   const queryClient = useQueryClient()
   const invalidateItems = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.items })
-  const invalidateLogs = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.logs })
+  const invalidateLogs = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.store.logs }),
+      queryClient.invalidateQueries({ queryKey: ['store', 'stock-take'] }),
+      queryClient.invalidateQueries({ queryKey: ['store', 'items'] }),
+    ])
   const invalidateLocations = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.locations })
   const invalidateCategories = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.categories })
 

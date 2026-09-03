@@ -2,12 +2,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import type { ComponentProps, ReactNode } from 'react'
 
-import { isGooglePickerLayerOpen, isGooglePickerNode } from '@/lib/google-picker-layer'
 import { cn } from '@/lib/utils'
-
-function shouldIgnoreOutsideDialog(target: EventTarget | null): boolean {
-  return isGooglePickerLayerOpen() || isGooglePickerNode(target)
-}
 
 export const Dialog = DialogPrimitive.Root
 export const DialogTrigger = DialogPrimitive.Trigger
@@ -17,7 +12,6 @@ export const DialogPortal = DialogPrimitive.Portal
 export function DialogOverlay({ className, ...props }: ComponentProps<typeof DialogPrimitive.Overlay>): ReactNode {
   return (
     <DialogPrimitive.Overlay
-      data-app-dialog="overlay"
       className={cn(
         'fixed inset-0 z-50 bg-navy-950/45 backdrop-blur-[2px]',
         'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0',
@@ -32,34 +26,18 @@ export function DialogContent({
   className,
   children,
   hideClose = false,
-  onPointerDownOutside,
-  onFocusOutside,
-  onInteractOutside,
   ...props
 }: ComponentProps<typeof DialogPrimitive.Content> & { hideClose?: boolean }): ReactNode {
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
-        data-app-dialog="content"
-        {...props}
         className={cn(
           'fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-panel',
           'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95',
           className,
         )}
-        onPointerDownOutside={(event) => {
-          if (shouldIgnoreOutsideDialog(event.target)) event.preventDefault()
-          onPointerDownOutside?.(event)
-        }}
-        onFocusOutside={(event) => {
-          if (shouldIgnoreOutsideDialog(event.target)) event.preventDefault()
-          onFocusOutside?.(event)
-        }}
-        onInteractOutside={(event) => {
-          if (shouldIgnoreOutsideDialog(event.target)) event.preventDefault()
-          onInteractOutside?.(event)
-        }}
+        {...props}
       >
         {children}
         {hideClose ? null : (

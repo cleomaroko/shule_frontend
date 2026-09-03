@@ -18,6 +18,7 @@ import { StaffDetailsPage } from '@/features/staff/pages/StaffDetailsPage'
 import { StaffEditPage } from '@/features/staff/pages/StaffEditPage'
 import { StaffPage } from '@/features/staff/pages/StaffPage'
 import { SystemPage } from '@/features/system/pages/SystemPage'
+import { ReportsPage } from '@/features/reports/pages/ReportsPage'
 import { AppLayout } from '@/layouts/AppLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { NotFoundPage } from '@/pages/NotFoundPage'
@@ -61,6 +62,7 @@ export function AppRoutes(): ReactNode {
           <Route path={paths.suppliers} element={<SuppliersPage />} />
           <Route path={paths.visitors} element={<VisitorsPage />} />
           <Route path={paths.admissions} element={<AdmissionsPage />} />
+          <Route path={paths.reports} element={<ReportsPage />} />
           <Route path={paths.system} element={<SystemPage />} />
         </Route>
       </Route>

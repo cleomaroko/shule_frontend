@@ -94,10 +94,15 @@ export const endpoints = {
     /** GET wrapped. POST/PUT/DELETE wrapped. No units list endpoint. */
     items: '/store/items',
     itemById: (id: number) => `/store/items/${id}`,
+    /** GET wrapped `StockLog[]` ordered by date desc. */
+    itemMovements: (id: number) => `/store/items/${id}/movements`,
     /** GET wrapped. Filter only when storeId, termId, startDate, and endDate are all set. */
     logs: '/store/logs',
     logById: (id: number) => `/store/logs/${id}`,
-    /** GET wrapped. Required: storeId, termId, startDate, endDate. Source-store logs in range. */
+    /**
+     * GET wrapped `StockLog[]`. Required: storeId, termId, startDate, endDate.
+     * Includes logs where this store is source or destination.
+     */
     stockTake: '/store/stock-take',
   },
   transport: {
@@ -112,13 +117,16 @@ export const endpoints = {
     serviceTypes: '/transport/service-types',
   },
   suppliers: {
-    /** GET raw `Supplier[]`. POST/PUT wrapped. Authorization used for audit logging. */
+    /** GET raw `Supplier[]`. POST/PUT/DELETE wrapped. */
     list: '/suppliers',
     byId: (id: number) => `/suppliers/${id}`,
-    /** GET raw. POST wrapped. */
+    /** GET raw. POST/PUT/DELETE wrapped. */
     types: '/suppliers/types',
+    typeById: (id: number) => `/suppliers/types/${id}`,
+    /** GET raw `SupplierContract[]`. */
     contractsBySupplier: (id: number) => `/suppliers/${id}/contracts`,
     contracts: '/suppliers/contracts',
+    contractById: (id: number) => `/suppliers/contracts/${id}`,
     /** PATCH `?status=` */
     contractStatus: (id: number) => `/suppliers/contracts/${id}/status`,
   },
@@ -188,6 +196,9 @@ export const queryKeys = {
     categories: ['store', 'categories'] as const,
     logs: ['store', 'logs'] as const,
     items: ['store', 'items'] as const,
+    stockTake: (params: { storeId: number; termId: number; startDate: string; endDate: string }) =>
+      ['store', 'stock-take', params] as const,
+    itemMovements: (itemId: number) => ['store', 'items', itemId, 'movements'] as const,
   },
   transport: {
     vehicles: ['transport', 'vehicles'] as const,

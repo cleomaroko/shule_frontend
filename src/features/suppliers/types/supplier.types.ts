@@ -68,6 +68,15 @@ export interface SupplierContractWritePayload {
   comments?: string
 }
 
+/** `PUT /api/suppliers/contracts/{id}` copies these fields; supplier is not replaced. */
+export interface SupplierContractUpdatePayload {
+  description: string
+  startDate: string
+  endDate: string
+  status: string
+  comments?: string | null
+}
+
 export function supplierIsActive(supplier: Pick<Supplier, 'isActive' | 'active'>): boolean {
   if (supplier.isActive === false || supplier.active === false) return false
   return supplier.isActive === true || supplier.active === true || (supplier.isActive == null && supplier.active == null)

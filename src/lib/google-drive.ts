@@ -1,25 +1,12 @@
-import { env } from '@/lib/env'
-import { watchGooglePickerLayer } from '@/lib/google-picker-layer'
-import { logger } from '@/lib/logger'
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024
+const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
 
-const GIS_SRC = 'https://accounts.google.com/gsi/client'
-const GAPI_SRC = 'https://apis.google.com/js/api.js'
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file'
-const IMAGE_MIME_TYPES = 'image/png,image/jpeg,image/jpg,image/gif,image/webp'
+export const GOOGLE_DRIVE_IMAGE_ACCEPT = 'image/png,image/jpeg,image/gif,image/webp,.png,.jpg,.jpeg,.gif,.webp'
 
-export interface PickedDriveImage {
+export interface UploadedDriveImage {
   id: string
   name: string
   url: string
-  /** False when Drive (or Workspace policy) blocked “anyone with the link”. */
-  linkShareEnabled: boolean
-}
-
-let scriptsPromise: Promise<void> | null = null
-let cachedToken: { accessToken: string; expiresAt: number } | null = null
-
-export function isGoogleDrivePickerConfigured(): boolean {
-  return Boolean(env.googleClientId && env.googleApiKey)
 }
 
 export function extractDriveFileId(url: string): string | null {
@@ -64,195 +51,21 @@ export function toDriveShareUrl(fileId: string): string {
   return `https://drive.google.com/file/d/${fileId}/view?usp=sharing`
 }
 
-/** Required for staff/asset avatars: `<img>` cannot load a private Drive file. */
-async function enableAnyoneWithLink(fileId: string, accessToken: string): Promise<boolean> {
-  try {
-    const response = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions?supportsAllDrives=true`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ role: 'reader', type: 'anyone' }),
-      },
-    )
-    if (response.ok) return true
-    const body = await response.text()
-    if (response.status === 400 && /already exists|alreadyExists/i.test(body)) return true
-    logger.warn('Could not enable Drive link sharing', { status: response.status, body })
-    return false
-  } catch (error) {
-    logger.warn('Drive link sharing request failed', error)
-    return false
-  }
+function normalizeImageType(type: string): string {
+  const trimmed = type.trim().toLowerCase()
+  if (trimmed === 'image/jpg') return 'image/jpeg'
+  return trimmed
 }
 
-function loadScript(src: string): Promise<void> {
-  const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`)
-  if (existing) {
-    if (existing.dataset.loaded === 'true') return Promise.resolve()
-    return new Promise((resolve, reject) => {
-      existing.addEventListener('load', () => resolve(), { once: true })
-      existing.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)), { once: true })
-    })
+export function assertGoogleDriveImageFile(file: File): void {
+  if (!file.size) {
+    throw new Error('The selected file is empty.')
   }
-
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script')
-    script.src = src
-    script.async = true
-    script.onload = () => {
-      script.dataset.loaded = 'true'
-      resolve()
-    }
-    script.onerror = () => reject(new Error(`Failed to load ${src}`))
-    document.head.appendChild(script)
-  })
-}
-
-function loadPickerApi(): Promise<void> {
-  const gapi = window.gapi
-  if (!gapi) return Promise.reject(new Error('Google API loader is unavailable'))
-  return new Promise((resolve) => {
-    gapi.load('picker', () => resolve())
-  })
-}
-
-export function preloadGooglePicker(): Promise<void> {
-  if (!scriptsPromise) {
-    scriptsPromise = (async () => {
-      await Promise.all([loadScript(GAPI_SRC), loadScript(GIS_SRC)])
-      await loadPickerApi()
-    })().catch((error: unknown) => {
-      scriptsPromise = null
-      throw error
-    })
+  if (file.size > MAX_IMAGE_BYTES) {
+    throw new Error('Choose an image smaller than 8 MB.')
   }
-  return scriptsPromise
-}
-
-function requestAccessToken(): Promise<string> {
-  const now = Date.now()
-  if (cachedToken && cachedToken.expiresAt > now + 15_000) {
-    return Promise.resolve(cachedToken.accessToken)
+  const type = normalizeImageType(file.type)
+  if (!ALLOWED_IMAGE_TYPES.has(type)) {
+    throw new Error('Use a PNG, JPEG, GIF, or WebP image.')
   }
-
-  const initTokenClient = window.google?.accounts?.oauth2?.initTokenClient
-  if (!initTokenClient) {
-    return Promise.reject(new Error('Google sign-in is unavailable'))
-  }
-
-  return new Promise((resolve, reject) => {
-    const client = initTokenClient({
-      client_id: env.googleClientId,
-      scope: DRIVE_SCOPE,
-      callback: (response) => {
-        if (response.error || !response.access_token) {
-          const code = response.error ?? ''
-          if (code === 'access_denied') {
-            reject(
-              new Error(
-                'This Google account is not a tester for Dira 365 yet. Add it under Google Cloud → OAuth consent screen → Test users, then try again.',
-              ),
-            )
-            return
-          }
-          reject(new Error(response.error_description || code || 'Google Drive access was not granted'))
-          return
-        }
-        const lifetimeMs = (response.expires_in ?? 3600) * 1000
-        cachedToken = { accessToken: response.access_token, expiresAt: Date.now() + lifetimeMs }
-        resolve(response.access_token)
-      },
-    })
-    client.requestAccessToken()
-  })
-}
-
-export async function pickGoogleDriveImage(): Promise<PickedDriveImage | null> {
-  if (!isGoogleDrivePickerConfigured()) {
-    throw new Error('Google Drive picker is not configured. Add VITE_GOOGLE_CLIENT_ID and VITE_GOOGLE_API_KEY.')
-  }
-
-  await preloadGooglePicker()
-  const accessToken = await requestAccessToken()
-  const pickerApi = window.google?.picker
-  if (!pickerApi) {
-    throw new Error('Google Drive picker failed to load')
-  }
-
-  return new Promise((resolve, reject) => {
-    let releaseLayer: (() => void) | undefined
-    const finish = (next: () => void) => {
-      releaseLayer?.()
-      releaseLayer = undefined
-      next()
-    }
-
-    try {
-      const view = new pickerApi.DocsView(pickerApi.ViewId.DOCS_IMAGES)
-        .setIncludeFolders(true)
-        .setMimeTypes(IMAGE_MIME_TYPES)
-
-      const builder = new pickerApi.PickerBuilder()
-        .addView(view)
-        .setOAuthToken(accessToken)
-        .setDeveloperKey(env.googleApiKey)
-        .setTitle('Select a photo')
-        .setOrigin(window.location.origin)
-        .setMaxItems(1)
-        .setCallback((data) => {
-          const action = data[pickerApi.Response.ACTION]
-          if (action === pickerApi.Action.CANCEL) {
-            finish(() => resolve(null))
-            return
-          }
-          if (action !== pickerApi.Action.PICKED) return
-          const documents = data[pickerApi.Response.DOCUMENTS]
-          const doc = Array.isArray(documents) ? documents[0] : undefined
-          if (!doc || typeof doc !== 'object') {
-            finish(() => reject(new Error('No image was selected')))
-            return
-          }
-          const record = doc as Record<string, unknown>
-          const id = String(record[pickerApi.Document.ID] ?? '')
-          if (!id) {
-            finish(() => reject(new Error('Google Drive did not return a file id')))
-            return
-          }
-          finish(() => {
-            void enableAnyoneWithLink(id, accessToken)
-              .then((linkShareEnabled) => {
-                resolve({
-                  id,
-                  name: String(record[pickerApi.Document.NAME] ?? 'Selected image'),
-                  url: toDriveShareUrl(id),
-                  linkShareEnabled,
-                })
-              })
-              .catch(() => {
-                resolve({
-                  id,
-                  name: String(record[pickerApi.Document.NAME] ?? 'Selected image'),
-                  url: toDriveShareUrl(id),
-                  linkShareEnabled: false,
-                })
-              })
-          })
-        })
-
-      if (env.googleAppId) {
-        builder.setAppId(env.googleAppId)
-      }
-
-      builder.build().setVisible(true)
-      releaseLayer = watchGooglePickerLayer()
-    } catch (error) {
-      releaseLayer?.()
-      logger.error('Failed to open Google Drive picker', error)
-      reject(error instanceof Error ? error : new Error('Failed to open Google Drive'))
-    }
-  })
 }

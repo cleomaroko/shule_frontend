@@ -22,6 +22,7 @@ export const paths = {
   suppliers: '/suppliers',
   visitors: '/visitors',
   admissions: '/admissions',
+  reports: '/reports',
   system: '/system',
 } as const
 

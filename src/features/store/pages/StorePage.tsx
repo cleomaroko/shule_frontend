@@ -1,5 +1,5 @@
-import { Pencil, Plus, Trash2 } from 'lucide-react'
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { History, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { toUserMessage } from '@/api/errors'
@@ -17,6 +17,8 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { StoreItemDialog } from '@/features/store/components/StoreItemDialog'
 import { StoreLogDialog } from '@/features/store/components/StoreLogDialog'
+import { ItemMovementsDialog } from '@/features/store/components/ItemMovementsDialog'
+import { WeeklyStockReportPanel } from '@/features/store/components/WeeklyStockReportPanel'
 import { useAcademicTermList } from '@/features/academic/hooks/useAcademic'
 import { useLearnerList } from '@/features/learners/hooks/useLearners'
 import { useCampuses, useDepartments } from '@/features/lookups/useLookups'
@@ -28,12 +30,6 @@ import {
   useStoreLogs,
   useStoreMutations,
 } from '@/features/store/hooks/useStore'
-import {
-  computeStoreWeekReport,
-  datesInRange,
-  mondayToFriday,
-  weekdayLabel,
-} from '@/features/store/lib/store-report'
 import type {
   InventoryCategory,
   StockLog,
@@ -43,12 +39,10 @@ import type {
   StoreItemWritePayload,
   StoreLocation,
   StoreLocationWritePayload,
-  StoreReportRow,
   TransactionType,
 } from '@/features/store/types/store.types'
 import {
   TRANSACTION_TYPES,
-  defaultTermId,
   formatStoreQty,
   issuedToLabel,
   storeIsMain,
@@ -115,7 +109,7 @@ export function StorePage(): ReactNode {
           <TransactionsPanel canWrite={canWrite} />
         </TabsContent>
         <TabsContent value="report">
-          <ReportPanel />
+          <WeeklyStockReportPanel />
         </TabsContent>
       </Tabs>
     </div>
@@ -391,6 +385,7 @@ function ItemsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<StoreItem | null>(null)
+  const [historyItem, setHistoryItem] = useState<StoreItem | null>(null)
   const [pendingDelete, setPendingDelete] = useState<StoreItem | null>(null)
 
   const units = uniqueUnits(list.data ?? [])
@@ -435,26 +430,32 @@ function ItemsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
     {
       id: 'actions',
       header: '',
-      className: 'w-24 text-right',
-      cell: (row) =>
-        canWrite ? (
-          <span className="flex justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={`Edit ${row.name}`}
-              onClick={() => {
-                setEditing(row)
-                setOpen(true)
-              }}
-            >
-              <Pencil aria-hidden="true" />
-            </Button>
-            <Button variant="ghost" size="icon" aria-label={`Delete ${row.name}`} onClick={() => setPendingDelete(row)}>
-              <Trash2 aria-hidden="true" />
-            </Button>
-          </span>
-        ) : null,
+      className: 'w-32 text-right',
+      cell: (row) => (
+        <span className="flex justify-end gap-1">
+          <Button variant="ghost" size="icon" aria-label={`History for ${row.name}`} onClick={() => setHistoryItem(row)}>
+            <History aria-hidden="true" />
+          </Button>
+          {canWrite ? (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Edit ${row.name}`}
+                onClick={() => {
+                  setEditing(row)
+                  setOpen(true)
+                }}
+              >
+                <Pencil aria-hidden="true" />
+              </Button>
+              <Button variant="ghost" size="icon" aria-label={`Delete ${row.name}`} onClick={() => setPendingDelete(row)}>
+                <Trash2 aria-hidden="true" />
+              </Button>
+            </>
+          ) : null}
+        </span>
+      ),
     },
   ]
 
@@ -534,6 +535,7 @@ function ItemsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         isSaving={createItem.isPending || updateItem.isPending}
         onSubmit={handleSubmit}
       />
+      <ItemMovementsDialog item={historyItem} onOpenChange={(next) => !next && setHistoryItem(null)} />
       <ConfirmDialog
         open={pendingDelete !== null}
         onOpenChange={(next) => {
@@ -781,146 +783,6 @@ function TransactionsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
           deleteLog.mutate(pendingDelete.id, { onSuccess: () => setPendingDelete(null) })
         }}
       />
-    </div>
-  )
-}
-
-function ReportPanel(): ReactNode {
-  const items = useStoreItems()
-  const logs = useStoreLogs()
-  const stores = useStoreLocations()
-  const termList = useAcademicTermList()
-  const week = mondayToFriday()
-  const [storeId, setStoreId] = useState('')
-  const [termId, setTermId] = useState('')
-  const [startDate, setStartDate] = useState(week.startDate)
-  const [endDate, setEndDate] = useState(week.endDate)
-  const [hideZero, setHideZero] = useState(false)
-  const terms = termList.data ?? []
-
-  useEffect(() => {
-    if (!storeId && stores.data?.[0]) setStoreId(String(stores.data[0].id))
-  }, [storeId, stores.data])
-
-  useEffect(() => {
-    if (termId) return
-    const next = defaultTermId(termList.data ?? [])
-    if (next) setTermId(next)
-  }, [termId, termList.data])
-
-  const rows = useMemo(() => {
-    const store = Number(storeId)
-    const term = Number(termId)
-    if (!store || !term || !startDate || !endDate) return []
-    return computeStoreWeekReport({
-      items: items.data ?? [],
-      logs: logs.data ?? [],
-      storeId: store,
-      termId: term,
-      startDate,
-      endDate,
-    })
-  }, [endDate, items.data, logs.data, startDate, storeId, termId])
-
-  const visible = hideZero
-    ? rows.filter(
-        (row) =>
-          row.balanceBf !== 0 ||
-          row.additionalStock !== 0 ||
-          row.weekRelease !== 0 ||
-          Object.values(row.byDate).some((value) => value !== 0),
-      )
-    : rows
-
-  const days = datesInRange(startDate, endDate)
-  const ready = Boolean(Number(storeId) && Number(termId) && startDate && endDate)
-
-  const columns: Array<DataColumn<StoreReportRow>> = [
-    {
-      id: 'item',
-      header: 'Item',
-      cell: (row) => (
-        <span>
-          <span className="block font-medium">{row.itemName}</span>
-          <span className="type-caption text-muted-foreground">{displayValue(row.unitName)}</span>
-        </span>
-      ),
-    },
-    { id: 'bf', header: 'Balance B/F', cell: (row) => formatStoreQty(row.balanceBf) },
-    { id: 'in', header: 'Received', cell: (row) => formatStoreQty(row.additionalStock) },
-    { id: 'total', header: 'Total stock', cell: (row) => formatStoreQty(row.totalStock) },
-    ...days.map((day) => ({
-      id: day,
-      header: weekdayLabel(day),
-      cell: (row: StoreReportRow) => formatStoreQty(row.byDate[day] ?? 0),
-    })),
-    { id: 'release', header: 'Week release', cell: (row) => formatStoreQty(row.weekRelease) },
-    { id: 'close', header: 'Closing', cell: (row) => formatStoreQty(row.closingBalance) },
-  ]
-
-  if (items.isError) {
-    return <ErrorState message={toUserMessage(items.error)} onRetry={() => void items.refetch()} />
-  }
-  if (logs.isError) {
-    return <ErrorState message={toUserMessage(logs.error)} onRetry={() => void logs.refetch()} />
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <p className="type-caption text-muted-foreground">
-        Built from all stock logs. Incoming transfers count as received. Consumption is mapped by date. The
-        stock-take endpoint only returns source-store rows, so the full log list is used here.
-      </p>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SelectField
-          label="Store"
-          value={storeId}
-          onChange={setStoreId}
-          options={(stores.data ?? []).map((store) => ({ value: String(store.id), label: store.name }))}
-          placeholder="Select store"
-          allowEmpty={false}
-        />
-        <SelectField
-          label="Term"
-          value={termId}
-          onChange={setTermId}
-          options={terms.map((term) => ({ value: String(term.id), label: termLabel(term) }))}
-          placeholder={termList.isLoading ? 'Loading terms…' : 'Select term'}
-          allowEmpty={false}
-          disabled={termList.isLoading}
-        />
-        <TextField label="Week start" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
-        <TextField label="Week end" type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <FilterChip label="All items" active={!hideZero} onClick={() => setHideZero(false)} />
-        <FilterChip label="With movement" active={hideZero} onClick={() => setHideZero(true)} />
-      </div>
-      {!ready ? (
-        <EmptyState title="Choose store and term" description="Select a store and term to build the weekly sheet." />
-      ) : visible.length === 0 && !items.isLoading && !logs.isLoading ? (
-        <EmptyState title="No rows to show" description="Add items or record stock for this store." />
-      ) : (
-        <DataTable
-          columns={columns}
-          rows={visible}
-          getRowId={(row) => row.itemId}
-          isLoading={items.isLoading || logs.isLoading}
-          page={1}
-          pageSize={Math.max(visible.length, 1)}
-          total={visible.length}
-          onPageChange={() => undefined}
-          mobileCard={(row) => (
-            <div>
-              <p className="type-heading">{row.itemName}</p>
-              <p className="type-caption text-muted-foreground">
-                B/F {formatStoreQty(row.balanceBf)} · In {formatStoreQty(row.additionalStock)} · Out{' '}
-                {formatStoreQty(row.weekRelease)} · Close {formatStoreQty(row.closingBalance)}
-              </p>
-            </div>
-          )}
-        />
-      )}
     </div>
   )
 }

@@ -47,20 +47,30 @@ function inRange(date: string | null | undefined, startDate: string, endDate: st
   return Boolean(date) && date! >= startDate && date! <= endDate
 }
 
-function isIncomingTransfer(log: StockLog, storeId: number): boolean {
-  return log.type === 'TRANSFER' && log.destinationStore?.id === storeId
+/** Supplier receipt into this store. */
+export function isReceivedLog(log: StockLog, storeId: number): boolean {
+  if (log.type === 'ADDITION' && log.sourceStore?.id === storeId) return true
+  if (log.type === 'TRANSFER' && log.destinationStore?.id === storeId) return true
+  return false
 }
 
-function isOutgoingFromStore(log: StockLog, storeId: number): boolean {
-  return log.sourceStore?.id === storeId
+/** Consumption or transfer leaving this store. */
+export function isReleasedLog(log: StockLog, storeId: number): boolean {
+  if (log.type === 'CONSUMPTION' && log.sourceStore?.id === storeId) return true
+  if (log.type === 'TRANSFER' && log.sourceStore?.id === storeId) return true
+  return false
+}
+
+function involvesStore(log: StockLog, storeId: number): boolean {
+  return log.sourceStore?.id === storeId || log.destinationStore?.id === storeId
 }
 
 /**
- * Weekly sheet for a store.
+ * Weekly sheet from `GET /api/store/stock-take`.
  *
- * Balance B/F and consumption use this store as `sourceStore`. Additional stock
- * is incoming `TRANSFER` where this store is `destinationStore`, plus `ADDITION`
- * recorded against this store.
+ * Received = ADDITION + incoming TRANSFER (this store is destination).
+ * Released = CONSUMPTION + outgoing TRANSFER (this store is source).
+ * Daily columns are consumption only. Week release includes outgoing transfers.
  */
 export function computeStoreWeekReport(args: {
   items: StoreItem[]
@@ -73,12 +83,9 @@ export function computeStoreWeekReport(args: {
   const days = datesInRange(args.startDate, args.endDate)
 
   return args.items.map((item) => {
-    const itemLogs = args.logs.filter((log) => log.item?.id === item.id)
-    const storeLogs = itemLogs.filter(
-      (log) => isOutgoingFromStore(log, args.storeId) || isIncomingTransfer(log, args.storeId),
-    )
+    const storeLogs = args.logs.filter((log) => log.item?.id === item.id && involvesStore(log, args.storeId))
     const termBf = storeLogs.find(
-      (log) => log.type === 'BALANCE_BF' && log.term?.id === args.termId && isOutgoingFromStore(log, args.storeId),
+      (log) => log.type === 'BALANCE_BF' && log.term?.id === args.termId && log.sourceStore?.id === args.storeId,
     )
 
     let balanceBf = 0
@@ -89,40 +96,34 @@ export function computeStoreWeekReport(args: {
         if (log.id === termBf.id) continue
         if (!isBefore(log.logDate, args.startDate)) continue
         if (bfDate && !isOnOrAfter(log.logDate, bfDate)) continue
-        if (log.type === 'ADDITION' && isOutgoingFromStore(log, args.storeId)) balanceBf += logQuantity(log)
-        if (isIncomingTransfer(log, args.storeId)) balanceBf += logQuantity(log)
-        if (log.type === 'CONSUMPTION' && isOutgoingFromStore(log, args.storeId)) balanceBf -= logQuantity(log)
-        if (log.type === 'TRANSFER' && isOutgoingFromStore(log, args.storeId)) balanceBf -= logQuantity(log)
+        if (isReceivedLog(log, args.storeId)) balanceBf += logQuantity(log)
+        if (isReleasedLog(log, args.storeId)) balanceBf -= logQuantity(log)
       }
     } else {
       for (const log of storeLogs) {
         if (!isBefore(log.logDate, args.startDate)) continue
-        if (log.type === 'BALANCE_BF' && isOutgoingFromStore(log, args.storeId)) balanceBf += logQuantity(log)
-        if (log.type === 'ADDITION' && isOutgoingFromStore(log, args.storeId)) balanceBf += logQuantity(log)
-        if (isIncomingTransfer(log, args.storeId)) balanceBf += logQuantity(log)
-        if (log.type === 'CONSUMPTION' && isOutgoingFromStore(log, args.storeId)) balanceBf -= logQuantity(log)
-        if (log.type === 'TRANSFER' && isOutgoingFromStore(log, args.storeId)) balanceBf -= logQuantity(log)
+        if (log.type === 'BALANCE_BF' && log.sourceStore?.id === args.storeId) balanceBf += logQuantity(log)
+        if (isReceivedLog(log, args.storeId)) balanceBf += logQuantity(log)
+        if (isReleasedLog(log, args.storeId)) balanceBf -= logQuantity(log)
       }
     }
 
     const weekLogs = storeLogs.filter((log) => inRange(log.logDate, args.startDate, args.endDate))
     const additionalStock = weekLogs
-      .filter(
-        (log) =>
-          isIncomingTransfer(log, args.storeId) ||
-          (log.type === 'ADDITION' && isOutgoingFromStore(log, args.storeId)),
-      )
+      .filter((log) => isReceivedLog(log, args.storeId))
       .reduce((sum, log) => sum + logQuantity(log), 0)
 
     const byDate: Record<string, number> = {}
     for (const day of days) byDate[day] = 0
     for (const log of weekLogs) {
-      if (log.type !== 'CONSUMPTION' || !isOutgoingFromStore(log, args.storeId)) continue
+      if (log.type !== 'CONSUMPTION' || log.sourceStore?.id !== args.storeId) continue
       if (!log.logDate || !(log.logDate in byDate)) continue
       byDate[log.logDate] = (byDate[log.logDate] ?? 0) + logQuantity(log)
     }
 
-    const weekRelease = days.reduce((sum, day) => sum + (byDate[day] ?? 0), 0)
+    const weekRelease = weekLogs
+      .filter((log) => isReleasedLog(log, args.storeId))
+      .reduce((sum, log) => sum + logQuantity(log), 0)
     const totalStock = balanceBf + additionalStock
 
     return {

@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   BookOpen,
   Building2,
   Bus,
@@ -57,6 +58,9 @@ export const navigation: NavSection[] = [
   },
   {
     title: "Admin",
-    items: [{ label: "System", to: paths.system, icon: Settings2 }],
+    items: [
+      { label: "System", to: paths.system, icon: Settings2 },
+      { label: "Reports", to: paths.reports, icon: BarChart3 },
+    ],
   },
 ];

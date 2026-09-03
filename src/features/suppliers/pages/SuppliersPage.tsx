@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
@@ -8,6 +8,7 @@ import { useAuth } from '@/auth/useAuth'
 import { DataTable, type DataColumn } from '@/components/data/DataTable'
 import { NamedLookupManager } from '@/components/data/NamedLookupManager'
 import { SearchField } from '@/components/data/FilterBar'
+import { ConfirmDialog } from '@/components/feedback/ConfirmDialog'
 import { EmptyState, ErrorState, PageHeader } from '@/components/feedback/PageStates'
 import { SelectField } from '@/components/forms/SelectField'
 import { SwitchField } from '@/components/forms/SwitchField'
@@ -34,6 +35,7 @@ import {
 import type {
   Supplier,
   SupplierContract,
+  SupplierContractUpdatePayload,
   SupplierContractWritePayload,
   SupplierWritePayload,
 } from '@/features/suppliers/types/supplier.types'
@@ -85,12 +87,13 @@ function DirectoryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const list = useSupplierList()
   const types = useSupplierTypeList()
   const banks = useBanks()
-  const { createSupplier, updateSupplier } = useSupplierMutations()
+  const { createSupplier, updateSupplier, deleteSupplier } = useSupplierMutations()
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Supplier | null>(null)
   const [contractsFor, setContractsFor] = useState<Supplier | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<Supplier | null>(null)
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -127,23 +130,28 @@ function DirectoryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
     {
       id: 'actions',
       header: '',
-      className: 'w-40 text-right',
+      className: 'w-52 text-right',
       cell: (row) => (
         <span className="flex justify-end gap-1">
           <Button variant="ghost" size="sm" onClick={() => setContractsFor(row)}>
             Contracts
           </Button>
           {canWrite ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setEditing(row)
-                setOpen(true)
-              }}
-            >
-              Edit
-            </Button>
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setEditing(row)
+                  setOpen(true)
+                }}
+              >
+                Edit
+              </Button>
+              <Button variant="ghost" size="icon" aria-label={`Delete ${row.name}`} onClick={() => setPendingDelete(row)}>
+                <Trash2 aria-hidden="true" />
+              </Button>
+            </>
           ) : null}
         </span>
       ),
@@ -216,13 +224,32 @@ function DirectoryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         }}
       />
       <ContractsDialog supplier={contractsFor} onOpenChange={(next) => !next && setContractsFor(null)} canWrite={canWrite} />
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(next) => {
+          if (!next) setPendingDelete(null)
+        }}
+        title="Delete supplier?"
+        description={
+          pendingDelete
+            ? `This will remove ${pendingDelete.name}. Asset history keeps the supplier name snapshot.`
+            : ''
+        }
+        confirmLabel="Delete"
+        loadingLabel="Deleting"
+        isConfirming={deleteSupplier.isPending}
+        onConfirm={() => {
+          if (!pendingDelete) return
+          deleteSupplier.mutate(pendingDelete.id, { onSuccess: () => setPendingDelete(null) })
+        }}
+      />
     </div>
   )
 }
 
 function TypesPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const list = useSupplierTypeList()
-  const { createType } = useSupplierMutations()
+  const { createType, updateType, deleteType } = useSupplierMutations()
   return (
     <NamedLookupManager
       title="Business type"
@@ -235,8 +262,13 @@ function TypesPanel({ canWrite }: { canWrite: boolean }): ReactNode {
       errorMessage={toUserMessage(list.error)}
       onRetry={() => void list.refetch()}
       canWrite={canWrite}
-      isSaving={createType.isPending}
+      canUpdate={canWrite}
+      canDelete={canWrite}
+      isSaving={createType.isPending || updateType.isPending}
+      isDeleting={deleteType.isPending}
       onCreate={(name) => createType.mutate({ name })}
+      onUpdate={(id, name) => updateType.mutate({ id, name })}
+      onDelete={(id) => deleteType.mutate(id)}
     />
   )
 }
@@ -397,10 +429,17 @@ function ContractsDialog({
   canWrite: boolean
 }): ReactNode {
   const list = useSupplierContractList(supplier?.id ?? null)
-  const { createContract, updateContractStatus } = useSupplierMutations()
+  const { createContract, updateContract, updateContractStatus, deleteContract } = useSupplierMutations()
   const [description, setDescription] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [comments, setComments] = useState('')
+  const [editing, setEditing] = useState<SupplierContract | null>(null)
+  const [editDescription, setEditDescription] = useState('')
+  const [editStart, setEditStart] = useState('')
+  const [editEnd, setEditEnd] = useState('')
+  const [editComments, setEditComments] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<SupplierContract | null>(null)
   const today = todayIso()
 
   const handleAdd = (event: FormEvent) => {
@@ -413,21 +452,58 @@ function ContractsDialog({
       endDate,
       status: 'ACTIVE',
     }
+    const trimmedComments = comments.trim()
+    if (trimmedComments) body.comments = trimmedComments
     createContract.mutate(body, {
       onSuccess: () => {
         setDescription('')
         setStartDate('')
         setEndDate('')
+        setComments('')
       },
     })
   }
 
+  const beginEdit = (contract: SupplierContract) => {
+    setEditing(contract)
+    setEditDescription(contract.description ?? '')
+    setEditStart(contract.startDate ?? '')
+    setEditEnd(contract.endDate ?? '')
+    setEditComments(contract.comments ?? '')
+  }
+
+  const handleUpdate = (event: FormEvent) => {
+    event.preventDefault()
+    if (!editing || !editDescription.trim() || !editStart || !editEnd) return
+    const body: SupplierContractUpdatePayload = {
+      description: editDescription.trim(),
+      startDate: editStart,
+      endDate: editEnd,
+      status: editing.status ?? 'ACTIVE',
+      comments: editComments.trim() || null,
+    }
+    updateContract.mutate(
+      { id: editing.id, body },
+      { onSuccess: () => setEditing(null) },
+    )
+  }
+
   return (
-    <Dialog open={supplier !== null} onOpenChange={onOpenChange}>
+    <>
+    <Dialog
+      open={supplier !== null}
+      onOpenChange={(next) => {
+        if (!next) {
+          setEditing(null)
+          setPendingDelete(null)
+        }
+        onOpenChange(next)
+      }}
+    >
       <DialogContent className="flex max-h-[92dvh] w-[calc(100%-1rem)] max-w-lg flex-col overflow-hidden p-0">
         <DialogHeader className="px-5 pt-6 sm:px-6">
           <DialogTitle>Contracts · {supplier?.name}</DialogTitle>
-          <DialogDescription>Expired end dates are highlighted. Status can be changed with PATCH.</DialogDescription>
+          <DialogDescription>Expired end dates are highlighted. Dates and comments can be edited.</DialogDescription>
         </DialogHeader>
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4 sm:px-6">
           {(list.data ?? []).length === 0 && !list.isLoading ? (
@@ -447,6 +523,9 @@ function ContractsDialog({
                         <p className="type-caption text-muted-foreground">
                           {formatDate(contract.startDate)} – {formatDate(contract.endDate)}
                         </p>
+                        {contract.comments ? (
+                          <p className="mt-1 type-caption text-muted-foreground">{contract.comments}</p>
+                        ) : null}
                       </div>
                       <Badge variant={expired ? 'destructive' : 'success'}>{expired ? 'Expired' : contract.status ?? 'ACTIVE'}</Badge>
                     </div>
@@ -463,6 +542,14 @@ function ContractsDialog({
                             {status}
                           </Button>
                         ))}
+                        <Button type="button" size="sm" variant="ghost" onClick={() => beginEdit(contract)}>
+                          <Pencil aria-hidden="true" />
+                          Edit
+                        </Button>
+                        <Button type="button" size="sm" variant="ghost" onClick={() => setPendingDelete(contract)}>
+                          <Trash2 aria-hidden="true" />
+                          Delete
+                        </Button>
                       </div>
                     ) : null}
                   </li>
@@ -470,7 +557,34 @@ function ContractsDialog({
               })}
             </ul>
           )}
-          {canWrite ? (
+          {canWrite && editing ? (
+            <form onSubmit={handleUpdate} className="flex flex-col gap-3 rounded-xl border border-border p-3">
+              <p className="type-caption font-medium">Edit contract</p>
+              <TextField
+                label="Description"
+                value={editDescription}
+                onChange={(event) => setEditDescription(event.target.value)}
+                required
+              />
+              <TextField label="Start" type="date" value={editStart} onChange={(event) => setEditStart(event.target.value)} required />
+              <TextField label="End" type="date" value={editEnd} onChange={(event) => setEditEnd(event.target.value)} required />
+              <TextareaField
+                label="Comments"
+                value={editComments}
+                onChange={(event) => setEditComments(event.target.value)}
+                rows={2}
+              />
+              <div className="flex gap-2">
+                <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit" isLoading={updateContract.isPending} loadingLabel="Saving">
+                  Save contract
+                </Button>
+              </div>
+            </form>
+          ) : null}
+          {canWrite && !editing ? (
             <form onSubmit={handleAdd} className="flex flex-col gap-3 border-t border-border pt-4">
               <TextField
                 label="Description"
@@ -480,6 +594,12 @@ function ContractsDialog({
               />
               <TextField label="Start" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} required />
               <TextField label="End" type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} required />
+              <TextareaField
+                label="Comments"
+                value={comments}
+                onChange={(event) => setComments(event.target.value)}
+                rows={2}
+              />
               <Button type="submit" isLoading={createContract.isPending} loadingLabel="Adding">
                 Add contract
               </Button>
@@ -488,5 +608,21 @@ function ContractsDialog({
         </div>
       </DialogContent>
     </Dialog>
+    <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(next) => {
+          if (!next) setPendingDelete(null)
+        }}
+        title="Delete contract?"
+        description={pendingDelete ? `This will remove ${pendingDelete.description ?? 'this contract'}.` : ''}
+        confirmLabel="Delete"
+        loadingLabel="Deleting"
+        isConfirming={deleteContract.isPending}
+        onConfirm={() => {
+          if (!pendingDelete) return
+          deleteContract.mutate(pendingDelete.id, { onSuccess: () => setPendingDelete(null) })
+        }}
+      />
+    </>
   )
 }

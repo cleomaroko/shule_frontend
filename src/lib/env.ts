@@ -30,16 +30,11 @@ export const env = {
    */
   routerBasename,
   /**
-   * Google Cloud OAuth web client ID for the Drive Picker.
-   * Public by design (embedded in the bundle).
+   * Google Apps Script web-app URL that saves photos into the school Drive.
+   * Same pattern as the careers form (`VITE_GOOGLE_JOBS_URL`): the browser posts
+   * the file; Java only stores the returned share link. Public — not a secret.
    */
-  googleClientId: readString(import.meta.env.VITE_GOOGLE_CLIENT_ID, ''),
-  /**
-   * Google Cloud API key with the Picker API enabled. Public by design.
-   */
-  googleApiKey: readString(import.meta.env.VITE_GOOGLE_API_KEY, ''),
-  /** Optional numeric Cloud project number used as the Picker app id. */
-  googleAppId: readString(import.meta.env.VITE_GOOGLE_APP_ID, ''),
+  googleDriveUploadUrl: readString(import.meta.env.VITE_GOOGLE_DRIVE_UPLOAD_URL, ''),
   isDevelopment: import.meta.env.DEV,
   isProduction: import.meta.env.PROD,
 } as const

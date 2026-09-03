@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 
-import { GoogleDrivePhotoField } from '@/components/forms/GoogleDrivePhotoField'
+import {
+  GoogleDrivePhotoField,
+  type GoogleDrivePhotoFieldHandle,
+} from '@/components/forms/GoogleDrivePhotoField'
 import { SelectField } from '@/components/forms/SelectField'
 import { TextField } from '@/components/forms/TextField'
 import { Button } from '@/components/ui/button'
@@ -145,14 +148,13 @@ export function StoreLogDialog({
   onUpdate,
 }: StoreLogDialogProps): ReactNode {
   const [form, setForm] = useState<LogFormState>(() => emptyForm(items, stores, terms))
-  const [pickerOpen, setPickerOpen] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const photoRef = useRef<GoogleDrivePhotoFieldHandle>(null)
   const isEdit = editing !== null
+  const busy = isSaving || uploadingPhoto
 
   useEffect(() => {
-    if (!open) {
-      setPickerOpen(false)
-      return
-    }
+    if (!open) return
     setForm(editing ? formFromLog(editing) : emptyForm(items, stores, terms))
   }, [editing, items, open, stores, terms])
 
@@ -165,17 +167,26 @@ export function StoreLogDialog({
     [terms],
   )
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
+    if (busy) return
     const quantity = Number(form.quantity)
     if (!Number.isFinite(quantity) || !form.logDate) return
 
     if (isEdit) {
-      onUpdate({
-        quantity,
-        logDate: form.logDate,
-        receiptLink: form.receiptLink.trim() || null,
-      })
+      setUploadingPhoto(true)
+      try {
+        const url = (await photoRef.current?.commit()) ?? form.receiptLink
+        onUpdate({
+          quantity,
+          logDate: form.logDate,
+          receiptLink: url.trim() || null,
+        })
+      } catch {
+        return
+      } finally {
+        setUploadingPhoto(false)
+      }
       return
     }
 
@@ -186,32 +197,40 @@ export function StoreLogDialog({
     if (form.type === 'TRANSFER' && !Number(form.destinationStoreId)) return
     if (form.type === 'ADDITION' && !Number(form.supplierId)) return
 
-    const body: StockLogCreatePayload = {
-      item: { id: itemId },
-      sourceStore: { id: sourceStoreId },
-      quantity,
-      type: form.type,
-      logDate: form.logDate,
+    setUploadingPhoto(true)
+    try {
+      const url = (await photoRef.current?.commit()) ?? form.receiptLink
+      const body: StockLogCreatePayload = {
+        item: { id: itemId },
+        sourceStore: { id: sourceStoreId },
+        quantity,
+        type: form.type,
+        logDate: form.logDate,
+      }
+      const termId = Number(form.termId)
+      if (termId) body.term = { id: termId }
+      const destinationId = Number(form.destinationStoreId)
+      if (form.type === 'TRANSFER' && destinationId) body.destinationStore = { id: destinationId }
+      const supplierId = Number(form.supplierId)
+      if (form.type === 'ADDITION' && supplierId) body.supplier = { id: supplierId }
+      if (form.type === 'CONSUMPTION' && form.issuedToKind !== 'none') {
+        const issuedId = Number(form.issuedToId)
+        if (issuedId && form.issuedToKind === 'staff') body.issuedToStaff = { id: issuedId }
+        if (issuedId && form.issuedToKind === 'learner') body.issuedToLearner = { id: issuedId }
+        if (issuedId && form.issuedToKind === 'department') body.issuedToDept = { id: issuedId }
+      }
+      const receipt = url.trim()
+      if (receipt) body.receiptLink = receipt
+      onCreate(body)
+    } catch {
+      return
+    } finally {
+      setUploadingPhoto(false)
     }
-    const termId = Number(form.termId)
-    if (termId) body.term = { id: termId }
-    const destinationId = Number(form.destinationStoreId)
-    if (form.type === 'TRANSFER' && destinationId) body.destinationStore = { id: destinationId }
-    const supplierId = Number(form.supplierId)
-    if (form.type === 'ADDITION' && supplierId) body.supplier = { id: supplierId }
-    if (form.type === 'CONSUMPTION' && form.issuedToKind !== 'none') {
-      const issuedId = Number(form.issuedToId)
-      if (issuedId && form.issuedToKind === 'staff') body.issuedToStaff = { id: issuedId }
-      if (issuedId && form.issuedToKind === 'learner') body.issuedToLearner = { id: issuedId }
-      if (issuedId && form.issuedToKind === 'department') body.issuedToDept = { id: issuedId }
-    }
-    const receipt = form.receiptLink.trim()
-    if (receipt) body.receiptLink = receipt
-    onCreate(body)
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} modal={!pickerOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[92dvh] w-[calc(100%-1rem)] max-w-lg flex-col overflow-hidden p-0">
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
           <DialogHeader className="px-5 pt-6 sm:px-6">
@@ -412,11 +431,13 @@ export function StoreLogDialog({
               required
             />
             <GoogleDrivePhotoField
+              key={open ? `receipt-${editing?.id ?? 'new'}` : 'receipt-closed'}
+              ref={photoRef}
               label="Receipt"
               value={form.receiptLink}
               onChange={(url) => setField('receiptLink', url)}
-              onPickingChange={setPickerOpen}
-              hint="Optional. Typically used for supplier additions."
+              hint="Optional. Typically used for supplier additions. Uploaded when you save."
+              disabled={busy}
             />
           </div>
 
@@ -424,7 +445,7 @@ export function StoreLogDialog({
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" isLoading={isSaving} loadingLabel="Saving">
+            <Button type="submit" isLoading={busy} loadingLabel={uploadingPhoto ? 'Uploading photo' : 'Saving'}>
               {isEdit ? 'Save correction' : 'Record transaction'}
             </Button>
           </DialogFooter>

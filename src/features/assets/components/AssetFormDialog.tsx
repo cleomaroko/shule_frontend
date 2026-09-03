@@ -1,11 +1,14 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 
 import { FormSection } from '@/components/forms/FormSection'
 import { SelectField } from '@/components/forms/SelectField'
 import { SwitchField } from '@/components/forms/SwitchField'
 import { TextareaField } from '@/components/forms/TextareaField'
 import { TextField } from '@/components/forms/TextField'
-import { GoogleDrivePhotoField } from '@/components/forms/GoogleDrivePhotoField'
+import {
+  GoogleDrivePhotoField,
+  type GoogleDrivePhotoFieldHandle,
+} from '@/components/forms/GoogleDrivePhotoField'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -188,14 +191,13 @@ export function AssetFormDialog({
   onSubmit,
 }: AssetFormDialogProps): ReactNode {
   const [form, setForm] = useState<AssetFormState>(emptyForm)
-  const [pickerOpen, setPickerOpen] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const photoRef = useRef<GoogleDrivePhotoFieldHandle>(null)
   const isEdit = editing !== null
+  const busy = isSaving || uploadingPhoto
 
   useEffect(() => {
-    if (!open) {
-      setPickerOpen(false)
-      return
-    }
+    if (!open) return
     setForm(editing ? formFromAsset(editing) : emptyForm())
   }, [open, editing])
 
@@ -203,13 +205,22 @@ export function AssetFormDialog({
     setForm((current) => ({ ...current, [key]: value }))
   }
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    onSubmit(buildPayload(form, !isEdit))
+    if (busy) return
+    setUploadingPhoto(true)
+    try {
+      const url = (await photoRef.current?.commit()) ?? form.googleDrivePhotoLink
+      onSubmit(buildPayload({ ...form, googleDrivePhotoLink: url }, !isEdit))
+    } catch {
+      return
+    } finally {
+      setUploadingPhoto(false)
+    }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} modal={!pickerOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[92dvh] w-[calc(100%-1rem)] max-w-2xl flex-col overflow-hidden p-0">
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
           <DialogHeader className="px-5 pt-6 sm:px-6">
@@ -380,9 +391,11 @@ export function AssetFormDialog({
 
               <FormSection title="Notes" className="shadow-none">
                 <GoogleDrivePhotoField
+                  key={open ? `asset-${editing?.id ?? 'new'}` : 'asset-closed'}
+                  ref={photoRef}
                   value={form.googleDrivePhotoLink}
                   onChange={(url) => setField('googleDrivePhotoLink', url)}
-                  onPickingChange={setPickerOpen}
+                  disabled={busy}
                   containerClassName="sm:col-span-2"
                 />
                 <TextareaField
@@ -400,7 +413,7 @@ export function AssetFormDialog({
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" isLoading={isSaving} loadingLabel="Saving">
+            <Button type="submit" isLoading={busy} loadingLabel={uploadingPhoto ? 'Uploading photo' : 'Saving'}>
               {isEdit ? 'Save changes' : 'Register asset'}
             </Button>
           </DialogFooter>

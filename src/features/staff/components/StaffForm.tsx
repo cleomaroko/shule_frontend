@@ -1,11 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm } from 'react-hook-form'
 import { Link } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { FormSection } from '@/components/forms/FormSection'
-import { GoogleDrivePhotoField } from '@/components/forms/GoogleDrivePhotoField'
+import {
+  GoogleDrivePhotoField,
+  type GoogleDrivePhotoFieldHandle,
+} from '@/components/forms/GoogleDrivePhotoField'
 import { LookupSelect } from '@/components/forms/LookupSelect'
 import { SelectField } from '@/components/forms/SelectField'
 import { toSelectOptions } from '@/components/forms/select-utils'
@@ -69,6 +72,9 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
   const ethnicities = withExistingOption(KENYAN_ETHNICITIES, staff?.ethnicity)
   const isEdit = Boolean(staff)
   const systemLists = 'System → Reference lists'
+  const photoRef = useRef<GoogleDrivePhotoFieldHandle>(null)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const busy = isSubmitting || uploadingPhoto
 
   const form = useForm<StaffFormValues>({
     resolver: zodResolver(staffFormSchema),
@@ -78,17 +84,26 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
 
   const taxExempt = form.watch('taxExempt')
 
-  const handleSubmit = form.handleSubmit((values) => {
-    if (isSubmitting) return
-    onSubmit(staffFormToPayload(values) as StaffWritePayload)
+  const handleSubmit = form.handleSubmit(async (values) => {
+    if (busy) return
+    setUploadingPhoto(true)
+    try {
+      const url = await photoRef.current?.commit()
+      const googleDrivePhotoLink = url ?? values.googleDrivePhotoLink
+      onSubmit(staffFormToPayload({ ...values, googleDrivePhotoLink }) as StaffWritePayload)
+    } catch {
+      return
+    } finally {
+      setUploadingPhoto(false)
+    }
   })
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
       <FormSection title="Personal information">
-        <TextField label="First name" autoComplete="given-name" error={form.formState.errors.firstName?.message} disabled={isSubmitting} {...form.register('firstName')} />
-        <TextField label="Second name" error={form.formState.errors.secondName?.message} disabled={isSubmitting} {...form.register('secondName')} />
-        <TextField label="Last name" autoComplete="family-name" error={form.formState.errors.lastName?.message} disabled={isSubmitting} {...form.register('lastName')} />
+        <TextField label="First name" autoComplete="given-name" error={form.formState.errors.firstName?.message} disabled={busy} {...form.register('firstName')} />
+        <TextField label="Second name" error={form.formState.errors.secondName?.message} disabled={busy} {...form.register('secondName')} />
+        <TextField label="Last name" autoComplete="family-name" error={form.formState.errors.lastName?.message} disabled={busy} {...form.register('lastName')} />
         <LookupSelect
           control={form.control}
           name="title"
@@ -97,7 +112,7 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
           isLoading={titlesQuery.isLoading}
           emptyMessage={emptyLookupMessage('titles', systemLists)}
           error={form.formState.errors.title?.message}
-          disabled={isSubmitting}
+          disabled={busy}
         />
         <LookupSelect
           control={form.control}
@@ -107,9 +122,9 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
           isLoading={gendersQuery.isLoading}
           emptyMessage={emptyLookupMessage('genders', systemLists)}
           error={form.formState.errors.gender?.message}
-          disabled={isSubmitting}
+          disabled={busy}
         />
-        <TextField label="Date of birth" type="date" error={form.formState.errors.dateOfBirth?.message} disabled={isSubmitting} {...form.register('dateOfBirth')} />
+        <TextField label="Date of birth" type="date" error={form.formState.errors.dateOfBirth?.message} disabled={busy} {...form.register('dateOfBirth')} />
         <LookupSelect
           control={form.control}
           name="maritalStatus"
@@ -118,7 +133,7 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
           isLoading={maritalQuery.isLoading}
           emptyMessage={emptyLookupMessage('marital statuses', systemLists)}
           error={form.formState.errors.maritalStatus?.message}
-          disabled={isSubmitting}
+          disabled={busy}
         />
         <LookupSelect
           control={form.control}
@@ -127,9 +142,9 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
           options={nationalities}
           fallbackToText={false}
           error={form.formState.errors.nationality?.message}
-          disabled={isSubmitting}
+          disabled={busy}
         />
-        <TextField label="National ID" error={form.formState.errors.nationalId?.message} disabled={isSubmitting} {...form.register('nationalId')} />
+        <TextField label="National ID" error={form.formState.errors.nationalId?.message} disabled={busy} {...form.register('nationalId')} />
         <LookupSelect
           control={form.control}
           name="ethnicity"
@@ -137,12 +152,12 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
           options={ethnicities}
           fallbackToText={false}
           error={form.formState.errors.ethnicity?.message}
-          disabled={isSubmitting}
+          disabled={busy}
         />
       </FormSection>
 
       <FormSection title="Contact information">
-        <TextField label="Phone" type="tel" autoComplete="tel" error={form.formState.errors.phone?.message} disabled={isSubmitting} {...form.register('phone')} />
+        <TextField label="Phone" type="tel" autoComplete="tel" error={form.formState.errors.phone?.message} disabled={busy} {...form.register('phone')} />
         <TextField
           label="Work email"
           type="email"
@@ -153,18 +168,18 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
               : 'Becomes the login username. The account is created with role ROLE_STAFF and the backend default password.'
           }
           error={form.formState.errors.workEmail?.message}
-          disabled={isSubmitting || isEdit}
+          disabled={busy || isEdit}
           {...form.register('workEmail')}
         />
-        <TextField label="Personal email" type="email" error={form.formState.errors.personalEmail?.message} disabled={isSubmitting} {...form.register('personalEmail')} />
-        <TextField label="Town" error={form.formState.errors.town?.message} disabled={isSubmitting} {...form.register('town')} />
-        <TextField label="Postal code" error={form.formState.errors.postalCode?.message} disabled={isSubmitting} {...form.register('postalCode')} />
+        <TextField label="Personal email" type="email" error={form.formState.errors.personalEmail?.message} disabled={busy} {...form.register('personalEmail')} />
+        <TextField label="Town" error={form.formState.errors.town?.message} disabled={busy} {...form.register('town')} />
+        <TextField label="Postal code" error={form.formState.errors.postalCode?.message} disabled={busy} {...form.register('postalCode')} />
       </FormSection>
 
       <FormSection title="Employment information">
-        <TextField label="Staff number" hint="Payroll number" error={form.formState.errors.staffNumber?.message} disabled={isSubmitting} {...form.register('staffNumber')} />
-        <TextField label="Date of employment" type="date" error={form.formState.errors.dateOfEmployment?.message} disabled={isSubmitting} {...form.register('dateOfEmployment')} />
-        <TextField label="Date left" type="date" error={form.formState.errors.dateLeft?.message} disabled={isSubmitting} {...form.register('dateLeft')} />
+        <TextField label="Staff number" hint="Payroll number" error={form.formState.errors.staffNumber?.message} disabled={busy} {...form.register('staffNumber')} />
+        <TextField label="Date of employment" type="date" error={form.formState.errors.dateOfEmployment?.message} disabled={busy} {...form.register('dateOfEmployment')} />
+        <TextField label="Date left" type="date" error={form.formState.errors.dateLeft?.message} disabled={busy} {...form.register('dateLeft')} />
         <LookupSelect
           control={form.control}
           name="department"
@@ -173,10 +188,10 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
           isLoading={departmentsQuery.isLoading}
           emptyMessage={emptyLookupMessage('departments', 'System → Departments')}
           error={form.formState.errors.department?.message}
-          disabled={isSubmitting}
+          disabled={busy}
         />
-        <TextField label="Profession" error={form.formState.errors.profession?.message} disabled={isSubmitting} {...form.register('profession')} />
-        <TextField label="School rank" error={form.formState.errors.schoolRank?.message} disabled={isSubmitting} {...form.register('schoolRank')} />
+        <TextField label="Profession" error={form.formState.errors.profession?.message} disabled={busy} {...form.register('profession')} />
+        <TextField label="School rank" error={form.formState.errors.schoolRank?.message} disabled={busy} {...form.register('schoolRank')} />
         <LookupSelect
           control={form.control}
           name="status"
@@ -185,7 +200,7 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
           isLoading={statusesQuery.isLoading}
           emptyMessage={emptyLookupMessage('employment statuses', systemLists)}
           error={form.formState.errors.status?.message}
-          disabled={isSubmitting}
+          disabled={busy}
         />
         <LookupSelect
           control={form.control}
@@ -196,7 +211,7 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
           emptyMessage={emptyLookupMessage('staff roles', 'System → Staff roles')}
           hint="Stored on the staff record only. New logins are always created as ROLE_STAFF; this field does not change the users table."
           error={form.formState.errors.systemRole?.message}
-          disabled={isSubmitting}
+          disabled={busy}
         />
         <LookupSelect
           control={form.control}
@@ -206,9 +221,9 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
           isLoading={campusesQuery.isLoading}
           emptyMessage={emptyLookupMessage('campuses', 'System → Campuses')}
           error={form.formState.errors.institution?.message}
-          disabled={isSubmitting}
+          disabled={busy}
         />
-        <TextField label="Supervisor" error={form.formState.errors.supervisor?.message} disabled={isSubmitting} {...form.register('supervisor')} />
+        <TextField label="Supervisor" error={form.formState.errors.supervisor?.message} disabled={busy} {...form.register('supervisor')} />
       </FormSection>
 
       <FormSection title="Financial and statutory information">
@@ -220,16 +235,16 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
           isLoading={banksQuery.isLoading}
           emptyMessage={emptyLookupMessage('banks', systemLists)}
           error={form.formState.errors.bankName?.message}
-          disabled={isSubmitting}
+          disabled={busy}
         />
-        <TextField label="Bank branch" error={form.formState.errors.bankBranch?.message} disabled={isSubmitting} {...form.register('bankBranch')} />
-        <TextField label="Bank account" error={form.formState.errors.bankAccount?.message} disabled={isSubmitting} {...form.register('bankAccount')} />
-        <TextField label="M-Pesa number" error={form.formState.errors.mpesaNumber?.message} disabled={isSubmitting} {...form.register('mpesaNumber')} />
-        <TextField label="KRA PIN" error={form.formState.errors.kraPin?.message} disabled={isSubmitting} {...form.register('kraPin')} />
-        <TextField label="NHIF number" error={form.formState.errors.nhifNumber?.message} disabled={isSubmitting} {...form.register('nhifNumber')} />
-        <TextField label="NSSF number" error={form.formState.errors.nssfNumber?.message} disabled={isSubmitting} {...form.register('nssfNumber')} />
-        <TextField label="SACCO number" error={form.formState.errors.saccoNumber?.message} disabled={isSubmitting} {...form.register('saccoNumber')} />
-        <TextField label="Pension number" error={form.formState.errors.pensionNumber?.message} disabled={isSubmitting} {...form.register('pensionNumber')} />
+        <TextField label="Bank branch" error={form.formState.errors.bankBranch?.message} disabled={busy} {...form.register('bankBranch')} />
+        <TextField label="Bank account" error={form.formState.errors.bankAccount?.message} disabled={busy} {...form.register('bankAccount')} />
+        <TextField label="M-Pesa number" error={form.formState.errors.mpesaNumber?.message} disabled={busy} {...form.register('mpesaNumber')} />
+        <TextField label="KRA PIN" error={form.formState.errors.kraPin?.message} disabled={busy} {...form.register('kraPin')} />
+        <TextField label="NHIF number" error={form.formState.errors.nhifNumber?.message} disabled={busy} {...form.register('nhifNumber')} />
+        <TextField label="NSSF number" error={form.formState.errors.nssfNumber?.message} disabled={busy} {...form.register('nssfNumber')} />
+        <TextField label="SACCO number" error={form.formState.errors.saccoNumber?.message} disabled={busy} {...form.register('saccoNumber')} />
+        <TextField label="Pension number" error={form.formState.errors.pensionNumber?.message} disabled={busy} {...form.register('pensionNumber')} />
         <Controller
           control={form.control}
           name="taxExempt"
@@ -240,7 +255,7 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
               onChange={field.onChange}
               options={toSelectOptions(YES_NO)}
               allowEmpty={false}
-              disabled={isSubmitting}
+              disabled={busy}
             />
           )}
         />
@@ -253,7 +268,7 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
             isLoading={taxReasonsQuery.isLoading}
             emptyMessage={emptyLookupMessage('tax exempt reasons', systemLists)}
             error={form.formState.errors.taxExemptReason?.message}
-            disabled={isSubmitting}
+            disabled={busy}
           />
         ) : null}
         <Controller
@@ -266,7 +281,7 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
               onChange={field.onChange}
               options={toSelectOptions(YES_NO)}
               allowEmpty={false}
-              disabled={isSubmitting}
+              disabled={busy}
             />
           )}
         />
@@ -278,10 +293,11 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
           name="googleDrivePhotoLink"
           render={({ field }) => (
             <GoogleDrivePhotoField
+              ref={photoRef}
               value={field.value}
               onChange={field.onChange}
               error={form.formState.errors.googleDrivePhotoLink?.message}
-              disabled={isSubmitting}
+              disabled={busy}
               containerClassName="sm:col-span-2"
             />
           )}
@@ -292,7 +308,7 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
         <Button asChild variant="secondary">
           <Link to={staff ? paths.staffDetail(staff.id) : paths.staff}>Cancel</Link>
         </Button>
-        <Button type="submit" isLoading={isSubmitting} loadingLabel="Saving">
+        <Button type="submit" isLoading={busy} loadingLabel={uploadingPhoto ? 'Uploading photo' : 'Saving'}>
           {submitLabel}
         </Button>
       </div>

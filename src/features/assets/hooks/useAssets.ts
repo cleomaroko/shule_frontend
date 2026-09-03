@@ -4,13 +4,20 @@ import { toast } from 'sonner'
 import { toUserMessage } from '@/api/errors'
 import { queryKeys } from '@/api/endpoints'
 import { assetsApi } from '@/features/assets/api/assets.api'
-import type { AssetWritePayload } from '@/features/assets/types/asset.types'
+import type { AssetSearchParams, AssetWritePayload } from '@/features/assets/types/asset.types'
 import { logger } from '@/lib/logger'
 
 export function useAssetList() {
   return useQuery({
     queryKey: queryKeys.assets.all,
     queryFn: assetsApi.list,
+  })
+}
+
+export function useAssetSearch(params: AssetSearchParams) {
+  return useQuery({
+    queryKey: [...queryKeys.assets.all, 'search', params] as const,
+    queryFn: () => assetsApi.search(params),
   })
 }
 
