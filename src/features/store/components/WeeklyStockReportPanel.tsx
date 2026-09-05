@@ -116,9 +116,9 @@ export function WeeklyStockReportPanel(): ReactNode {
   return (
     <div className="flex flex-col gap-4">
       <p className="type-caption text-muted-foreground">
-        Built from GET /api/store/stock-take. Received includes supplier additions and incoming transfers. Week
-        release includes consumption and stock sent to another store. Only logs tagged with the selected term are
-        included.
+        Built from GET /api/store/stock-take. Received includes supplier additions and incoming transfers that have
+        been confirmed. Pending transfers count as released from the source only. Week release includes consumption
+        and stock sent to another store. Only logs tagged with the selected term are included.
       </p>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SelectField

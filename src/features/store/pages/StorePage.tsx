@@ -1,4 +1,4 @@
-import { History, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Check, History, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { StoreItemDialog } from '@/features/store/components/StoreItemDialog'
 import { StoreLogDialog } from '@/features/store/components/StoreLogDialog'
+import { ExpiryPanel } from '@/features/store/components/ExpiryPanel'
 import { ItemMovementsDialog } from '@/features/store/components/ItemMovementsDialog'
 import { WeeklyStockReportPanel } from '@/features/store/components/WeeklyStockReportPanel'
 import { useAcademicTermList } from '@/features/academic/hooks/useAcademic'
@@ -29,9 +30,11 @@ import {
   useStoreLocations,
   useStoreLogs,
   useStoreMutations,
+  useStoreUnits,
 } from '@/features/store/hooks/useStore'
 import type {
   InventoryCategory,
+  ItemUnit,
   StockLog,
   StockLogCreatePayload,
   StockLogUpdatePayload,
@@ -44,18 +47,19 @@ import type {
 import {
   TRANSACTION_TYPES,
   formatStoreQty,
+  isPendingTransfer,
   issuedToLabel,
   storeIsMain,
   termLabel,
   transactionTypeLabel,
-  uniqueUnits,
+  transferStatusLabel,
 } from '@/features/store/types/store.types'
 import { useSupplierList } from '@/features/suppliers/hooks/useSuppliers'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { displayValue, formatDate } from '@/lib/format'
 
 const PAGE_SIZE = 10
-const STORE_TABS = ['locations', 'categories', 'items', 'transactions', 'report'] as const
+const STORE_TABS = ['locations', 'categories', 'units', 'items', 'transactions', 'expiry', 'report'] as const
 type StoreTab = (typeof STORE_TABS)[number]
 
 function tabFromParam(value: string | null): StoreTab {
@@ -86,14 +90,16 @@ export function StorePage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Store Management"
-        description="Store locations, item catalogues, supplier receipts, transfers, and weekly stock-take sheets."
+        description="Locations, units, catalogue, receipts, two-step transfers, expiry batches, and weekly stock-take sheets."
       />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
         <TabsList>
           <TabsTrigger value="locations">Locations</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
+          <TabsTrigger value="units">Units</TabsTrigger>
           <TabsTrigger value="items">Items</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
+          <TabsTrigger value="expiry">Expiry</TabsTrigger>
           <TabsTrigger value="report">Weekly report</TabsTrigger>
         </TabsList>
         <TabsContent value="locations">
@@ -102,11 +108,17 @@ export function StorePage(): ReactNode {
         <TabsContent value="categories">
           <CategoriesPanel canWrite={canWrite} />
         </TabsContent>
+        <TabsContent value="units">
+          <UnitsPanel canWrite={canWrite} />
+        </TabsContent>
         <TabsContent value="items">
           <ItemsPanel canWrite={canWrite} />
         </TabsContent>
         <TabsContent value="transactions">
           <TransactionsPanel canWrite={canWrite} />
+        </TabsContent>
+        <TabsContent value="expiry">
+          <ExpiryPanel canWrite={canWrite} />
         </TabsContent>
         <TabsContent value="report">
           <WeeklyStockReportPanel />
@@ -377,9 +389,107 @@ function CategoriesPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   )
 }
 
+function UnitsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
+  const list = useStoreUnits()
+  const { createUnit, deleteUnit } = useStoreMutations()
+  const [page, setPage] = useState(1)
+  const [name, setName] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<ItemUnit | null>(null)
+
+  const rows = list.data ?? []
+  const paged = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault()
+    const trimmed = name.trim()
+    if (!trimmed) return
+    createUnit.mutate(
+      { name: trimmed },
+      {
+        onSuccess: () => setName(''),
+      },
+    )
+  }
+
+  const columns: Array<DataColumn<ItemUnit>> = [
+    { id: 'name', header: 'Unit', cell: (row) => row.name },
+    {
+      id: 'actions',
+      header: '',
+      className: 'w-16 text-right',
+      cell: (row) =>
+        canWrite ? (
+          <Button variant="ghost" size="icon" aria-label={`Delete ${row.name}`} onClick={() => setPendingDelete(row)}>
+            <Trash2 aria-hidden="true" />
+          </Button>
+        ) : null,
+    },
+  ]
+
+  if (list.isError) {
+    return <ErrorState message={toUserMessage(list.error)} onRetry={() => void list.refetch()} />
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="type-caption text-muted-foreground">
+        Units can be listed, added, and removed. There is no update route. Seeded units are Kg, Pcs, Liters, and Bales.
+      </p>
+      {canWrite ? (
+        <form onSubmit={handleSubmit} className="grid gap-3 rounded-xl border border-border p-4 sm:grid-cols-[1fr_auto]">
+          <TextField
+            label="Name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Cartons"
+            required
+          />
+          <div className="flex items-end">
+            <Button type="submit" isLoading={createUnit.isPending} loadingLabel="Adding">
+              <Plus aria-hidden="true" />
+              Add unit
+            </Button>
+          </div>
+        </form>
+      ) : null}
+      {rows.length === 0 && !list.isLoading ? (
+        <EmptyState title="No units yet" description="Add Kg, Pcs, or another measurement used on store items." />
+      ) : (
+        <DataTable
+          columns={columns}
+          rows={paged}
+          getRowId={(row) => row.id}
+          isLoading={list.isLoading}
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={rows.length}
+          onPageChange={setPage}
+          mobileCard={(row) => <p className="type-heading">{row.name}</p>}
+        />
+      )}
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(next) => {
+          if (!next) setPendingDelete(null)
+        }}
+        title="Delete unit?"
+        description={pendingDelete ? `This will remove ${pendingDelete.name}. Items that still use it may fail.` : ''}
+        confirmLabel="Delete"
+        loadingLabel="Deleting"
+        isConfirming={deleteUnit.isPending}
+        onConfirm={() => {
+          if (!pendingDelete) return
+          deleteUnit.mutate(pendingDelete.id, { onSuccess: () => setPendingDelete(null) })
+        }}
+      />
+    </div>
+  )
+}
+
 function ItemsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const list = useStoreItems()
   const categories = useStoreCategories()
+  const units = useStoreUnits()
   const { createItem, updateItem, deleteItem } = useStoreMutations()
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
@@ -387,8 +497,6 @@ function ItemsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const [editing, setEditing] = useState<StoreItem | null>(null)
   const [historyItem, setHistoryItem] = useState<StoreItem | null>(null)
   const [pendingDelete, setPendingDelete] = useState<StoreItem | null>(null)
-
-  const units = uniqueUnits(list.data ?? [])
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -530,7 +638,7 @@ function ItemsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         open={open}
         onOpenChange={setOpen}
         editing={editing}
-        units={units}
+        units={units.data ?? []}
         categories={categories.data ?? []}
         isSaving={createItem.isPending || updateItem.isPending}
         onSubmit={handleSubmit}
@@ -564,14 +672,15 @@ function TransactionsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const staff = useStaffList()
   const learners = useLearnerList()
   const departments = useDepartments()
-  const { createLog, updateLog, deleteLog } = useStoreMutations()
+  const { createLog, updateLog, deleteLog, receiveLog } = useStoreMutations()
   const [query, setQuery] = useState('')
-  const [typeFilter, setTypeFilter] = useState<'all' | TransactionType>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | TransactionType | 'pending'>('all')
   const [storeFilter, setStoreFilter] = useState('all')
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<StockLog | null>(null)
   const [pendingDelete, setPendingDelete] = useState<StockLog | null>(null)
+  const [pendingReceive, setPendingReceive] = useState<StockLog | null>(null)
 
   const terms = termList.data ?? []
   const canCreate = canWrite && (items.data?.length ?? 0) > 0 && (stores.data?.length ?? 0) > 0
@@ -579,7 +688,11 @@ function TransactionsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
     return (logs.data ?? []).filter((log) => {
-      if (typeFilter !== 'all' && log.type !== typeFilter) return false
+      if (typeFilter === 'pending') {
+        if (!isPendingTransfer(log)) return false
+      } else if (typeFilter !== 'all' && log.type !== typeFilter) {
+        return false
+      }
       if (storeFilter !== 'all') {
         const id = Number(storeFilter)
         if (log.sourceStore?.id !== id && log.destinationStore?.id !== id) return false
@@ -615,12 +728,32 @@ function TransactionsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
     { id: 'to', header: 'To / issued', hideOnMobile: true, cell: (row) => displayValue(row.destinationStore?.name) === '—' ? issuedToLabel(row) : displayValue(row.destinationStore?.name) },
     { id: 'qty', header: 'Qty', cell: (row) => formatStoreQty(row.quantity) },
     {
+      id: 'status',
+      header: 'Status',
+      cell: (row) =>
+        row.type === 'TRANSFER' ? (
+          <Badge variant={isPendingTransfer(row) ? 'warning' : 'success'}>{transferStatusLabel(row.status)}</Badge>
+        ) : (
+          '—'
+        ),
+    },
+    {
       id: 'actions',
       header: '',
-      className: 'w-24 text-right',
+      className: 'w-36 text-right',
       cell: (row) =>
         canWrite ? (
           <span className="flex justify-end gap-1">
+            {isPendingTransfer(row) ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Confirm receipt"
+                onClick={() => setPendingReceive(row)}
+              >
+                <Check aria-hidden="true" />
+              </Button>
+            ) : null}
             <Button
               variant="ghost"
               size="icon"
@@ -692,6 +825,14 @@ function TransactionsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
             }}
           />
         ))}
+        <FilterChip
+          label="Pending receipt"
+          active={typeFilter === 'pending'}
+          onClick={() => {
+            setTypeFilter('pending')
+            setPage(1)
+          }}
+        />
       </div>
       <SelectField
         label="Store"
@@ -740,7 +881,15 @@ function TransactionsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
                 </div>
                 <Badge variant={typeBadgeVariant(row.type)}>{transactionTypeLabel(row.type)}</Badge>
               </div>
-              <p className="type-caption text-muted-foreground">Qty {formatStoreQty(row.quantity)}</p>
+              <p className="type-caption text-muted-foreground">
+                Qty {formatStoreQty(row.quantity)}
+                {row.type === 'TRANSFER' ? ` · ${transferStatusLabel(row.status)}` : ''}
+              </p>
+              {canWrite && isPendingTransfer(row) ? (
+                <Button type="button" size="sm" onClick={() => setPendingReceive(row)}>
+                  Confirm receipt
+                </Button>
+              ) : null}
             </div>
           )}
         />
@@ -762,6 +911,26 @@ function TransactionsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         onUpdate={(body: StockLogUpdatePayload) => {
           if (!editing) return
           updateLog.mutate({ id: editing.id, body }, { onSuccess: () => setOpen(false) })
+        }}
+      />
+      <ConfirmDialog
+        open={pendingReceive !== null}
+        onOpenChange={(next) => {
+          if (!next) setPendingReceive(null)
+        }}
+        title="Confirm receipt?"
+        description={
+          pendingReceive
+            ? `This adds ${formatStoreQty(pendingReceive.quantity)} of ${pendingReceive.item?.name ?? 'this item'} to ${pendingReceive.destinationStore?.name ?? 'the destination store'}. Stock was already deducted from ${pendingReceive.sourceStore?.name ?? 'the source store'}.`
+            : ''
+        }
+        confirmLabel="Confirm receipt"
+        confirmVariant="primary"
+        loadingLabel="Receiving"
+        isConfirming={receiveLog.isPending}
+        onConfirm={() => {
+          if (!pendingReceive) return
+          receiveLog.mutate(pendingReceive.id, { onSuccess: () => setPendingReceive(null) })
         }}
       />
       <ConfirmDialog

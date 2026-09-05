@@ -77,7 +77,7 @@ export function StoreItemDialog({
             <DialogDescription>
               {editing
                 ? 'Name, price, category, and unit can be changed. Item code is not updated.'
-                : 'Item code is unique. There is no list-units endpoint; seeded units are Kg, Pcs, Liters, and Bales.'}
+                : 'Item code is unique. Units come from GET /api/store/units. Add more units on the Units tab.'}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4 overflow-y-auto px-5 py-4 sm:px-6">
@@ -116,27 +116,16 @@ export function StoreItemDialog({
               emptyMessage="No categories available"
               emptyLabel="Not set"
             />
-            {units.length > 0 ? (
-              <SelectField
-                label="Unit"
-                value={unitId}
-                onChange={setUnitId}
-                options={units.map((unit) => ({ value: String(unit.id), label: unit.name }))}
-                placeholder="Select unit"
-                emptyLabel="Not set"
-              />
-            ) : (
-              <TextField
-                label="Unit ID"
-                type="number"
-                inputMode="numeric"
-                min="1"
-                step="1"
-                value={unitId}
-                onChange={(event) => setUnitId(event.target.value)}
-                hint="There is no list-units endpoint. Seeded ids are usually 1 Kg, 2 Pcs, 3 Liters, 4 Bales."
-              />
-            )}
+            <SelectField
+              label="Unit"
+              value={unitId}
+              onChange={setUnitId}
+              options={units.map((unit) => ({ value: String(unit.id), label: unit.name }))}
+              placeholder={units.length ? 'Select unit' : 'No units available'}
+              emptyMessage="Add a unit on the Units tab first."
+              emptyLabel="Not set"
+              allowEmpty={false}
+            />
           </div>
           <DialogFooter className="mt-0 border-t border-border px-5 py-4 sm:px-6">
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>

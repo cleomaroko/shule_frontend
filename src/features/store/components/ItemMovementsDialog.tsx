@@ -15,8 +15,10 @@ import {
 import { useItemMovements } from '@/features/store/hooks/useStore'
 import {
   formatStoreQty,
+  isPendingTransfer,
   issuedToLabel,
   transactionTypeLabel,
+  transferStatusLabel,
   type StockLog,
   type StoreItem,
   type TransactionType,
@@ -63,6 +65,16 @@ export function ItemMovementsDialog({
     { id: 'from', header: 'From', cell: (row) => displayValue(row.sourceStore?.name) },
     { id: 'to', header: 'To / issued', cell: (row) => movementTo(row) },
     { id: 'qty', header: 'Qty', cell: (row) => formatStoreQty(row.quantity) },
+    {
+      id: 'status',
+      header: 'Status',
+      cell: (row) =>
+        row.type === 'TRANSFER' ? (
+          <Badge variant={isPendingTransfer(row) ? 'warning' : 'success'}>{transferStatusLabel(row.status)}</Badge>
+        ) : (
+          '—'
+        ),
+    },
     { id: 'by', header: 'Recorded by', hideOnMobile: true, cell: (row) => displayValue(row.recordedBy) },
   ]
 

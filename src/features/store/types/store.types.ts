@@ -3,9 +3,13 @@ import type { Learner } from '@/features/learners/types/learner.types'
 import type { Staff } from '@/features/staff/types/staff.types'
 import type { Supplier } from '@/features/suppliers/types/supplier.types'
 
-/** Seeded units (`DataInitializer`). No list-units API. */
+/** `com.lyrt.shule.store.ItemUnit` — `GET /api/store/units`. */
 export interface ItemUnit {
   id: number
+  name: string
+}
+
+export interface ItemUnitWritePayload {
   name: string
 }
 
@@ -81,12 +85,41 @@ export const TRANSACTION_TYPES = ['ADDITION', 'TRANSFER', 'CONSUMPTION', 'BALANC
 
 export type TransactionType = (typeof TRANSACTION_TYPES)[number]
 
+export const TRANSFER_STATUSES = ['PENDING', 'RECEIVED'] as const
+export type TransferStatus = (typeof TRANSFER_STATUSES)[number]
+
+export const BATCH_STATUSES = ['AVAILABLE', 'EXPIRED', 'CONSUMED'] as const
+export type BatchStatus = (typeof BATCH_STATUSES)[number]
+
+export interface ExpiryBatchInput {
+  quantity: number
+  expiryDate: string
+}
+
+export interface ItemBatch {
+  id: number
+  item?: StoreItem | null
+  store?: StoreLocation | null
+  quantity?: number | null
+  expiryDate?: string | null
+  addedDate?: string | null
+  status?: string | null
+}
+
+export interface ExpiryReportQuery {
+  itemId?: number
+  storeId?: number
+  status?: string
+}
+
 export interface StockLog {
   id: number
   sourceStore?: StoreLocation | null
   destinationStore?: StoreLocation | null
   item?: StoreItem | null
   term?: TermRef | null
+  expiryDate?: string | null
+  status?: TransferStatus | null
   quantity?: number | null
   type?: TransactionType | null
   issuedToStaff?: Pick<Staff, 'id' | 'firstName' | 'secondName' | 'lastName'> | null
@@ -112,13 +145,13 @@ export interface StockLogCreatePayload {
   issuedToLearner?: { id: number }
   issuedToDept?: { id: number }
   receiptLink?: string
+  /** ADDITION only. Read by `StoreController.recordTransaction`. */
+  expiryBatches?: ExpiryBatchInput[]
 }
 
-/** `PUT /api/store/logs/{id}` copies only these three fields. */
+/** `PUT /api/store/logs/{id}` copies quantity only. */
 export interface StockLogUpdatePayload {
   quantity: number
-  logDate: string
-  receiptLink?: string | null
 }
 
 export interface StoreReportRow {
@@ -166,23 +199,19 @@ export function formatStoreQty(value: number | null | undefined): string {
   return value.toLocaleString(undefined, { maximumFractionDigits: 2 })
 }
 
-/** Seeded in `DataInitializer` when the units table is empty. No list-units API. */
-export const SEEDED_ITEM_UNITS: ItemUnit[] = [
-  { id: 1, name: 'Kg' },
-  { id: 2, name: 'Pcs' },
-  { id: 3, name: 'Liters' },
-  { id: 4, name: 'Bales' },
-]
+export function transferStatusLabel(status: TransferStatus | null | undefined): string {
+  switch (status) {
+    case 'PENDING':
+      return 'Pending receipt'
+    case 'RECEIVED':
+      return 'Received'
+    default:
+      return '—'
+  }
+}
 
-export function uniqueUnits(items: StoreItem[]): ItemUnit[] {
-  const map = new Map<number, ItemUnit>()
-  for (const item of items) {
-    if (item.unit?.id) map.set(item.unit.id, item.unit)
-  }
-  if (map.size === 0) {
-    for (const unit of SEEDED_ITEM_UNITS) map.set(unit.id, unit)
-  }
-  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name))
+export function isPendingTransfer(log: Pick<StockLog, 'type' | 'status'>): boolean {
+  return log.type === 'TRANSFER' && log.status === 'PENDING'
 }
 
 export function defaultTermId(terms: TermRef[]): string {

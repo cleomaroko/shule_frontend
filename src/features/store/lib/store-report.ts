@@ -50,7 +50,7 @@ function inRange(date: string | null | undefined, startDate: string, endDate: st
 /** Supplier receipt into this store. */
 export function isReceivedLog(log: StockLog, storeId: number): boolean {
   if (log.type === 'ADDITION' && log.sourceStore?.id === storeId) return true
-  if (log.type === 'TRANSFER' && log.destinationStore?.id === storeId) return true
+  if (log.type === 'TRANSFER' && log.destinationStore?.id === storeId && log.status !== 'PENDING') return true
   return false
 }
 

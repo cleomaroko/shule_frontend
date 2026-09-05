@@ -2,13 +2,18 @@ import { useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { SelectField } from '@/components/forms/SelectField'
+import { can } from '@/auth/permissions'
+import { useAuth } from '@/auth/useAuth'
 import { ReportSection } from '@/features/reports/components/ReportPrimitives'
+import { ExpiryPanel } from '@/features/store/components/ExpiryPanel'
 import { ItemMovementsDialog } from '@/features/store/components/ItemMovementsDialog'
 import { WeeklyStockReportPanel } from '@/features/store/components/WeeklyStockReportPanel'
 import { useStoreItems } from '@/features/store/hooks/useStore'
 import type { StoreItem } from '@/features/store/types/store.types'
 
 export function StoreReportsPanel(): ReactNode {
+  const { user } = useAuth()
+  const canWrite = can(user?.role, 'store:write')
   const items = useStoreItems()
   const [itemId, setItemId] = useState('')
   const [historyItem, setHistoryItem] = useState<StoreItem | null>(null)
@@ -18,6 +23,12 @@ export function StoreReportsPanel(): ReactNode {
     <div className="flex flex-col gap-8">
       <ReportSection title="Weekly stock-take">
         <WeeklyStockReportPanel />
+      </ReportSection>
+      <ReportSection
+        title="Expiry"
+        note="Alerts from GET /api/store/alerts/expiring-soon and the filtered report from GET /api/store/reports/expiries."
+      >
+        <ExpiryPanel canWrite={canWrite} />
       </ReportSection>
       <ReportSection
         title="Item movement history"

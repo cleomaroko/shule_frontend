@@ -5,7 +5,9 @@ import { toUserMessage } from '@/api/errors'
 import { queryKeys } from '@/api/endpoints'
 import { storeApi } from '@/features/store/api/store.api'
 import type {
+  ExpiryReportQuery,
   InventoryCategoryWritePayload,
+  ItemUnitWritePayload,
   StockLogCreatePayload,
   StockLogUpdatePayload,
   StoreItemWritePayload,
@@ -31,6 +33,27 @@ export function useStoreItems() {
   return useQuery({
     queryKey: queryKeys.store.items,
     queryFn: storeApi.listItems,
+  })
+}
+
+export function useStoreUnits() {
+  return useQuery({
+    queryKey: queryKeys.store.units,
+    queryFn: storeApi.listUnits,
+  })
+}
+
+export function useExpiringSoon() {
+  return useQuery({
+    queryKey: queryKeys.store.expiringSoon,
+    queryFn: storeApi.expiringSoon,
+  })
+}
+
+export function useExpiryReport(params: ExpiryReportQuery) {
+  return useQuery({
+    queryKey: queryKeys.store.expiryReport(params),
+    queryFn: () => storeApi.expiryReport(params),
   })
 }
 
@@ -73,6 +96,12 @@ export function useStoreMutations() {
     ])
   const invalidateLocations = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.locations })
   const invalidateCategories = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.categories })
+  const invalidateUnits = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.units })
+  const invalidateBatches = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.store.expiringSoon }),
+      queryClient.invalidateQueries({ queryKey: ['store', 'reports', 'expiries'] }),
+    ])
 
   const createLocation = useMutation({
     mutationFn: (body: StoreLocationWritePayload) => storeApi.createLocation(body),
@@ -108,6 +137,23 @@ export function useStoreMutations() {
     onError: (error: unknown) => toast.error(toUserMessage(error)),
   })
 
+  const createUnit = useMutation({
+    mutationFn: (body: ItemUnitWritePayload) => storeApi.createUnit(body),
+    onSuccess: async () => {
+      await invalidateUnits()
+      toast.success('Item unit added.')
+    },
+    onError: (error: unknown) => toast.error(toUserMessage(error)),
+  })
+  const deleteUnit = useMutation({
+    mutationFn: (id: number) => storeApi.deleteUnit(id),
+    onSuccess: async () => {
+      await invalidateUnits()
+      toast.success('Item unit removed.')
+    },
+    onError: (error: unknown) => toast.error(toUserMessage(error)),
+  })
+
   const createItem = useMutation({
     mutationFn: (body: StoreItemWritePayload) => storeApi.createItem(body),
     onSuccess: async () => {
@@ -139,7 +185,7 @@ export function useStoreMutations() {
   const createLog = useMutation({
     mutationFn: (body: StockLogCreatePayload) => storeApi.createLog(body),
     onSuccess: async () => {
-      await invalidateLogs()
+      await Promise.all([invalidateLogs(), invalidateBatches()])
       toast.success('Stock transaction recorded.')
     },
     onError: (error: unknown) => {
@@ -169,17 +215,40 @@ export function useStoreMutations() {
       toast.error(toUserMessage(error))
     },
   })
+  const receiveLog = useMutation({
+    mutationFn: (id: number) => storeApi.receiveLog(id),
+    onSuccess: async () => {
+      await invalidateLogs()
+      toast.success('Transfer received at the destination store.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Receive transfer failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+  const correctExpiry = useMutation({
+    mutationFn: ({ id, expiryDate }: { id: number; expiryDate: string }) => storeApi.correctExpiry(id, expiryDate),
+    onSuccess: async () => {
+      await invalidateBatches()
+      toast.success('Expiry date corrected.')
+    },
+    onError: (error: unknown) => toast.error(toUserMessage(error)),
+  })
 
   return {
     createLocation,
     deleteLocation,
     createCategory,
     deleteCategory,
+    createUnit,
+    deleteUnit,
     createItem,
     updateItem,
     deleteItem,
     createLog,
     updateLog,
     deleteLog,
+    receiveLog,
+    correctExpiry,
   }
 }

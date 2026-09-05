@@ -1,10 +1,13 @@
+import { Plus, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { toast } from 'sonner'
 
 import {
   GoogleDrivePhotoField,
   type GoogleDrivePhotoFieldHandle,
 } from '@/components/forms/GoogleDrivePhotoField'
 import { SelectField } from '@/components/forms/SelectField'
+import { SwitchField } from '@/components/forms/SwitchField'
 import { TextField } from '@/components/forms/TextField'
 import { Button } from '@/components/ui/button'
 import {
@@ -123,7 +126,7 @@ function typeHint(type: TransactionType): string {
     case 'ADDITION':
       return 'Stock arriving from a supplier into a store, usually the main store.'
     case 'TRANSFER':
-      return 'Move stock from a source store (hub) to a destination store (campus).'
+      return 'Stock leaves the source immediately and stays PENDING until the destination confirms receipt.'
     case 'CONSUMPTION':
       return 'Issue stock from a store to a learner, staff member, or department.'
     case 'BALANCE_BF':
@@ -149,6 +152,10 @@ export function StoreLogDialog({
 }: StoreLogDialogProps): ReactNode {
   const [form, setForm] = useState<LogFormState>(() => emptyForm(items, stores, terms))
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [useExpiryBatches, setUseExpiryBatches] = useState(false)
+  const [batches, setBatches] = useState<Array<{ quantity: string; expiryDate: string }>>([
+    { quantity: '', expiryDate: '' },
+  ])
   const photoRef = useRef<GoogleDrivePhotoFieldHandle>(null)
   const isEdit = editing !== null
   const busy = isSaving || uploadingPhoto
@@ -156,6 +163,8 @@ export function StoreLogDialog({
   useEffect(() => {
     if (!open) return
     setForm(editing ? formFromLog(editing) : emptyForm(items, stores, terms))
+    setUseExpiryBatches(false)
+    setBatches([{ quantity: '', expiryDate: '' }])
   }, [editing, items, open, stores, terms])
 
   const setField = <K extends keyof LogFormState>(key: K, value: LogFormState[K]) => {
@@ -171,22 +180,10 @@ export function StoreLogDialog({
     event.preventDefault()
     if (busy) return
     const quantity = Number(form.quantity)
-    if (!Number.isFinite(quantity) || !form.logDate) return
+    if (!Number.isFinite(quantity) || quantity <= 0) return
 
     if (isEdit) {
-      setUploadingPhoto(true)
-      try {
-        const url = (await photoRef.current?.commit()) ?? form.receiptLink
-        onUpdate({
-          quantity,
-          logDate: form.logDate,
-          receiptLink: url.trim() || null,
-        })
-      } catch {
-        return
-      } finally {
-        setUploadingPhoto(false)
-      }
+      onUpdate({ quantity })
       return
     }
 
@@ -221,6 +218,24 @@ export function StoreLogDialog({
       }
       const receipt = url.trim()
       if (receipt) body.receiptLink = receipt
+      if (form.type === 'ADDITION' && useExpiryBatches) {
+        const expiryBatches = batches
+          .map((row) => ({
+            quantity: Number(row.quantity),
+            expiryDate: row.expiryDate,
+          }))
+          .filter((row) => Number.isFinite(row.quantity) && row.quantity > 0 && row.expiryDate)
+        const batchTotal = expiryBatches.reduce((sum, row) => sum + row.quantity, 0)
+        if (expiryBatches.length === 0) {
+          toast.error('Add at least one expiry batch, or turn off multiple expiry dates.')
+          return
+        }
+        if (Math.abs(batchTotal - quantity) > 0.0001) {
+          toast.error(`Batch quantities must add up to ${quantity}. Current total is ${batchTotal}.`)
+          return
+        }
+        body.expiryBatches = expiryBatches
+      }
       onCreate(body)
     } catch {
       return
@@ -237,7 +252,7 @@ export function StoreLogDialog({
             <DialogTitle>{isEdit ? 'Correct stock record' : 'Record transaction'}</DialogTitle>
             <DialogDescription>
               {isEdit
-                ? 'Only quantity, date, and receipt can be changed. Type, item, and stores stay as recorded.'
+                ? 'PUT /api/store/logs/{id} updates quantity only. Type, item, stores, date, and receipt stay as recorded.'
                 : typeHint(form.type)}
             </DialogDescription>
           </DialogHeader>
@@ -423,22 +438,97 @@ export function StoreLogDialog({
               onChange={(event) => setField('quantity', event.target.value)}
               required
             />
-            <TextField
-              label="Date"
-              type="date"
-              value={form.logDate}
-              onChange={(event) => setField('logDate', event.target.value)}
-              required
-            />
-            <GoogleDrivePhotoField
-              key={open ? `receipt-${editing?.id ?? 'new'}` : 'receipt-closed'}
-              ref={photoRef}
-              label="Receipt"
-              value={form.receiptLink}
-              onChange={(url) => setField('receiptLink', url)}
-              hint="Optional. Typically used for supplier additions. Uploaded when you save."
-              disabled={busy}
-            />
+            {isEdit ? null : (
+              <>
+                {form.type === 'ADDITION' ? (
+                  <div className="flex flex-col gap-3">
+                    <SwitchField
+                      label="Multiple expiry dates"
+                      description="Splits this addition into batches. The batch quantities must add up to the total."
+                      checked={useExpiryBatches}
+                      onCheckedChange={setUseExpiryBatches}
+                    />
+                    {useExpiryBatches
+                      ? batches.map((row, index) => (
+                          <div key={index} className="grid gap-3 rounded-xl border border-border p-3 sm:grid-cols-[1fr_1fr_auto]">
+                            <TextField
+                              label={`Batch ${index + 1} quantity`}
+                              type="number"
+                              inputMode="decimal"
+                              min="0"
+                              step="0.01"
+                              value={row.quantity}
+                              onChange={(event) => {
+                                const value = event.target.value
+                                setBatches((current) =>
+                                  current.map((item, itemIndex) =>
+                                    itemIndex === index ? { ...item, quantity: value } : item,
+                                  ),
+                                )
+                              }}
+                              required
+                            />
+                            <TextField
+                              label="Expiry date"
+                              type="date"
+                              value={row.expiryDate}
+                              onChange={(event) => {
+                                const value = event.target.value
+                                setBatches((current) =>
+                                  current.map((item, itemIndex) =>
+                                    itemIndex === index ? { ...item, expiryDate: value } : item,
+                                  ),
+                                )
+                              }}
+                              required
+                            />
+                            <div className="flex items-end">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                aria-label={`Remove batch ${index + 1}`}
+                                disabled={batches.length === 1}
+                                onClick={() =>
+                                  setBatches((current) => current.filter((_, itemIndex) => itemIndex !== index))
+                                }
+                              >
+                                <Trash2 aria-hidden="true" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      : null}
+                    {useExpiryBatches ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setBatches((current) => [...current, { quantity: '', expiryDate: '' }])}
+                      >
+                        <Plus aria-hidden="true" />
+                        Add expiry date
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+                <TextField
+                  label="Date"
+                  type="date"
+                  value={form.logDate}
+                  onChange={(event) => setField('logDate', event.target.value)}
+                  hint="The current POST /api/store/logs handler stamps today's date on the saved log."
+                />
+                <GoogleDrivePhotoField
+                  key={open ? 'receipt-new' : 'receipt-closed'}
+                  ref={photoRef}
+                  label="Receipt"
+                  value={form.receiptLink}
+                  onChange={(url) => setField('receiptLink', url)}
+                  hint="Optional. The current POST /api/store/logs handler does not persist this field."
+                  disabled={busy}
+                />
+              </>
+            )}
           </div>
 
           <DialogFooter className="mt-0 border-t border-border px-5 py-4 sm:px-6">

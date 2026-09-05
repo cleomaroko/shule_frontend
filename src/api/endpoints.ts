@@ -91,7 +91,10 @@ export const endpoints = {
     /** GET wrapped. POST/DELETE wrapped. Optional parentCategory on POST. */
     categories: '/store/categories',
     categoryById: (id: number) => `/store/categories/${id}`,
-    /** GET wrapped. POST/PUT/DELETE wrapped. No units list endpoint. */
+    /** GET wrapped. POST/DELETE wrapped. No PUT. Auth: ADMIN, MANAGER, or OPERATOR. */
+    units: '/store/units',
+    unitById: (id: number) => `/store/units/${id}`,
+    /** GET wrapped. POST/PUT/DELETE wrapped. */
     items: '/store/items',
     itemById: (id: number) => `/store/items/${id}`,
     /** GET wrapped `StockLog[]` ordered by date desc. */
@@ -99,11 +102,19 @@ export const endpoints = {
     /** GET wrapped. Filter only when storeId, termId, startDate, and endDate are all set. */
     logs: '/store/logs',
     logById: (id: number) => `/store/logs/${id}`,
+    /** PATCH wrapped. Marks a PENDING transfer as RECEIVED and adds stock at destination. */
+    receiveLog: (id: number) => `/store/logs/${id}/receive`,
     /**
      * GET wrapped `StockLog[]`. Required: storeId, termId, startDate, endDate.
      * Includes logs where this store is source or destination.
      */
     stockTake: '/store/stock-take',
+    /** GET wrapped `ItemBatch[]`. Batches with status AVAILABLE expiring within 30 days. */
+    expiringSoon: '/store/alerts/expiring-soon',
+    /** GET wrapped. Optional query: itemId, storeId, status (AVAILABLE, EXPIRED, CONSUMED). */
+    expiryReport: '/store/reports/expiries',
+    /** PATCH wrapped body `{ expiryDate }`. Auth: ADMIN, MANAGER, or OPERATOR. */
+    correctExpiry: (id: number) => `/store/batches/${id}/correct-expiry`,
   },
   transport: {
     vehicles: '/transport/vehicles',
@@ -194,11 +205,15 @@ export const queryKeys = {
   store: {
     locations: ['store', 'locations'] as const,
     categories: ['store', 'categories'] as const,
+    units: ['store', 'units'] as const,
     logs: ['store', 'logs'] as const,
     items: ['store', 'items'] as const,
     stockTake: (params: { storeId: number; termId: number; startDate: string; endDate: string }) =>
       ['store', 'stock-take', params] as const,
     itemMovements: (itemId: number) => ['store', 'items', itemId, 'movements'] as const,
+    expiringSoon: ['store', 'alerts', 'expiring-soon'] as const,
+    expiryReport: (params: { itemId?: number; storeId?: number; status?: string }) =>
+      ['store', 'reports', 'expiries', params] as const,
   },
   transport: {
     vehicles: ['transport', 'vehicles'] as const,
