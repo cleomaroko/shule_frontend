@@ -32,6 +32,31 @@ import { displayValue, formatDate } from '@/lib/format'
 
 const PAGE_SIZE = 10
 
+function BatchMobileCard({ row }: { row: ItemBatch }): ReactNode {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-start justify-between gap-3">
+        <p className="type-heading min-w-0 truncate">{displayValue(row.item?.name)}</p>
+        <Badge variant={batchStatusVariant(row.status)}>{displayValue(row.status)}</Badge>
+      </div>
+      <dl className="grid grid-cols-2 gap-2 type-caption text-muted-foreground">
+        <div>
+          <dt>Store</dt>
+          <dd className="font-medium text-foreground">{displayValue(row.store?.name)}</dd>
+        </div>
+        <div>
+          <dt>Qty</dt>
+          <dd className="font-medium text-foreground">{formatStoreQty(row.quantity)}</dd>
+        </div>
+        <div className="col-span-2">
+          <dt>Expiry</dt>
+          <dd className="font-medium text-foreground">{formatDate(row.expiryDate)}</dd>
+        </div>
+      </dl>
+    </div>
+  )
+}
+
 function batchStatusVariant(status: string | null | undefined) {
   switch ((status ?? '').toUpperCase()) {
     case 'AVAILABLE':
@@ -135,14 +160,7 @@ export function ExpiryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
             pageSize={Math.max(alertRows.length, 1)}
             total={alertRows.length}
             onPageChange={() => undefined}
-            mobileCard={(row) => (
-              <div>
-                <p className="type-heading">{displayValue(row.item?.name)}</p>
-                <p className="type-caption text-muted-foreground">
-                  {formatDate(row.expiryDate)} · {displayValue(row.store?.name)}
-                </p>
-              </div>
-            )}
+            mobileCard={(row) => <BatchMobileCard row={row} />}
           />
         )}
       </section>
@@ -200,14 +218,7 @@ export function ExpiryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
             pageSize={PAGE_SIZE}
             total={rows.length}
             onPageChange={setPage}
-            mobileCard={(row) => (
-              <div>
-                <p className="type-heading">{displayValue(row.item?.name)}</p>
-                <p className="type-caption text-muted-foreground">
-                  {formatDate(row.expiryDate)} · {displayValue(row.status)}
-                </p>
-              </div>
-            )}
+            mobileCard={(row) => <BatchMobileCard row={row} />}
           />
         )}
       </section>

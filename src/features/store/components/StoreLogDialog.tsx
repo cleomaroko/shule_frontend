@@ -443,8 +443,8 @@ export function StoreLogDialog({
                 {form.type === 'ADDITION' ? (
                   <div className="flex flex-col gap-3">
                     <SwitchField
-                      label="Multiple expiry dates"
-                      description="Splits this addition into batches. The batch quantities must add up to the total."
+                      label="Expiry dates"
+                      description="Splits this addition into batches if necessary. You can add different expiry dates for each batch. The batch quantities must add up to the total."
                       checked={useExpiryBatches}
                       onCheckedChange={setUseExpiryBatches}
                     />

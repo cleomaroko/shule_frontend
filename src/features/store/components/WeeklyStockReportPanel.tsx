@@ -170,12 +170,44 @@ export function WeeklyStockReportPanel(): ReactNode {
           total={visible.length}
           onPageChange={() => undefined}
           mobileCard={(row) => (
-            <div>
-              <p className="type-heading">{row.itemName}</p>
-              <p className="type-caption text-muted-foreground">
-                B/F {formatStoreQty(row.balanceBf)} · In {formatStoreQty(row.additionalStock)} · Out{' '}
-                {formatStoreQty(row.weekRelease)} · Close {formatStoreQty(row.closingBalance)}
-              </p>
+            <div className="flex flex-col gap-3">
+              <div>
+                <p className="type-heading">{row.itemName}</p>
+                <p className="type-caption text-muted-foreground">{displayValue(row.unitName)}</p>
+              </div>
+              <dl className="grid grid-cols-2 gap-2 type-caption text-muted-foreground">
+                <div>
+                  <dt>Balance B/F</dt>
+                  <dd className="font-medium text-foreground">{formatStoreQty(row.balanceBf)}</dd>
+                </div>
+                <div>
+                  <dt>Received</dt>
+                  <dd className="font-medium text-foreground">{formatStoreQty(row.additionalStock)}</dd>
+                </div>
+                <div>
+                  <dt>Total stock</dt>
+                  <dd className="font-medium text-foreground">{formatStoreQty(row.totalStock)}</dd>
+                </div>
+                <div>
+                  <dt>Week release</dt>
+                  <dd className="font-medium text-foreground">{formatStoreQty(row.weekRelease)}</dd>
+                </div>
+                <div className="col-span-2">
+                  <dt>Closing</dt>
+                  <dd className="font-medium text-foreground">{formatStoreQty(row.closingBalance)}</dd>
+                </div>
+              </dl>
+              <div>
+                <p className="type-caption mb-1.5 font-medium text-muted-foreground">Daily consumption</p>
+                <dl className="grid grid-cols-3 gap-2 type-caption text-muted-foreground">
+                  {days.map((day) => (
+                    <div key={day}>
+                      <dt>{weekdayLabel(day)}</dt>
+                      <dd className="font-medium text-foreground">{formatStoreQty(row.byDate[day] ?? 0)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
             </div>
           )}
         />
