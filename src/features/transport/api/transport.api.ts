@@ -3,6 +3,11 @@ import { endpoints } from '@/api/endpoints'
 import type {
   BusStop,
   BusStopWritePayload,
+  ExternalHire,
+  ExternalHireWritePayload,
+  TransportAssignment,
+  TransportAssignmentQuery,
+  TransportAssignmentWritePayload,
   Vehicle,
   VehicleLog,
   VehicleLogQuery,
@@ -42,4 +47,17 @@ export const transportApi = {
   listServiceTypes: () => api.getList<VehicleServiceType>(endpoints.transport.serviceTypes),
   createServiceType: (body: { name: string }) =>
     api.post<VehicleServiceType>(endpoints.transport.serviceTypes, body).then((r) => r.data as VehicleServiceType),
+
+  listHires: () => api.getList<ExternalHire>(endpoints.transport.hires),
+  createHire: (body: ExternalHireWritePayload) =>
+    api.post<ExternalHire>(endpoints.transport.hires, body).then((r) => r.data as ExternalHire),
+
+  listAssignments: (params: TransportAssignmentQuery) =>
+    api.getList<TransportAssignment>(endpoints.transport.assignments, { params }),
+  createAssignment: (body: TransportAssignmentWritePayload) =>
+    api
+      .post<TransportAssignment>(endpoints.transport.assignments, body)
+      .then((r) => r.data as TransportAssignment),
+  deleteAssignment: (id: number) =>
+    api.delete(endpoints.transport.assignmentById(id)).then(() => undefined),
 }

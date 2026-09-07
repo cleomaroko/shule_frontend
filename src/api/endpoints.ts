@@ -126,6 +126,18 @@ export const endpoints = {
     stops: '/transport/stops',
     /** GET raw. POST wrapped. No PUT/DELETE. */
     serviceTypes: '/transport/service-types',
+    /** GET raw `ExternalHire[]`. POST wrapped. No PUT/DELETE. */
+    hires: '/transport/hires',
+    /**
+     * GET raw. Required query: vehicleId, tripType, term.
+     * POST wrapped. DELETE wrapped. No PUT.
+     */
+    assignments: '/transport/assignments',
+    assignmentById: (id: number) => `/transport/assignments/${id}`,
+  },
+  shuleAi: {
+    /** GET plain text. Query: `message`. */
+    chat: '/shule-ai/chat',
   },
   suppliers: {
     /** GET raw `Supplier[]`. POST/PUT/DELETE wrapped. */
@@ -220,6 +232,9 @@ export const queryKeys = {
     logs: ['transport', 'logs'] as const,
     stops: ['transport', 'stops'] as const,
     serviceTypes: ['transport', 'service-types'] as const,
+    hires: ['transport', 'hires'] as const,
+    assignments: (params: { vehicleId: number; tripType: string; term: string }) =>
+      ['transport', 'assignments', params] as const,
   },
   suppliers: {
     all: ['suppliers'] as const,

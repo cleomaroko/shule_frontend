@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { useAuth } from '@/auth/useAuth'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { AppSidebar } from '@/components/layout/AppSidebar'
+import { DiraChat } from '@/features/ai/components/DiraChat'
 import { env } from '@/lib/env'
 
 /**
@@ -30,10 +31,11 @@ export function AppLayout(): ReactNode {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <AppHeader user={user} onSignOut={handleSignOut} />
-        <main className="mx-auto w-full max-w-[90rem] flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <main className="mx-auto w-full max-w-[90rem] flex-1 px-4 py-6 pb-24 sm:px-6 sm:py-8 sm:pb-24 lg:px-8">
           <Outlet />
         </main>
       </div>
+      <DiraChat />
     </div>
   )
 }

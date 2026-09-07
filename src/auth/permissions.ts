@@ -21,6 +21,9 @@ import type { UserRole } from '@/auth/auth.types'
  *
  * Transport mutations (`TransportController.isAuthorized`):
  *   role contains `ADMIN` OR role contains `OPERATOR`
+ *   POST /hires, POST/DELETE /assignments, and POST /logs require an
+ *   Authorization header for audit logging but have no role check. The UI
+ *   still gates them with `transport:write`.
  *
  * Store mutations (`StoreController.isAuthorized`):
  *   role contains `ADMIN` OR `MANAGER` OR `OPERATOR`

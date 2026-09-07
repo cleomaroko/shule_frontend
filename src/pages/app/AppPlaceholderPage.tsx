@@ -167,7 +167,7 @@ export function AppPlaceholderPage(): ReactNode {
               title="Admissions"
               description="Pending website applications"
               icon={<ClipboardList className="size-5" aria-hidden="true" />}
-              tone="navy"
+              tone="amber"
             />
             <ModuleLink
               to={paths.learners}
@@ -181,70 +181,70 @@ export function AppPlaceholderPage(): ReactNode {
               title="Visitors"
               description="Check-in, check-out, and stay duration"
               icon={<UserRound className="size-5" aria-hidden="true" />}
-              tone="green"
+              tone="teal"
             />
             <ModuleLink
               to={paths.staff}
               title="Staff"
               description="Staff records and employment information"
               icon={<Users className="size-5" aria-hidden="true" />}
-              tone="green"
+              tone="navy"
             />
             <ModuleLink
               to={paths.academics}
               title="Academics"
               description="Classes, learning areas, and teacher assignments"
               icon={<BookOpen className="size-5" aria-hidden="true" />}
-              tone="green"
+              tone="violet"
             />
             <ModuleLink
               to={paths.logistics}
               title="Logistics"
               description="Transport zones and boarding houses"
               icon={<Bus className="size-5" aria-hidden="true" />}
-              tone="navy"
+              tone="sky"
             />
             <ModuleLink
               to={paths.transport}
               title="Transport"
-              description="Fleet, fuel logs, and bus stops"
+              description="Fleet, learner register, hires, and fuel logs"
               icon={<Truck className="size-5" aria-hidden="true" />}
-              tone="green"
+              tone="orange"
             />
             <ModuleLink
               to={paths.assets}
               title="Asset Management"
               description="Inventory with descriptions, conditions, and suppliers"
               icon={<Package className="size-5" aria-hidden="true" />}
-              tone="green"
+              tone="blue"
             />
             <ModuleLink
               to={paths.store}
               title="Store Management"
               description="Locations, transfers, consumption, and weekly sheets"
               icon={<Warehouse className="size-5" aria-hidden="true" />}
-              tone="navy"
+              tone="rose"
             />
             <ModuleLink
               to={paths.suppliers}
               title="Suppliers"
               description="Vendors and contract expiry tracking"
               icon={<Building2 className="size-5" aria-hidden="true" />}
-              tone="green"
+              tone="indigo"
             />
             <ModuleLink
               to={paths.system}
               title="System"
               description="Audit logs, campuses, and reference lists"
               icon={<Settings2 className="size-5" aria-hidden="true" />}
-              tone="green"
+              tone="slate"
             />
             <ModuleLink
               to={paths.reports}
               title="Reports and analysis"
               description="Department summaries from existing records and report APIs"
               icon={<BarChart3 className="size-5" aria-hidden="true" />}
-              tone="navy"
+              tone="emerald"
             />
           </CardContent>
         </Card>
@@ -293,6 +293,23 @@ export function AppPlaceholderPage(): ReactNode {
   )
 }
 
+const MODULE_TONES = {
+  green: 'bg-primary/15 text-primary dark:bg-emerald-400/15 dark:text-emerald-300',
+  emerald: 'bg-emerald-600/15 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300',
+  navy: 'bg-navy-800/15 text-navy-800 dark:bg-sky-400/15 dark:text-sky-300',
+  sky: 'bg-sky-500/15 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300',
+  blue: 'bg-blue-500/15 text-blue-700 dark:bg-blue-400/15 dark:text-blue-300',
+  indigo: 'bg-indigo-500/15 text-indigo-700 dark:bg-indigo-400/15 dark:text-indigo-300',
+  violet: 'bg-violet-500/15 text-violet-700 dark:bg-violet-400/15 dark:text-violet-300',
+  teal: 'bg-teal-500/15 text-teal-700 dark:bg-teal-400/15 dark:text-teal-300',
+  amber: 'bg-amber-500/15 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300',
+  orange: 'bg-orange-500/15 text-orange-700 dark:bg-orange-400/15 dark:text-orange-300',
+  rose: 'bg-rose-500/15 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300',
+  slate: 'bg-slate-500/15 text-slate-700 dark:bg-slate-400/15 dark:text-slate-300',
+} as const
+
+type ModuleTone = keyof typeof MODULE_TONES
+
 function ModuleLink({
   to,
   title,
@@ -304,21 +321,14 @@ function ModuleLink({
   title: string
   description: string
   icon: ReactNode
-  tone: 'navy' | 'green'
+  tone: ModuleTone
 }): ReactNode {
   return (
     <Link
       to={to}
       className="group flex items-start gap-3 rounded-xl border border-border bg-background/60 p-4 transition-colors hover:border-primary/30 hover:bg-card"
     >
-      <span
-        className={cn(
-          'flex size-11 shrink-0 items-center justify-center rounded-xl',
-          tone === 'navy'
-            ? 'bg-navy-800/10 text-navy-800 dark:bg-sky-400/10 dark:text-sky-400'
-            : 'bg-primary/10 text-primary',
-        )}
-      >
+      <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl', MODULE_TONES[tone])}>
         {icon}
       </span>
       <span className="min-w-0">

@@ -9,17 +9,20 @@ import { TextField } from '@/components/forms/TextField'
 import { Badge } from '@/components/ui/badge'
 import { BreakdownCard, ReportSection, StatGrid } from '@/features/reports/components/ReportPrimitives'
 import { countBy, currentMonthRange } from '@/features/reports/lib/summaries'
-import { useVehicleList, useVehicleLogList } from '@/features/transport/hooks/useTransport'
+import { useHireList, useVehicleList, useVehicleLogList } from '@/features/transport/hooks/useTransport'
 import {
   VEHICLE_LOG_TYPES,
   formatEfficiency,
+  formatFuelLevel,
+  formatKm,
   formatLitres,
   formatMoneyKes,
   vehicleLogTypeLabel,
+  type ExternalHire,
   type VehicleLog,
   type VehicleLogQuery,
 } from '@/features/transport/types/transport.types'
-import { displayValue, formatDateTime, formatPersonName } from '@/lib/format'
+import { displayValue, formatDate, formatDateTime, formatPersonName } from '@/lib/format'
 
 const PAGE_SIZE = 12
 
@@ -43,11 +46,13 @@ function asNumber(value: number | null | undefined): number {
 export function TransportReportsPanel(): ReactNode {
   const month = currentMonthRange()
   const vehicles = useVehicleList()
+  const hires = useHireList()
   const [logType, setLogType] = useState('')
   const [vehicleId, setVehicleId] = useState('')
   const [start, setStart] = useState(month.start)
   const [end, setEnd] = useState(month.end)
   const [page, setPage] = useState(1)
+  const [hirePage, setHirePage] = useState(1)
 
   const query = useMemo<VehicleLogQuery | undefined>(() => {
     const params: VehicleLogQuery = {}
@@ -78,6 +83,21 @@ export function TransportReportsPanel(): ReactNode {
     return { fuelCost, litres, serviceCost, meanEff, efficiencyCount: efficiencies.length }
   }, [rows])
 
+  const hireRows = hires.data ?? []
+  const hireTotals = useMemo(() => {
+    const total = hireRows.reduce((sum, row) => sum + asNumber(row.totalCost), 0)
+    const fuel = hireRows.reduce((sum, row) => sum + asNumber(row.fuelCosts), 0)
+    const wages = hireRows.reduce((sum, row) => sum + asNumber(row.chargesWages), 0)
+    return { total, fuel, wages }
+  }, [hireRows])
+
+  const hireColumns: Array<DataColumn<ExternalHire>> = [
+    { id: 'date', header: 'Date', cell: (row) => formatDate(row.hireDate) },
+    { id: 'replaced', header: 'Replaced', cell: (row) => displayValue(row.vehicleBeingReplaced?.numberPlate) },
+    { id: 'hired', header: 'Hired plate', cell: (row) => displayValue(row.hiredVehiclePlate) },
+    { id: 'total', header: 'Total', cell: (row) => formatMoneyKes(row.totalCost) },
+  ]
+
   const columns: Array<DataColumn<VehicleLog>> = [
     { id: 'vehicle', header: 'Vehicle', cell: (row) => displayValue(row.vehicle?.numberPlate) },
     {
@@ -90,7 +110,14 @@ export function TransportReportsPanel(): ReactNode {
       header: 'Driver',
       cell: (row) => (row.driver ? formatPersonName(row.driver) : '—'),
     },
-    { id: 'fuel', header: 'Litres', cell: (row) => formatLitres(row.fuelQuantityLitres) },
+    {
+      id: 'fuel',
+      header: 'Detail',
+      cell: (row) =>
+        row.logType === 'TRIP'
+          ? `${formatFuelLevel(row.fuelLevelBefore)} → ${formatFuelLevel(row.fuelLevelAfter)}`
+          : formatLitres(row.fuelQuantityLitres),
+    },
     {
       id: 'cost',
       header: 'Cost',
@@ -234,14 +261,96 @@ export function TransportReportsPanel(): ReactNode {
             total={rows.length}
             onPageChange={setPage}
             mobileCard={(row) => (
-              <div>
-                <p className="type-heading">{displayValue(row.vehicle?.numberPlate)}</p>
-                <p className="type-caption text-muted-foreground">
-                  {vehicleLogTypeLabel(row.logType)} · {formatDateTime(row.createdAt)}
-                </p>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="type-heading truncate">{displayValue(row.vehicle?.numberPlate)}</p>
+                    <p className="type-caption text-muted-foreground">{formatDateTime(row.createdAt)}</p>
+                  </div>
+                  <Badge variant={logBadgeVariant(row.logType)}>{vehicleLogTypeLabel(row.logType)}</Badge>
+                </div>
+                <dl className="grid grid-cols-2 gap-2 type-caption text-muted-foreground">
+                  <div>
+                    <dt>Driver</dt>
+                    <dd className="font-medium text-foreground">
+                      {row.driver ? formatPersonName(row.driver) : '—'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{row.logType === 'TRIP' ? 'Tank' : 'Litres'}</dt>
+                    <dd className="font-medium text-foreground">
+                      {row.logType === 'TRIP'
+                        ? `${formatFuelLevel(row.fuelLevelBefore)} → ${formatFuelLevel(row.fuelLevelAfter)}`
+                        : formatLitres(row.fuelQuantityLitres)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Cost</dt>
+                    <dd className="font-medium text-foreground">
+                      {formatMoneyKes(row.logType === 'SERVICE' ? row.serviceCost : row.fuelCost)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>km/L</dt>
+                    <dd className="font-medium text-foreground">{formatEfficiency(row.efficiency)}</dd>
+                  </div>
+                </dl>
               </div>
             )}
           />
+        )}
+      </ReportSection>
+
+      <ReportSection
+        title="External hires"
+        note="GET /api/transport/hires. Totals are summed in the browser from fuelCosts, chargesWages, and totalCost."
+      >
+        {hires.isError ? (
+          <ErrorState message={toUserMessage(hires.error)} onRetry={() => void hires.refetch()} />
+        ) : (
+          <>
+            <StatGrid
+              items={[
+                { label: 'Hire records', value: hireRows.length.toLocaleString() },
+                { label: 'Fuel costs', value: formatMoneyKes(hireTotals.fuel) },
+                { label: 'Wages', value: formatMoneyKes(hireTotals.wages) },
+                { label: 'Total cost', value: formatMoneyKes(hireTotals.total) },
+              ]}
+              loading={hires.isLoading}
+            />
+            {hireRows.length === 0 && !hires.isLoading ? (
+              <EmptyState title="No external hires" description="Record a hired vehicle on the Transport page." />
+            ) : (
+              <DataTable
+                columns={hireColumns}
+                rows={hireRows.slice((hirePage - 1) * PAGE_SIZE, hirePage * PAGE_SIZE)}
+                getRowId={(row) => row.id}
+                isLoading={hires.isLoading}
+                page={hirePage}
+                pageSize={PAGE_SIZE}
+                total={hireRows.length}
+                onPageChange={setHirePage}
+                mobileCard={(row) => (
+                  <div className="flex flex-col gap-2">
+                    <p className="type-heading">{displayValue(row.hiredVehiclePlate)}</p>
+                    <p className="type-caption text-muted-foreground">
+                      Replaced {displayValue(row.vehicleBeingReplaced?.numberPlate)} · {formatDate(row.hireDate)}
+                    </p>
+                    <dl className="grid grid-cols-2 gap-2 type-caption text-muted-foreground">
+                      <div>
+                        <dt>Distance</dt>
+                        <dd className="font-medium text-foreground">{formatKm(row.distanceCovered)}</dd>
+                      </div>
+                      <div>
+                        <dt>Total</dt>
+                        <dd className="font-medium text-foreground">{formatMoneyKes(row.totalCost)}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                )}
+              />
+            )}
+          </>
         )}
       </ReportSection>
     </div>

@@ -6,6 +6,9 @@ import { queryKeys } from '@/api/endpoints'
 import { transportApi } from '@/features/transport/api/transport.api'
 import type {
   BusStopWritePayload,
+  ExternalHireWritePayload,
+  TransportAssignmentQuery,
+  TransportAssignmentWritePayload,
   VehicleLogQuery,
   VehicleLogWritePayload,
   VehicleWritePayload,
@@ -40,6 +43,23 @@ export function useVehicleServiceTypeList() {
   })
 }
 
+export function useHireList() {
+  return useQuery({
+    queryKey: queryKeys.transport.hires,
+    queryFn: transportApi.listHires,
+  })
+}
+
+export function useTransportAssignmentList(params: TransportAssignmentQuery | undefined) {
+  return useQuery({
+    queryKey: params
+      ? queryKeys.transport.assignments(params)
+      : (['transport', 'assignments', 'idle'] as const),
+    queryFn: () => transportApi.listAssignments(params as TransportAssignmentQuery),
+    enabled: Boolean(params),
+  })
+}
+
 export function useTransportMutations() {
   const queryClient = useQueryClient()
 
@@ -48,6 +68,9 @@ export function useTransportMutations() {
   const invalidateStops = () => queryClient.invalidateQueries({ queryKey: queryKeys.transport.stops })
   const invalidateServiceTypes = () =>
     queryClient.invalidateQueries({ queryKey: queryKeys.transport.serviceTypes })
+  const invalidateHires = () => queryClient.invalidateQueries({ queryKey: queryKeys.transport.hires })
+  const invalidateAssignments = () =>
+    queryClient.invalidateQueries({ queryKey: ['transport', 'assignments'] })
 
   const createVehicle = useMutation({
     mutationFn: (body: VehicleWritePayload) => transportApi.createVehicle(body),
@@ -118,6 +141,42 @@ export function useTransportMutations() {
     onError: (error: unknown) => toast.error(toUserMessage(error)),
   })
 
+  const createHire = useMutation({
+    mutationFn: (body: ExternalHireWritePayload) => transportApi.createHire(body),
+    onSuccess: async () => {
+      await invalidateHires()
+      toast.success('External hire recorded.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Create external hire failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
+  const createAssignment = useMutation({
+    mutationFn: (body: TransportAssignmentWritePayload) => transportApi.createAssignment(body),
+    onSuccess: async () => {
+      await invalidateAssignments()
+      toast.success('Learner assigned to the register.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Create transport assignment failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
+  const deleteAssignment = useMutation({
+    mutationFn: (id: number) => transportApi.deleteAssignment(id),
+    onSuccess: async () => {
+      await invalidateAssignments()
+      toast.success('Learner removed from the register.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Delete transport assignment failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
   return {
     createVehicle,
     deleteVehicle,
@@ -125,5 +184,8 @@ export function useTransportMutations() {
     deleteLog,
     createStop,
     createServiceType,
+    createHire,
+    createAssignment,
+    deleteAssignment,
   }
 }

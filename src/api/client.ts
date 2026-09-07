@@ -197,4 +197,16 @@ export const api = {
   getList<T>(url: string, config?: AxiosRequestConfig): Promise<T[]> {
     return apiGetList<T>(url, config)
   },
+  /** GET that returns a plain string (not an `ApiResponse` envelope). */
+  async getText(url: string, config?: AxiosRequestConfig): Promise<string> {
+    const response = await httpClient.request<unknown>({
+      ...config,
+      url,
+      method: 'GET',
+      responseType: 'text',
+    })
+    if (typeof response.data === 'string') return response.data
+    if (response.data == null) return ''
+    return String(response.data)
+  },
 }
