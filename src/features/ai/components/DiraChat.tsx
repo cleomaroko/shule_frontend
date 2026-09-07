@@ -17,7 +17,7 @@ interface ChatMessage {
 const WELCOME: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
-  text: 'Hi, I am Dira AI. Ask about campuses, assets, or transport logs. I can look things up, but I cannot change records. Answers can take several seconds.',
+  text: 'Hi, I am Dira AI. Ask about campuses, assets, or transport logs. I can look things up, but I cannot change records. Answers can take up to a minute.',
 }
 
 function nextId(): string {
@@ -163,7 +163,7 @@ export function DiraChat(): ReactNode {
               </Button>
             </div>
             <p className="mt-2 type-caption text-muted-foreground">
-              Enter to send · Shift+Enter for a new line. Replies can take 5–15 seconds.
+              Enter to send · Shift+Enter for a new line. Replies can take up to a minute.
             </p>
           </form>
         </section>
