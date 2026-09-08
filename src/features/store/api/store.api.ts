@@ -10,6 +10,7 @@ import type {
   StockLog,
   StockLogCreatePayload,
   StockLogUpdatePayload,
+  StockTakePayload,
   StoreItem,
   StoreItemWritePayload,
   StoreLocation,
@@ -56,7 +57,7 @@ export const storeApi = {
   removeLog: (id: number) => api.delete(endpoints.store.logById(id)).then(() => undefined),
 
   stockTake: (params: { storeId: number; termId: number; startDate: string; endDate: string }) =>
-    api.get<StockLog[]>(endpoints.store.stockTake, { params }).then((r) => r.data ?? []),
+    api.get<StockTakePayload[]>(endpoints.store.stockTake, { params }).then((r) => r.data ?? []),
 
   itemMovements: (itemId: number) =>
     api.get<StockLog[]>(endpoints.store.itemMovements(itemId)).then((r) => r.data ?? []),

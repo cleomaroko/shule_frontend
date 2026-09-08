@@ -1,4 +1,10 @@
-import type { StockLog, StoreItem, StoreReportRow } from '@/features/store/types/store.types'
+import type {
+  StockLog,
+  StockTakePayload,
+  StockTakeReportRow,
+  StoreItem,
+  StoreReportRow,
+} from '@/features/store/types/store.types'
 import { logQuantity } from '@/features/store/types/store.types'
 
 export function toIsoDate(date: Date): string {
@@ -137,5 +143,152 @@ export function computeStoreWeekReport(args: {
       weekRelease,
       closingBalance: totalStock - weekRelease,
     }
+  })
+}
+
+function asQty(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+export function isStockTakeReportRow(row: unknown): row is StockTakeReportRow {
+  if (!row || typeof row !== 'object' || Array.isArray(row)) return false
+  const candidate = row as Record<string, unknown>
+  return (
+    'openingBalance' in candidate ||
+    'received' in candidate ||
+    'dailyUsage' in candidate ||
+    'weeklyLogs' in candidate ||
+    ('totalStock' in candidate && !('type' in candidate) && !('logDate' in candidate))
+  )
+}
+
+function itemNameFrom(item: StockTakeReportRow['item'], fallbackId: number): string {
+  const name = item?.name?.trim() || item?.itemName?.trim()
+  return name || `Item ${fallbackId}`
+}
+
+function dailyUsageToByDate(
+  dailyUsage: Record<string, number> | null | undefined,
+  days: string[],
+): Record<string, number> {
+  const byDate: Record<string, number> = {}
+  for (const day of days) byDate[day] = 0
+  if (!dailyUsage) return byDate
+
+  for (const [key, raw] of Object.entries(dailyUsage)) {
+    const qty = asQty(raw)
+    const iso = key.slice(0, 10)
+    if (iso in byDate) {
+      byDate[iso] = (byDate[iso] ?? 0) + qty
+      continue
+    }
+    const needle = key.trim().toUpperCase().slice(0, 3)
+    const match = days.find((day) => weekdayLabel(day).toUpperCase().startsWith(needle))
+    if (match) byDate[match] = (byDate[match] ?? 0) + qty
+  }
+  return byDate
+}
+
+function byDateFromLogs(logs: StockLog[], storeId: number, days: string[]): Record<string, number> {
+  const byDate: Record<string, number> = {}
+  for (const day of days) byDate[day] = 0
+  for (const log of logs) {
+    if (log.type !== 'CONSUMPTION' || log.sourceStore?.id !== storeId) continue
+    const day = log.logDate?.slice(0, 10)
+    if (!day || !(day in byDate)) continue
+    byDate[day] = (byDate[day] ?? 0) + logQuantity(log)
+  }
+  return byDate
+}
+
+function mapAggregatedRow(
+  row: StockTakeReportRow,
+  days: string[],
+  storeId: number,
+  fallback?: StoreItem,
+): StoreReportRow | null {
+  const itemId = row.item?.id ?? fallback?.id
+  if (!itemId) return null
+  const logs = row.weeklyLogs ?? []
+  const received = asQty(row.received ?? row.additionalStock)
+  const balanceBf = asQty(row.openingBalance)
+  const weekRelease = asQty(row.weekRelease)
+  const totalStock = row.totalStock != null ? asQty(row.totalStock) : balanceBf + received
+  const closingBalance = row.closingBalance != null ? asQty(row.closingBalance) : totalStock - weekRelease
+  const usageEmpty = !row.dailyUsage || Object.keys(row.dailyUsage).length === 0
+  const byDate = usageEmpty
+    ? byDateFromLogs(logs, storeId, days)
+    : dailyUsageToByDate(row.dailyUsage, days)
+
+  return {
+    itemId,
+    itemName: itemNameFrom(row.item, itemId) || fallback?.name || `Item ${itemId}`,
+    unitName: row.item?.unit?.name ?? fallback?.unit?.name ?? '',
+    balanceBf,
+    additionalStock: received,
+    totalStock,
+    byDate,
+    weekRelease,
+    closingBalance,
+  }
+}
+
+/**
+ * Builds the weekly sheet from `GET /api/store/stock-take`.
+ *
+ * Production may return aggregated rows (`received`, `openingBalance`, …).
+ * `StoreController` in this repo still returns `StockLog[]` for the same route.
+ */
+export function rowsFromStockTake(args: {
+  items: StoreItem[]
+  payload: StockTakePayload[]
+  storeId: number
+  termId: number
+  startDate: string
+  endDate: string
+}): StoreReportRow[] {
+  const { items, payload, storeId, termId, startDate, endDate } = args
+  const days = datesInRange(startDate, endDate)
+
+  if (payload.some(isStockTakeReportRow)) {
+    const byItem = new Map<number, StoreReportRow>()
+    for (const row of payload) {
+      if (!isStockTakeReportRow(row)) continue
+      const mapped = mapAggregatedRow(row, days, storeId)
+      if (mapped) byItem.set(mapped.itemId, mapped)
+    }
+
+    const seen = new Set<number>()
+    const out: StoreReportRow[] = items.map((item) => {
+      seen.add(item.id)
+      return (
+        byItem.get(item.id) ?? {
+          itemId: item.id,
+          itemName: item.name,
+          unitName: item.unit?.name ?? '',
+          balanceBf: 0,
+          additionalStock: 0,
+          totalStock: 0,
+          byDate: Object.fromEntries(days.map((day) => [day, 0])),
+          weekRelease: 0,
+          closingBalance: 0,
+        }
+      )
+    })
+    for (const [id, row] of byItem) {
+      if (!seen.has(id)) out.push(row)
+    }
+    return out
+  }
+
+  return computeStoreWeekReport({
+    items,
+    logs: payload as StockLog[],
+    storeId,
+    termId,
+    startDate,
+    endDate,
   })
 }

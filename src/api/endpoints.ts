@@ -105,8 +105,9 @@ export const endpoints = {
     /** PATCH wrapped. Marks a PENDING transfer as RECEIVED and adds stock at destination. */
     receiveLog: (id: number) => `/store/logs/${id}/receive`,
     /**
-     * GET wrapped `StockLog[]`. Required: storeId, termId, startDate, endDate.
-     * Includes logs where this store is source or destination.
+     * GET wrapped. Required: storeId, termId, startDate, endDate.
+     * Some deployments return aggregated weekly rows; this repo's controller
+     * still returns `StockLog[]` for the same path.
      */
     stockTake: '/store/stock-take',
     /** GET wrapped `ItemBatch[]`. Batches with status AVAILABLE expiring within 30 days. */

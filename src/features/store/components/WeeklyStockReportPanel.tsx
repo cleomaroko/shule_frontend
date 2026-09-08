@@ -9,9 +9,9 @@ import { TextField } from '@/components/forms/TextField'
 import { useAcademicTermList } from '@/features/academic/hooks/useAcademic'
 import { useStoreItems, useStoreLocations, useStoreStockTake } from '@/features/store/hooks/useStore'
 import {
-  computeStoreWeekReport,
   datesInRange,
   mondayToFriday,
+  rowsFromStockTake,
   weekdayLabel,
 } from '@/features/store/lib/store-report'
 import {
@@ -37,12 +37,9 @@ export function WeeklyStockReportPanel(): ReactNode {
   const [endDate, setEndDate] = useState(week.endDate)
   const [hideZero, setHideZero] = useState(false)
   const terms = termList.data ?? []
-  const selectedTerm = terms.find((term) => String(term.id) === termId)
-  const rangeStart =
-    selectedTerm?.startDate && selectedTerm.startDate < startDate ? selectedTerm.startDate : startDate
   const stockTakeParams =
-    Number(storeId) && Number(termId) && rangeStart && endDate
-      ? { storeId: Number(storeId), termId: Number(termId), startDate: rangeStart, endDate }
+    Number(storeId) && Number(termId) && startDate && endDate
+      ? { storeId: Number(storeId), termId: Number(termId), startDate, endDate }
       : null
   const stockTake = useStoreStockTake(stockTakeParams)
 
@@ -60,9 +57,9 @@ export function WeeklyStockReportPanel(): ReactNode {
     const store = Number(storeId)
     const term = Number(termId)
     if (!store || !term || !startDate || !endDate) return []
-    return computeStoreWeekReport({
+    return rowsFromStockTake({
       items: items.data ?? [],
-      logs: stockTake.data ?? [],
+      payload: stockTake.data ?? [],
       storeId: store,
       termId: term,
       startDate,
@@ -116,9 +113,9 @@ export function WeeklyStockReportPanel(): ReactNode {
   return (
     <div className="flex flex-col gap-4">
       <p className="type-caption text-muted-foreground">
-        Built from GET /api/store/stock-take. Received includes supplier additions and incoming transfers that have
-        been confirmed. Pending transfers count as released from the source only. Week release includes consumption
-        and stock sent to another store. Only logs tagged with the selected term are included.
+        Built from GET /api/store/stock-take for the selected store, term, and week. Received is supplier
+        additions plus incoming transfers that have been confirmed. Week release is consumption and stock
+        sent to another store.
       </p>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SelectField

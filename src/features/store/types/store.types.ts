@@ -166,6 +166,24 @@ export interface StoreReportRow {
   closingBalance: number
 }
 
+/**
+ * Aggregated weekly row returned by some deployments of `GET /api/store/stock-take`.
+ * Local `StoreController` still returns `StockLog[]`; production may return these instead.
+ */
+export interface StockTakeReportRow {
+  item?: (StoreItem & { itemName?: string | null }) | null
+  openingBalance?: number | null
+  received?: number | null
+  additionalStock?: number | null
+  totalStock?: number | null
+  weekRelease?: number | null
+  closingBalance?: number | null
+  dailyUsage?: Record<string, number> | null
+  weeklyLogs?: StockLog[] | null
+}
+
+export type StockTakePayload = StockTakeReportRow | StockLog
+
 export function storeIsMain(store: Pick<StoreLocation, 'isMainStore' | 'mainStore'> | null | undefined): boolean {
   return store?.isMainStore === true || store?.mainStore === true
 }
