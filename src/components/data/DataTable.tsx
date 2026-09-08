@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import type { ReactNode } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -25,6 +25,8 @@ export interface DataTableProps<T> {
   pageSize: number
   total: number
   onPageChange: (page: number) => void
+  onRowClick?: (row: T) => void
+  rowAriaLabel?: (row: T) => string
 }
 
 export function DataTable<T>({
@@ -37,6 +39,8 @@ export function DataTable<T>({
   pageSize,
   total,
   onPageChange,
+  onRowClick,
+  rowAriaLabel,
 }: DataTableProps<T>): ReactNode {
   const pageCount = Math.max(1, Math.ceil(total / pageSize))
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1
@@ -74,9 +78,39 @@ export function DataTable<T>({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={getRowId(row)} className="border-b border-border last:border-0 hover:bg-muted/40">
+              <tr
+                key={getRowId(row)}
+                className={cn(
+                  'border-b border-border last:border-0 hover:bg-muted/40',
+                  onRowClick ? 'cursor-pointer' : undefined,
+                )}
+                {...(onRowClick
+                  ? {
+                      tabIndex: 0,
+                      role: 'button',
+                      'aria-label': rowAriaLabel?.(row) ?? 'View details',
+                      onClick: () => onRowClick(row),
+                      onKeyDown: (event: KeyboardEvent<HTMLTableRowElement>) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          onRowClick(row)
+                        }
+                      },
+                    }
+                  : {})}
+              >
                 {columns.map((column) => (
-                  <td key={column.id} className={cn('type-body px-4 py-3.5 align-middle', column.className)}>
+                  <td
+                    key={column.id}
+                    className={cn('type-body px-4 py-3.5 align-middle', column.className)}
+                    onClick={
+                      column.id === 'actions'
+                        ? (event) => {
+                            event.stopPropagation()
+                          }
+                        : undefined
+                    }
+                  >
                     {column.cell(row)}
                   </td>
                 ))}
@@ -88,10 +122,36 @@ export function DataTable<T>({
 
       <div className="flex flex-col gap-3 p-3 md:hidden">
         {rows.map((row) => (
-          <div key={getRowId(row)} className="rounded-xl border border-border p-4">
+          <div
+            key={getRowId(row)}
+            className={cn(
+              'rounded-xl border border-border p-4',
+              onRowClick ? 'cursor-pointer hover:bg-muted/40' : undefined,
+            )}
+            {...(onRowClick
+              ? {
+                  tabIndex: 0,
+                  role: 'button',
+                  'aria-label': rowAriaLabel?.(row) ?? 'View details',
+                  onClick: () => onRowClick(row),
+                  onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      onRowClick(row)
+                    }
+                  },
+                }
+              : {})}
+          >
             {mobileCard ? mobileCard(row) : null}
             {actionColumn ? (
-              <div className="mt-3 flex justify-end border-t border-border pt-3">{actionColumn.cell(row)}</div>
+              <div
+                className="mt-3 flex justify-end border-t border-border pt-3"
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
+              >
+                {actionColumn.cell(row)}
+              </div>
             ) : null}
           </div>
         ))}

@@ -7,6 +7,7 @@ import { EmptyState, ErrorState } from '@/components/feedback/PageStates'
 import { SelectField } from '@/components/forms/SelectField'
 import { TextField } from '@/components/forms/TextField'
 import { useAcademicTermList } from '@/features/academic/hooks/useAcademic'
+import { WeeklyReportDetailDialog } from '@/features/store/components/WeeklyReportDetailDialog'
 import { useStoreItems, useStoreLocations, useStoreStockTake } from '@/features/store/hooks/useStore'
 import {
   datesInRange,
@@ -17,6 +18,7 @@ import {
 import {
   defaultTermId,
   formatStoreQty,
+  storeIsMain,
   termLabel,
   type StoreReportRow,
 } from '@/features/store/types/store.types'
@@ -36,6 +38,7 @@ export function WeeklyStockReportPanel(): ReactNode {
   const [startDate, setStartDate] = useState(week.startDate)
   const [endDate, setEndDate] = useState(week.endDate)
   const [hideZero, setHideZero] = useState(false)
+  const [detail, setDetail] = useState<StoreReportRow | null>(null)
   const terms = termList.data ?? []
   const stockTakeParams =
     Number(storeId) && Number(termId) && startDate && endDate
@@ -44,7 +47,12 @@ export function WeeklyStockReportPanel(): ReactNode {
   const stockTake = useStoreStockTake(stockTakeParams)
 
   useEffect(() => {
-    if (!storeId && stores.data?.[0]) setStoreId(String(stores.data[0].id))
+    if (storeId) return
+    const list = stores.data ?? []
+    const main = list.find((store) => storeIsMain(store))
+    const first = [...list].sort((a, b) => a.id - b.id)[0]
+    const picked = main ?? first
+    if (picked) setStoreId(String(picked.id))
   }, [storeId, stores.data])
 
   useEffect(() => {
@@ -113,9 +121,8 @@ export function WeeklyStockReportPanel(): ReactNode {
   return (
     <div className="flex flex-col gap-4">
       <p className="type-caption text-muted-foreground">
-        Built from GET /api/store/stock-take for the selected store, term, and week. Received is supplier
-        additions plus incoming transfers that have been confirmed. Week release is consumption and stock
-        sent to another store.
+        Built from GET /api/store/stock-take using the store, term, and week shown above. Click a row for that
+        item’s totals and this week’s logs. Daily columns are consumption and outgoing transfers.
       </p>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SelectField
@@ -166,11 +173,15 @@ export function WeeklyStockReportPanel(): ReactNode {
           pageSize={Math.max(visible.length, 1)}
           total={visible.length}
           onPageChange={() => undefined}
+          onRowClick={setDetail}
+          rowAriaLabel={(row) => `View weekly details for ${row.itemName}`}
           mobileCard={(row) => (
             <div className="flex flex-col gap-3">
               <div>
                 <p className="type-heading">{row.itemName}</p>
-                <p className="type-caption text-muted-foreground">{displayValue(row.unitName)}</p>
+                <p className="type-caption text-muted-foreground">
+                  {[row.unitName, row.parentCategoryName, row.categoryName].filter(Boolean).join(' · ') || 'Tap for details'}
+                </p>
               </div>
               <dl className="grid grid-cols-2 gap-2 type-caption text-muted-foreground">
                 <div>
@@ -209,6 +220,13 @@ export function WeeklyStockReportPanel(): ReactNode {
           )}
         />
       )}
+      <WeeklyReportDetailDialog
+        row={detail}
+        days={days}
+        onOpenChange={(open) => {
+          if (!open) setDetail(null)
+        }}
+      />
     </div>
   )
 }

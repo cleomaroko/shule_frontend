@@ -38,7 +38,50 @@ export function datesInRange(startDate: string, endDate: string): string[] {
 }
 
 export function weekdayLabel(iso: string): string {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' })
+  return new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short' })
+}
+
+/** Java `DayOfWeek.name()` as written by origin `StoreController.getWeeklyReport`. */
+const JAVA_WEEKDAY_TO_JS: Record<string, number> = {
+  SUNDAY: 0,
+  MONDAY: 1,
+  TUESDAY: 2,
+  WEDNESDAY: 3,
+  THURSDAY: 4,
+  FRIDAY: 5,
+  SATURDAY: 6,
+  SUN: 0,
+  MON: 1,
+  TUE: 2,
+  WED: 3,
+  THU: 4,
+  FRI: 5,
+  SAT: 6,
+}
+
+function jsWeekday(iso: string): number {
+  return new Date(`${iso}T12:00:00`).getDay()
+}
+
+function logDateIso(value: unknown): string | null {
+  if (typeof value === 'string' && value.trim()) {
+    const match = value.trim().match(/^(\d{4}-\d{2}-\d{2})/)
+    return match?.[1] ?? null
+  }
+  if (Array.isArray(value) && value.length >= 3) {
+    const year = Number(value[0])
+    const month = Number(value[1])
+    const day = Number(value[2])
+    if (![year, month, day].every((part) => Number.isFinite(part))) return null
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  }
+  return null
+}
+
+/** Same incoming rule as origin `StoreController.getWeeklyReport`. */
+function isIncomingWeekLog(log: StockLog, storeId: number): boolean {
+  if (log.type === 'ADDITION' || log.type === 'BALANCE_BF') return true
+  return log.type === 'TRANSFER' && log.destinationStore?.id === storeId
 }
 
 function isBefore(date: string | null | undefined, boundary: string): boolean {
@@ -123,8 +166,9 @@ export function computeStoreWeekReport(args: {
     for (const day of days) byDate[day] = 0
     for (const log of weekLogs) {
       if (log.type !== 'CONSUMPTION' || log.sourceStore?.id !== args.storeId) continue
-      if (!log.logDate || !(log.logDate in byDate)) continue
-      byDate[log.logDate] = (byDate[log.logDate] ?? 0) + logQuantity(log)
+      const day = logDateIso(log.logDate)
+      if (!day || !(day in byDate)) continue
+      byDate[day] = (byDate[day] ?? 0) + logQuantity(log)
     }
 
     const weekRelease = weekLogs
@@ -136,12 +180,15 @@ export function computeStoreWeekReport(args: {
       itemId: item.id,
       itemName: item.name,
       unitName: item.unit?.name ?? '',
+      ...categoryNames(item),
       balanceBf,
       additionalStock,
       totalStock,
       byDate,
       weekRelease,
       closingBalance: totalStock - weekRelease,
+      weeklyLogs: weekLogs,
+      item,
     }
   })
 }
@@ -169,38 +216,73 @@ function itemNameFrom(item: StockTakeReportRow['item'], fallbackId: number): str
   return name || `Item ${fallbackId}`
 }
 
+function dateForUsageKey(key: string, days: string[]): string | undefined {
+  const trimmed = key.trim()
+  const iso = logDateIso(trimmed)
+  if (iso && days.includes(iso)) return iso
+  const weekday = JAVA_WEEKDAY_TO_JS[trimmed.toUpperCase()]
+  if (weekday === undefined) return undefined
+  return days.find((day) => jsWeekday(day) === weekday)
+}
+
+function emptyByDate(days: string[]): Record<string, number> {
+  return Object.fromEntries(days.map((day) => [day, 0]))
+}
+
+function categoryNames(item: StoreItem | null | undefined): { categoryName: string; parentCategoryName: string } {
+  return {
+    categoryName: item?.category?.name?.trim() ?? '',
+    parentCategoryName: item?.category?.parentCategory?.name?.trim() ?? '',
+  }
+}
+
+function emptyReportRow(item: StoreItem, days: string[]): StoreReportRow {
+  return {
+    itemId: item.id,
+    itemName: item.name,
+    unitName: item.unit?.name ?? '',
+    ...categoryNames(item),
+    balanceBf: 0,
+    additionalStock: 0,
+    totalStock: 0,
+    byDate: emptyByDate(days),
+    weekRelease: 0,
+    closingBalance: 0,
+    weeklyLogs: [],
+    item,
+  }
+}
+
 function dailyUsageToByDate(
   dailyUsage: Record<string, number> | null | undefined,
   days: string[],
 ): Record<string, number> {
-  const byDate: Record<string, number> = {}
-  for (const day of days) byDate[day] = 0
+  const byDate = emptyByDate(days)
   if (!dailyUsage) return byDate
 
   for (const [key, raw] of Object.entries(dailyUsage)) {
-    const qty = asQty(raw)
-    const iso = key.slice(0, 10)
-    if (iso in byDate) {
-      byDate[iso] = (byDate[iso] ?? 0) + qty
-      continue
-    }
-    const needle = key.trim().toUpperCase().slice(0, 3)
-    const match = days.find((day) => weekdayLabel(day).toUpperCase().startsWith(needle))
-    if (match) byDate[match] = (byDate[match] ?? 0) + qty
+    const day = dateForUsageKey(key, days)
+    if (!day) continue
+    byDate[day] = (byDate[day] ?? 0) + asQty(raw)
   }
   return byDate
 }
 
 function byDateFromLogs(logs: StockLog[], storeId: number, days: string[]): Record<string, number> {
-  const byDate: Record<string, number> = {}
-  for (const day of days) byDate[day] = 0
+  const byDate = emptyByDate(days)
   for (const log of logs) {
-    if (log.type !== 'CONSUMPTION' || log.sourceStore?.id !== storeId) continue
-    const day = log.logDate?.slice(0, 10)
+    if (isIncomingWeekLog(log, storeId)) continue
+    const day = logDateIso(log.logDate)
     if (!day || !(day in byDate)) continue
     byDate[day] = (byDate[day] ?? 0) + logQuantity(log)
   }
   return byDate
+}
+
+function mergeByDate(primary: Record<string, number>, fallback: Record<string, number>, days: string[]): Record<string, number> {
+  const hasPrimary = days.some((day) => (primary[day] ?? 0) !== 0)
+  if (hasPrimary) return primary
+  return fallback
 }
 
 function mapAggregatedRow(
@@ -214,24 +296,30 @@ function mapAggregatedRow(
   const logs = row.weeklyLogs ?? []
   const received = asQty(row.received ?? row.additionalStock)
   const balanceBf = asQty(row.openingBalance)
-  const weekRelease = asQty(row.weekRelease)
+  const fromUsage = dailyUsageToByDate(row.dailyUsage, days)
+  const fromLogs = byDateFromLogs(logs, storeId, days)
+  const byDate = mergeByDate(fromUsage, fromLogs, days)
+  const usageTotal = days.reduce((sum, day) => sum + (byDate[day] ?? 0), 0)
+  const weekRelease = row.weekRelease != null && asQty(row.weekRelease) !== 0 ? asQty(row.weekRelease) : usageTotal
   const totalStock = row.totalStock != null ? asQty(row.totalStock) : balanceBf + received
-  const closingBalance = row.closingBalance != null ? asQty(row.closingBalance) : totalStock - weekRelease
-  const usageEmpty = !row.dailyUsage || Object.keys(row.dailyUsage).length === 0
-  const byDate = usageEmpty
-    ? byDateFromLogs(logs, storeId, days)
-    : dailyUsageToByDate(row.dailyUsage, days)
+  const closingBalance =
+    row.closingBalance != null && asQty(row.weekRelease) !== 0
+      ? asQty(row.closingBalance)
+      : totalStock - weekRelease
 
   return {
     itemId,
     itemName: itemNameFrom(row.item, itemId) || fallback?.name || `Item ${itemId}`,
     unitName: row.item?.unit?.name ?? fallback?.unit?.name ?? '',
+    ...categoryNames(row.item ?? fallback ?? null),
     balanceBf,
     additionalStock: received,
     totalStock,
     byDate,
     weekRelease,
     closingBalance,
+    weeklyLogs: logs,
+    item: row.item ?? fallback ?? null,
   }
 }
 
@@ -263,19 +351,7 @@ export function rowsFromStockTake(args: {
     const seen = new Set<number>()
     const out: StoreReportRow[] = items.map((item) => {
       seen.add(item.id)
-      return (
-        byItem.get(item.id) ?? {
-          itemId: item.id,
-          itemName: item.name,
-          unitName: item.unit?.name ?? '',
-          balanceBf: 0,
-          additionalStock: 0,
-          totalStock: 0,
-          byDate: Object.fromEntries(days.map((day) => [day, 0])),
-          weekRelease: 0,
-          closingBalance: 0,
-        }
-      )
+      return byItem.get(item.id) ?? emptyReportRow(item, days)
     })
     for (const [id, row] of byItem) {
       if (!seen.has(id)) out.push(row)

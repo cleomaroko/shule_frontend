@@ -158,12 +158,16 @@ export interface StoreReportRow {
   itemId: number
   itemName: string
   unitName: string
+  categoryName: string
+  parentCategoryName: string
   balanceBf: number
   additionalStock: number
   totalStock: number
   byDate: Record<string, number>
   weekRelease: number
   closingBalance: number
+  weeklyLogs: StockLog[]
+  item?: StoreItem | null
 }
 
 /**
