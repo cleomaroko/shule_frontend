@@ -2,7 +2,7 @@ import { Plus } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-import { toUserMessage } from '@/api/errors'
+import { isApiError, toUserMessage } from '@/api/errors'
 import { can } from '@/auth/permissions'
 import { useAuth } from '@/auth/useAuth'
 import { DataTable, type DataColumn } from '@/components/data/DataTable'
@@ -54,6 +54,10 @@ function tabFromParam(value: string | null): PageTab {
 
 function creatorName(row: Requisition): string {
   return row.createdBy ? formatPersonName(row.createdBy) : '—'
+}
+
+function isStaffProfileMissing(error: unknown): boolean {
+  return isApiError(error) && error.kind === 'business' && /staff record not found/i.test(error.message)
 }
 
 export function RequisitionsPage(): ReactNode {
@@ -195,8 +199,8 @@ function MinePanel({ canCreate, enabled }: { canCreate: boolean; enabled: boolea
     <RequisitionTable
       list={list}
       canCreate={canCreate}
-      emptyTitle="No requisitions of yours"
-      emptyDescription="Requisitions you submit appear here. Creating one needs an active staff profile whose work email matches your username."
+      emptyTitle="No requisitions yet"
+      emptyDescription="Requisitions you submit will appear here."
     />
   )
 }
@@ -302,6 +306,7 @@ function RequisitionTable({
 
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
   const selected = detail.data ?? (list.data ?? []).find((row) => row.id === selectedId) ?? null
+  const staffMissing = isStaffProfileMissing(list.error)
 
   const columns: Array<DataColumn<Requisition>> = [
     {
@@ -343,18 +348,18 @@ function RequisitionTable({
     if (workflow === 'reject') mutations.reject.mutate({ id: selected.id, body }, { onSuccess: () => setWorkflow(null) })
   }
 
-  if (list.isError) {
+  if (list.isError && !staffMissing) {
     return <ErrorState message={toUserMessage(list.error)} onRetry={() => void list.refetch()} />
   }
 
-  const noRows = !list.isLoading && (list.data?.length ?? 0) === 0
+  const noRows = !list.isLoading && (staffMissing || (list.data?.length ?? 0) === 0)
   const noMatches = !list.isLoading && filtered.length === 0 && (list.data?.length ?? 0) > 0
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SearchField value={query} onChange={setQuery} placeholder="Search number, purpose, or requester" />
-        {canCreate ? (
+        {canCreate && !staffMissing ? (
           <Button type="button" onClick={() => setCreateOpen(true)}>
             <Plus aria-hidden="true" />
             New requisition
@@ -363,7 +368,18 @@ function RequisitionTable({
       </div>
       {extraFilters}
       {noRows ? (
-        <EmptyState title={emptyTitle} description={emptyDescription} />
+        <EmptyState
+          title={
+            staffMissing
+              ? 'No staff profile for this login'
+              : emptyTitle
+          }
+          description={
+            staffMissing
+              ? 'Mine only lists requisitions created by the staff row whose work email matches your username. This account has no matching staff record, so the backend cannot load that list.'
+              : emptyDescription
+          }
+        />
       ) : noMatches ? (
         <EmptyState title="No matching requisitions" description="Try a different search or filter." />
       ) : (

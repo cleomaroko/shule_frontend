@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 
 import { toUserMessage } from '@/api/errors'
 import { queryKeys } from '@/api/endpoints'
+import { useAuth } from '@/auth/useAuth'
 import {
   compactRequisitionQuery,
   requisitionsApi,
@@ -23,10 +24,12 @@ export function useRequisitionList(params?: RequisitionQuery) {
 }
 
 export function useMyRequisitions(enabled = true) {
+  const { user } = useAuth()
+  const username = user?.username ?? ''
   return useQuery({
-    queryKey: queryKeys.requisitions.mine,
+    queryKey: queryKeys.requisitions.mine(username),
     queryFn: requisitionsApi.mine,
-    enabled,
+    enabled: enabled && Boolean(username),
   })
 }
 

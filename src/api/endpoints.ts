@@ -263,7 +263,7 @@ export const queryKeys = {
   requisitions: {
     all: ['requisitions'] as const,
     list: (params: Record<string, string | number>) => ['requisitions', 'list', params] as const,
-    mine: ['requisitions', 'mine'] as const,
+    mine: (username: string) => ['requisitions', 'mine', username] as const,
     detail: (id: number) => ['requisitions', 'detail', id] as const,
     summary: (params: Record<string, string | number>) => ['requisitions', 'summary', params] as const,
     costCenters: ['requisitions', 'cost-centers'] as const,
