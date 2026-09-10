@@ -35,6 +35,15 @@ export const env = {
    * the file; Java only stores the returned share link. Public — not a secret.
    */
   googleDriveUploadUrl: readString(import.meta.env.VITE_GOOGLE_DRIVE_UPLOAD_URL, ''),
+  /**
+   * Dira AI chat host, including `/api`. Chat does not use `apiBaseUrl` so it
+   * does not go through dira365.com nginx (which 504s before Ollama finishes).
+   * Override with `VITE_AI_API_BASE_URL`.
+   */
+  aiApiBaseUrl: readString(import.meta.env.VITE_AI_API_BASE_URL, 'http://162.35.96.90/api').replace(
+    /\/+$/,
+    '',
+  ),
   isDevelopment: import.meta.env.DEV,
   isProduction: import.meta.env.PROD,
 } as const

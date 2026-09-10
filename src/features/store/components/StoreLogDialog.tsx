@@ -189,8 +189,12 @@ export function StoreLogDialog({
 
     const itemId = Number(form.itemId)
     const sourceStoreId = Number(form.sourceStoreId)
+    const termId = Number(form.termId)
     if (!itemId || !sourceStoreId) return
-    if (form.type === 'BALANCE_BF' && !Number(form.termId)) return
+    if (!termId) {
+      toast.error('Select a term. Every transaction needs one.')
+      return
+    }
     if (form.type === 'TRANSFER' && !Number(form.destinationStoreId)) return
     if (form.type === 'ADDITION' && !Number(form.supplierId)) return
 
@@ -200,12 +204,11 @@ export function StoreLogDialog({
       const body: StockLogCreatePayload = {
         item: { id: itemId },
         sourceStore: { id: sourceStoreId },
+        term: { id: termId },
         quantity,
         type: form.type,
         logDate: form.logDate,
       }
-      const termId = Number(form.termId)
-      if (termId) body.term = { id: termId }
       const destinationId = Number(form.destinationStoreId)
       if (form.type === 'TRANSFER' && destinationId) body.destinationStore = { id: destinationId }
       const supplierId = Number(form.supplierId)
@@ -398,33 +401,34 @@ export function StoreLogDialog({
                     ) : null}
                   </>
                 ) : null}
-                {form.type === 'BALANCE_BF' || terms.length > 0 ? (
-                  terms.length > 0 || termsLoading ? (
-                    <SelectField
-                      label="Term"
-                      value={form.termId}
-                      onChange={(value) => setField('termId', value)}
-                      options={termOptions}
-                      placeholder={termsLoading ? 'Loading terms…' : 'Select term'}
-                      hint={form.type === 'BALANCE_BF' ? 'Required. One opening balance per item, store, and term.' : 'Optional.'}
-                      allowEmpty={form.type !== 'BALANCE_BF'}
-                      emptyLabel="Not set"
-                      disabled={termsLoading}
-                    />
-                  ) : (
-                    <TextField
-                      label="Term ID"
-                      type="number"
-                      inputMode="numeric"
-                      min="1"
-                      step="1"
-                      value={form.termId}
-                      onChange={(event) => setField('termId', event.target.value)}
-                      hint="No terms in the academic calendar yet."
-                      required={form.type === 'BALANCE_BF'}
-                    />
-                  )
-                ) : null}
+                {terms.length > 0 || termsLoading ? (
+                  <SelectField
+                    label="Term"
+                    value={form.termId}
+                    onChange={(value) => setField('termId', value)}
+                    options={termOptions}
+                    placeholder={termsLoading ? 'Loading terms…' : 'Select term'}
+                    hint={
+                      form.type === 'BALANCE_BF'
+                        ? 'Required. One opening balance per item, store, and term.'
+                        : 'Required on every transaction.'
+                    }
+                    allowEmpty={false}
+                    disabled={termsLoading}
+                  />
+                ) : (
+                  <TextField
+                    label="Term ID"
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    step="1"
+                    value={form.termId}
+                    onChange={(event) => setField('termId', event.target.value)}
+                    hint="Required. No terms in the academic calendar yet — enter a term id."
+                    required
+                  />
+                )}
               </>
             )}
 

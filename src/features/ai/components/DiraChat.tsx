@@ -17,7 +17,7 @@ interface ChatMessage {
 const WELCOME: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
-  text: 'Hi, I am Dira AI. Ask about campuses, assets, or transport logs. I can look things up, but I cannot change records. Answers can take up to a minute.',
+  text: 'Hi, I am Dira AI. Ask about campuses, staff, stores, assets, or transport logs. I can look things up, but I cannot change records. Answers can take a few minutes.',
 }
 
 function nextId(): string {

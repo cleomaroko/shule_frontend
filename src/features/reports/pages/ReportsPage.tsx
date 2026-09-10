@@ -9,6 +9,7 @@ import { AcademicReportsPanel } from '@/features/reports/components/AcademicRepo
 import { AssetReportsPanel } from '@/features/reports/components/AssetReportsPanel'
 import { PeopleReportsPanel } from '@/features/reports/components/PeopleReportsPanel'
 import { StoreReportsPanel } from '@/features/reports/components/StoreReportsPanel'
+import { RequisitionReportsPanel } from '@/features/reports/components/RequisitionReportsPanel'
 import { SupplierReportsPanel } from '@/features/reports/components/SupplierReportsPanel'
 import { TransportReportsPanel } from '@/features/reports/components/TransportReportsPanel'
 import { UsageReportsPanel } from '@/features/reports/components/UsageReportsPanel'
@@ -21,6 +22,7 @@ const REPORT_TABS = [
   'visitors',
   'assets',
   'stores',
+  'requisitions',
   'transport',
   'suppliers',
   'usage',
@@ -53,7 +55,7 @@ export function ReportsPage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Reports and analysis"
-        description="Department summaries from existing records. Dedicated report APIs are used where they exist (store stock-take, asset search, transport logs, and system usage). Other tabs summarise the same list endpoints as each module."
+        description="Department summaries from existing records. Dedicated report APIs are used where they exist (store stock-take, requisition summary, asset search, transport logs, and system usage). Other tabs summarise the same list endpoints as each module."
       />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
         <TabsList>
@@ -62,6 +64,7 @@ export function ReportsPage(): ReactNode {
           <TabsTrigger value="visitors">Visitors</TabsTrigger>
           <TabsTrigger value="assets">Assets</TabsTrigger>
           <TabsTrigger value="stores">Stores</TabsTrigger>
+          <TabsTrigger value="requisitions">Requisitions</TabsTrigger>
           <TabsTrigger value="transport">Transport</TabsTrigger>
           <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
           {canUsage ? <TabsTrigger value="usage">Usage</TabsTrigger> : null}
@@ -80,6 +83,9 @@ export function ReportsPage(): ReactNode {
         </TabsContent>
         <TabsContent value="stores">
           <StoreReportsPanel />
+        </TabsContent>
+        <TabsContent value="requisitions">
+          <RequisitionReportsPanel />
         </TabsContent>
         <TabsContent value="transport">
           <TransportReportsPanel />

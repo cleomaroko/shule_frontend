@@ -137,7 +137,7 @@ export const endpoints = {
     assignmentById: (id: number) => `/transport/assignments/${id}`,
   },
   shuleAi: {
-    /** GET plain text. Query: `message`. */
+    /** GET plain text. Query: `message`. Sent to `env.aiApiBaseUrl`, not `apiBaseUrl`. */
     chat: '/shule-ai/chat',
   },
   suppliers: {
@@ -153,6 +153,24 @@ export const endpoints = {
     contractById: (id: number) => `/suppliers/contracts/${id}`,
     /** PATCH `?status=` */
     contractStatus: (id: number) => `/suppliers/contracts/${id}/status`,
+  },
+  requisitions: {
+    /** GET wrapped. Optional query: status, type, campusId, departmentId, costCenterId, staffId, startDate, endDate. */
+    list: '/requisitions',
+    /** GET wrapped. Requires Authorization. Resolves staff via workEmail == JWT username. */
+    mine: '/requisitions/my-requisitions',
+    byId: (id: number) => `/requisitions/${id}`,
+    /** GET wrapped `RequisitionReportSummary`. Same filters as list. */
+    summary: '/requisitions/reports/summary',
+    /** POST wrapped. Requires Authorization. Status is forced SUBMITTED. */
+    create: '/requisitions',
+    review: (id: number) => `/requisitions/${id}/review`,
+    approve: (id: number) => `/requisitions/${id}/approve`,
+    receive: (id: number) => `/requisitions/${id}/receive`,
+    reject: (id: number) => `/requisitions/${id}/reject`,
+    /** GET wrapped. POST/PUT/DELETE wrapped. Auth header on writes for audit. No role check. */
+    costCenters: '/requisitions/cost-centers',
+    costCenterById: (id: number) => `/requisitions/cost-centers/${id}`,
   },
   visitors: {
     /** GET wrapped. POST check-in wrapped. DELETE wrapped. */
@@ -241,6 +259,14 @@ export const queryKeys = {
     all: ['suppliers'] as const,
     types: ['suppliers', 'types'] as const,
     contracts: (supplierId: number) => ['suppliers', 'contracts', supplierId] as const,
+  },
+  requisitions: {
+    all: ['requisitions'] as const,
+    list: (params: Record<string, string | number>) => ['requisitions', 'list', params] as const,
+    mine: ['requisitions', 'mine'] as const,
+    detail: (id: number) => ['requisitions', 'detail', id] as const,
+    summary: (params: Record<string, string | number>) => ['requisitions', 'summary', params] as const,
+    costCenters: ['requisitions', 'cost-centers'] as const,
   },
   visitors: {
     all: ['visitors'] as const,

@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useAssetList } from '@/features/assets/hooks/useAssets'
 import { useStoreItems } from '@/features/store/hooks/useStore'
+import { useRequisitionList } from '@/features/requisitions/hooks/useRequisitions'
+import { requisitionStatusLabel, requisitionTypeLabel } from '@/features/requisitions/types/requisition.types'
 import { useVehicleList } from '@/features/transport/hooks/useTransport'
 import { useLearningAreaList } from '@/features/academic/hooks/useAcademic'
 import { useStaffRoles } from '@/features/lookups/useLookups'
@@ -36,6 +38,7 @@ export function CommandSearch(): ReactNode {
   const learningAreas = useLearningAreaList()
   const assets = useAssetList()
   const storeItems = useStoreItems()
+  const requisitions = useRequisitionList()
   const vehicles = useVehicleList()
   const staffRoles = useStaffRoles()
 
@@ -149,6 +152,31 @@ export function CommandSearch(): ReactNode {
       }))
   }, [needle, storeItems.data])
 
+  const requisitionHits = useMemo<SearchHit[]>(() => {
+    if (!needle) return []
+    return (requisitions.data ?? [])
+      .filter((item) =>
+        matches(
+          [
+            item.requisitionNumber,
+            item.purpose,
+            item.status,
+            requisitionTypeLabel(item.type),
+            item.costCenter?.name,
+            item.campus?.name,
+          ].join(' '),
+          needle,
+        ),
+      )
+      .slice(0, 6)
+      .map((item) => ({
+        id: `requisition-${item.id}`,
+        label: item.requisitionNumber || `Requisition ${item.id}`,
+        hint: [requisitionStatusLabel(item.status), item.costCenter?.name].filter(Boolean).join(' · ') || 'Requisition',
+        to: `${paths.requisitions}?id=${item.id}`,
+      }))
+  }, [needle, requisitions.data])
+
   const vehicleHits = useMemo<SearchHit[]>(() => {
     if (!needle) return []
     return (vehicles.data ?? [])
@@ -189,6 +217,7 @@ export function CommandSearch(): ReactNode {
     learningAreaHits.length > 0 ||
     assetHits.length > 0 ||
     storeHits.length > 0 ||
+    requisitionHits.length > 0 ||
     vehicleHits.length > 0 ||
     roleHits.length > 0
 
@@ -244,6 +273,7 @@ export function CommandSearch(): ReactNode {
                 <ResultGroup title="Learning areas" items={learningAreaHits} onSelect={go} />
                 <ResultGroup title="Asset Management" items={assetHits} onSelect={go} />
                 <ResultGroup title="Store Management" items={storeHits} onSelect={go} />
+                <ResultGroup title="Requisitions" items={requisitionHits} onSelect={go} />
                 <ResultGroup title="Transport" items={vehicleHits} onSelect={go} />
                 <ResultGroup title="Staff roles" items={roleHits} onSelect={go} />
               </>

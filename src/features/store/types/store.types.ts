@@ -126,6 +126,7 @@ export interface StockLog {
   issuedToLearner?: Pick<Learner, 'id' | 'firstName' | 'middleName' | 'lastName'> | null
   issuedToDept?: Department | null
   supplier?: Pick<Supplier, 'id' | 'name'> | null
+  requisition?: { id: number; requisitionNumber?: string | null } | null
   logDate?: string | null
   systemTimestamp?: string | null
   recordedBy?: string | null
@@ -136,7 +137,8 @@ export interface StockLogCreatePayload {
   item: { id: number }
   sourceStore: { id: number }
   destinationStore?: { id: number }
-  term?: { id: number }
+  /** Required by `POST /api/store/logs` (`Please select a term.`). */
+  term: { id: number }
   quantity: number
   type: TransactionType
   logDate: string
@@ -258,4 +260,30 @@ export function issuedToLabel(log: StockLog): string {
   if (log.issuedToDept?.name) return log.issuedToDept.name
   if (log.supplier?.name) return log.supplier.name
   return '—'
+}
+
+function storeDisplayName(store: StockLog['sourceStore']): string {
+  if (!store?.name) return '—'
+  const campus = store.campus?.name?.trim()
+  return campus ? `${store.name} · ${campus}` : store.name
+}
+
+/** Additions have no destination store; the supplier is the source. */
+function isSupplierReceipt(log: Pick<StockLog, 'destinationStore' | 'supplier'>): boolean {
+  return !log.destinationStore && Boolean(log.supplier?.name)
+}
+
+export function logFromLabel(log: StockLog): string {
+  if (isSupplierReceipt(log) && log.supplier?.name) return log.supplier.name
+  return storeDisplayName(log.sourceStore)
+}
+
+export function logToLabel(log: StockLog): string {
+  if (log.destinationStore) return storeDisplayName(log.destinationStore)
+  if (isSupplierReceipt(log)) return storeDisplayName(log.sourceStore)
+  return issuedToLabel(log)
+}
+
+export function requisitionNumberLabel(log: Pick<StockLog, 'requisition'>): string {
+  return log.requisition?.requisitionNumber?.trim() || '—'
 }

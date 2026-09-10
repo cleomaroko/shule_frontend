@@ -46,6 +46,11 @@ import type { UserRole } from '@/auth/auth.types'
  * Class, stream, zone and house POSTs have no role check in the controller but
  * require an Authorization header for audit logging. The UI still gates them.
  *
+ * Requisition writes (`RequisitionController`) have no role check. Create,
+ * review, approve, receive, reject, and cost-center mutations require an
+ * Authorization header so the controller can resolve staff via workEmail and
+ * write audit logs. The UI still gates workflow and settings actions.
+ *
  * The backend remains the security authority — these helpers only hide UI that
  * the current session is known to be declined for.
  */
@@ -61,6 +66,11 @@ export type Capability =
   | 'supplier:write'
   | 'visitor:write'
   | 'admissions:write'
+  | 'requisition:create'
+  | 'requisition:review'
+  | 'requisition:approve'
+  | 'requisition:receive'
+  | 'requisition:settings'
   | 'system:super'
   | 'system:analytics'
 
@@ -119,6 +129,20 @@ export function can(role: UserRole | null | undefined, capability: Capability): 
       return roleContains(role, 'ADMIN') || roleContains(role, 'OPERATOR') || roleContains(role, 'HEAD')
     case 'admissions:write':
       return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
+    case 'requisition:create':
+      return Boolean(role)
+    case 'requisition:review':
+      return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD') || roleContains(role, 'DEAN')
+    case 'requisition:approve':
+      return (
+        roleContains(role, 'ADMIN') ||
+        roleContains(role, 'HEAD_OF_SCHOOL') ||
+        roleContains(role, 'FINANCE')
+      )
+    case 'requisition:receive':
+      return roleContains(role, 'ADMIN') || roleContains(role, 'OPERATOR') || roleContains(role, 'HEAD')
+    case 'requisition:settings':
+      return roleContains(role, 'ADMIN')
     case 'system:super':
       return hasRole(role, 'ROLE_SUPER_ADMIN')
     case 'system:analytics':

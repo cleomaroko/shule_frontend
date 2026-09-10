@@ -15,7 +15,9 @@ import { weekdayLabel } from '@/features/store/lib/store-report'
 import {
   formatStoreQty,
   isPendingTransfer,
-  issuedToLabel,
+  logFromLabel,
+  logToLabel,
+  requisitionNumberLabel,
   transactionTypeLabel,
   transferStatusLabel,
   type StockLog,
@@ -35,24 +37,6 @@ function typeBadgeVariant(type: TransactionType | null | undefined) {
     default:
       return 'neutral' as const
   }
-}
-
-function storeLine(store: StockLog['sourceStore']): string {
-  if (!store?.name) return '—'
-  const campus = store.campus?.name?.trim()
-  return campus ? `${store.name} · ${campus}` : store.name
-}
-
-function logFrom(log: StockLog): string {
-  if (log.type === 'ADDITION') return displayValue(log.supplier?.name)
-  return storeLine(log.sourceStore)
-}
-
-function logTo(log: StockLog): string {
-  if (log.type === 'TRANSFER') return storeLine(log.destinationStore)
-  if (log.type === 'CONSUMPTION') return issuedToLabel(log)
-  if (log.type === 'ADDITION' || log.type === 'BALANCE_BF') return storeLine(log.sourceStore)
-  return issuedToLabel(log)
 }
 
 function categoryLine(row: StoreReportRow): string {
@@ -77,9 +61,10 @@ export function WeeklyReportDetailDialog({
       header: 'Type',
       cell: (log) => <Badge variant={typeBadgeVariant(log.type)}>{transactionTypeLabel(log.type)}</Badge>,
     },
-    { id: 'from', header: 'From', cell: (log) => logFrom(log) },
-    { id: 'to', header: 'To / issued', cell: (log) => logTo(log) },
+    { id: 'from', header: 'From', cell: (log) => logFromLabel(log) },
+    { id: 'to', header: 'To / issued', cell: (log) => logToLabel(log) },
     { id: 'qty', header: 'Qty', cell: (log) => formatStoreQty(log.quantity) },
+    { id: 'req', header: 'Requisition', hideOnMobile: true, cell: (log) => requisitionNumberLabel(log) },
     {
       id: 'status',
       header: 'Status',
@@ -171,16 +156,22 @@ export function WeeklyReportDetailDialog({
                       <dl className="grid grid-cols-2 gap-2 type-caption text-muted-foreground">
                         <div>
                           <dt>From</dt>
-                          <dd className="font-medium text-foreground">{logFrom(log)}</dd>
+                          <dd className="font-medium text-foreground">{logFromLabel(log)}</dd>
                         </div>
                         <div>
                           <dt>To</dt>
-                          <dd className="font-medium text-foreground">{logTo(log)}</dd>
+                          <dd className="font-medium text-foreground">{logToLabel(log)}</dd>
                         </div>
                         {log.recordedBy ? (
                           <div className="col-span-2">
                             <dt>Recorded by</dt>
                             <dd className="font-medium text-foreground">{log.recordedBy}</dd>
+                          </div>
+                        ) : null}
+                        {log.requisition?.requisitionNumber ? (
+                          <div className="col-span-2">
+                            <dt>Requisition</dt>
+                            <dd className="font-medium text-foreground">{log.requisition.requisitionNumber}</dd>
                           </div>
                         ) : null}
                       </dl>

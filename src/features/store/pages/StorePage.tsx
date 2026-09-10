@@ -49,6 +49,9 @@ import {
   formatStoreQty,
   isPendingTransfer,
   issuedToLabel,
+  logFromLabel,
+  logToLabel,
+  requisitionNumberLabel,
   storeIsMain,
   termLabel,
   transactionTypeLabel,
@@ -705,8 +708,10 @@ function TransactionsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         termLabel(log.term),
         transactionTypeLabel(log.type),
         issuedToLabel(log),
+        log.supplier?.name,
         log.recordedBy,
         log.logDate,
+        log.requisition?.requisitionNumber,
       ]
         .join(' ')
         .toLowerCase()
@@ -724,9 +729,15 @@ function TransactionsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
       cell: (row) => <Badge variant={typeBadgeVariant(row.type)}>{transactionTypeLabel(row.type)}</Badge>,
     },
     { id: 'item', header: 'Item', cell: (row) => displayValue(row.item?.name) },
-    { id: 'from', header: 'From', hideOnMobile: true, cell: (row) => displayValue(row.sourceStore?.name) },
-    { id: 'to', header: 'To / issued', hideOnMobile: true, cell: (row) => displayValue(row.destinationStore?.name) === '—' ? issuedToLabel(row) : displayValue(row.destinationStore?.name) },
+    { id: 'from', header: 'From', hideOnMobile: true, cell: (row) => logFromLabel(row) },
+    { id: 'to', header: 'To / issued', hideOnMobile: true, cell: (row) => logToLabel(row) },
     { id: 'qty', header: 'Qty', cell: (row) => formatStoreQty(row.quantity) },
+    {
+      id: 'req',
+      header: 'Requisition',
+      hideOnMobile: true,
+      cell: (row) => requisitionNumberLabel(row),
+    },
     {
       id: 'status',
       header: 'Status',
@@ -876,7 +887,7 @@ function TransactionsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
                 <div className="min-w-0">
                   <p className="type-heading truncate">{displayValue(row.item?.name)}</p>
                   <p className="type-caption text-muted-foreground">
-                    {formatDate(row.logDate)} · {displayValue(row.sourceStore?.name)}
+                    {formatDate(row.logDate)} · {logFromLabel(row)} → {logToLabel(row)}
                   </p>
                 </div>
                 <Badge variant={typeBadgeVariant(row.type)}>{transactionTypeLabel(row.type)}</Badge>
@@ -884,6 +895,7 @@ function TransactionsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
               <p className="type-caption text-muted-foreground">
                 Qty {formatStoreQty(row.quantity)}
                 {row.type === 'TRANSFER' ? ` · ${transferStatusLabel(row.status)}` : ''}
+                {row.requisition?.requisitionNumber ? ` · ${row.requisition.requisitionNumber}` : ''}
               </p>
               {canWrite && isPendingTransfer(row) ? (
                 <Button type="button" size="sm" onClick={() => setPendingReceive(row)}>

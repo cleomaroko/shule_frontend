@@ -16,7 +16,9 @@ import { useItemMovements } from '@/features/store/hooks/useStore'
 import {
   formatStoreQty,
   isPendingTransfer,
-  issuedToLabel,
+  logFromLabel,
+  logToLabel,
+  requisitionNumberLabel,
   transactionTypeLabel,
   transferStatusLabel,
   type StockLog,
@@ -38,13 +40,6 @@ function typeBadgeVariant(type: TransactionType | null | undefined) {
   }
 }
 
-function movementTo(log: StockLog): string {
-  if (log.type === 'TRANSFER') return displayValue(log.destinationStore?.name)
-  if (log.type === 'CONSUMPTION') return issuedToLabel(log)
-  if (log.type === 'ADDITION') return displayValue(log.sourceStore?.name)
-  return issuedToLabel(log)
-}
-
 export function ItemMovementsDialog({
   item,
   onOpenChange,
@@ -62,9 +57,10 @@ export function ItemMovementsDialog({
       header: 'Type',
       cell: (row) => <Badge variant={typeBadgeVariant(row.type)}>{transactionTypeLabel(row.type)}</Badge>,
     },
-    { id: 'from', header: 'From', cell: (row) => displayValue(row.sourceStore?.name) },
-    { id: 'to', header: 'To / issued', cell: (row) => movementTo(row) },
+    { id: 'from', header: 'From', cell: (row) => logFromLabel(row) },
+    { id: 'to', header: 'To / issued', cell: (row) => logToLabel(row) },
     { id: 'qty', header: 'Qty', cell: (row) => formatStoreQty(row.quantity) },
+    { id: 'req', header: 'Requisition', hideOnMobile: true, cell: (row) => requisitionNumberLabel(row) },
     {
       id: 'status',
       header: 'Status',
@@ -107,7 +103,8 @@ export function ItemMovementsDialog({
                 <div>
                   <p className="type-heading">{transactionTypeLabel(row.type)}</p>
                   <p className="type-caption text-muted-foreground">
-                    {formatDate(row.logDate)} · {displayValue(row.sourceStore?.name)} · Qty {formatStoreQty(row.quantity)}
+                    {formatDate(row.logDate)} · {logFromLabel(row)} → {logToLabel(row)} · Qty {formatStoreQty(row.quantity)}
+                    {row.requisition?.requisitionNumber ? ` · ${row.requisition.requisitionNumber}` : ''}
                   </p>
                 </div>
               )}
