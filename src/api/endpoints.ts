@@ -137,7 +137,7 @@ export const endpoints = {
     assignmentById: (id: number) => `/transport/assignments/${id}`,
   },
   shuleAi: {
-    /** GET plain text. Query: `message`. Sent to `env.aiApiBaseUrl`, not `apiBaseUrl`. */
+    /** GET plain text. Query: `message`. Same-origin `/api`; proxy forwards to the VPS. */
     chat: '/shule-ai/chat',
   },
   suppliers: {

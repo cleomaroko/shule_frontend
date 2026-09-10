@@ -10,7 +10,16 @@ export default defineConfig(({ mode }) => {
   // straight to :8080 are rejected. Proxying same-origin keeps local dev working
   // without modifying the backend.
   const proxyTarget = env.VITE_DEV_PROXY_TARGET ?? 'http://localhost:8080'
+  const aiProxyTarget = env.VITE_AI_PROXY_TARGET ?? 'http://162.35.96.90'
+  const chatProxyTimeoutMs = 310_000
   const apiProxy = {
+    // Longer prefix first so chat is not swallowed by the generic `/api` rule.
+    '/api/shule-ai': {
+      target: aiProxyTarget,
+      changeOrigin: true,
+      timeout: chatProxyTimeoutMs,
+      proxyTimeout: chatProxyTimeoutMs,
+    },
     '/api': {
       target: proxyTarget,
       changeOrigin: true,
