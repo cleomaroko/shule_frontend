@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Dira 365</string>
+    <string name="title_activity_main">Dira 365</string>
+    <string name="package_name">com.lyrt.dira365</string>
+    <string name="custom_url_scheme">com.lyrt.dira365</string>
+</resources>

@@ -11,6 +11,7 @@ import { useRequisitionList } from '@/features/requisitions/hooks/useRequisition
 import { requisitionStatusLabel, requisitionTypeLabel } from '@/features/requisitions/types/requisition.types'
 import { useVehicleList } from '@/features/transport/hooks/useTransport'
 import { useLearningAreaList } from '@/features/academic/hooks/useAcademic'
+import { useExamTypeList } from '@/features/exams/hooks/useExams'
 import { useStaffRoles } from '@/features/lookups/useLookups'
 import { useLearnerList } from '@/features/learners/hooks/useLearners'
 import { useStaffList } from '@/features/staff/hooks/useStaff'
@@ -36,6 +37,7 @@ export function CommandSearch(): ReactNode {
   const staff = useStaffList()
   const learners = useLearnerList()
   const learningAreas = useLearningAreaList()
+  const examTypes = useExamTypeList()
   const assets = useAssetList()
   const storeItems = useStoreItems()
   const requisitions = useRequisitionList()
@@ -120,6 +122,19 @@ export function CommandSearch(): ReactNode {
         to: `${paths.academics}?tab=learning-areas`,
       }))
   }, [learningAreas.data, needle])
+
+  const examTypeHits = useMemo<SearchHit[]>(() => {
+    if (!needle) return []
+    return (examTypes.data ?? [])
+      .filter((item) => matches(item.name, needle))
+      .slice(0, 6)
+      .map((item) => ({
+        id: `exam-type-${item.id}`,
+        label: item.name,
+        hint: 'Exam type',
+        to: `${paths.exams}?tab=setup&lookup=types`,
+      }))
+  }, [examTypes.data, needle])
 
   const assetHits = useMemo<SearchHit[]>(() => {
     if (!needle) return []
@@ -215,6 +230,7 @@ export function CommandSearch(): ReactNode {
     staffHits.length > 0 ||
     learnerHits.length > 0 ||
     learningAreaHits.length > 0 ||
+    examTypeHits.length > 0 ||
     assetHits.length > 0 ||
     storeHits.length > 0 ||
     requisitionHits.length > 0 ||
@@ -271,6 +287,7 @@ export function CommandSearch(): ReactNode {
                 <ResultGroup title="Learners" items={learnerHits} onSelect={go} />
                 <ResultGroup title="Staff" items={staffHits} onSelect={go} />
                 <ResultGroup title="Learning areas" items={learningAreaHits} onSelect={go} />
+                <ResultGroup title="Exam types" items={examTypeHits} onSelect={go} />
                 <ResultGroup title="Asset Management" items={assetHits} onSelect={go} />
                 <ResultGroup title="Store Management" items={storeHits} onSelect={go} />
                 <ResultGroup title="Requisitions" items={requisitionHits} onSelect={go} />

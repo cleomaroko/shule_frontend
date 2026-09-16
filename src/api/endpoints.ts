@@ -172,6 +172,46 @@ export const endpoints = {
     costCenters: '/requisitions/cost-centers',
     costCenterById: (id: number) => `/requisitions/cost-centers/${id}`,
   },
+  attendance: {
+    /** POST wrapped. Requires Authorization. Year/term default to current if omitted. */
+    mark: '/attendance',
+    /** GET wrapped. Optional query: learnerId, classId, streamId, date (`YYYY-MM-DD`). */
+    report: '/attendance/report',
+    /** GET raw `AttendanceSession[]`. POST/PUT/DELETE wrapped. Auth on writes for audit. */
+    sessions: '/attendance/sessions',
+    sessionById: (id: number) => `/attendance/sessions/${id}`,
+    /** GET raw `AttendanceActivity[]`. POST/PUT/DELETE wrapped. Auth on writes for audit. */
+    activities: '/attendance/activities',
+    activityById: (id: number) => `/attendance/activities/${id}`,
+  },
+  sow: {
+    /** POST wrapped. Requires Authorization. No role check in the controller. */
+    create: '/sow',
+    /**
+     * GET wrapped. Optional query uses the first set of: teacherId, classId,
+     * termId, campusId, subjectId. With none, returns all schemes.
+     */
+    report: '/sow/report',
+  },
+  exams: {
+    /** POST wrapped. Requires Authorization. */
+    marks: '/exams/marks',
+    /** POST wrapped `ExamRecord[]`. Requires Authorization. */
+    marksBatch: '/exams/marks/batch',
+    /** GET wrapped. */
+    configByClass: (classId: number) => `/exams/config/${classId}`,
+    /** POST wrapped. Requires Authorization. */
+    config: '/exams/config',
+    /** GET wrapped. Required query: learnerId, termId. Data: pathway, track, results. */
+    analysis: '/exams/report/analysis',
+    /** GET wrapped map. Required query: classId, termId. */
+    pathwayDistribution: '/exams/report/pathway-distribution',
+    /** GET wrapped. POST/PUT/DELETE wrapped. Auth on writes for audit. */
+    types: '/exams/types',
+    typeById: (id: number) => `/exams/types/${id}`,
+    /** GET wrapped. POST wrapped. No PUT/DELETE. Grading POST has no Authorization param. */
+    grading: '/exams/grading',
+  },
   visitors: {
     /** GET wrapped. POST check-in wrapped. DELETE wrapped. */
     list: '/visitors',
@@ -267,6 +307,22 @@ export const queryKeys = {
     detail: (id: number) => ['requisitions', 'detail', id] as const,
     summary: (params: Record<string, string | number>) => ['requisitions', 'summary', params] as const,
     costCenters: ['requisitions', 'cost-centers'] as const,
+  },
+  attendance: {
+    report: (params: Record<string, string | number>) => ['attendance', 'report', params] as const,
+    sessions: ['attendance', 'sessions'] as const,
+    activities: ['attendance', 'activities'] as const,
+  },
+  sow: {
+    report: (params: Record<string, string | number>) => ['sow', 'report', params] as const,
+  },
+  exams: {
+    types: ['exams', 'types'] as const,
+    grading: ['exams', 'grading'] as const,
+    config: (classId: number) => ['exams', 'config', classId] as const,
+    analysis: (learnerId: number, termId: number) => ['exams', 'analysis', learnerId, termId] as const,
+    pathwayDistribution: (classId: number, termId: number) =>
+      ['exams', 'pathway-distribution', classId, termId] as const,
   },
   visitors: {
     all: ['visitors'] as const,

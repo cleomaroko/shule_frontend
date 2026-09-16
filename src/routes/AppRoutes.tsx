@@ -4,7 +4,10 @@ import type { ReactNode } from 'react'
 import { AcademicsPage } from '@/features/academic/pages/AcademicsPage'
 import { AdmissionsPage } from '@/features/admissions/pages/AdmissionsPage'
 import { AssetsPage } from '@/features/assets/pages/AssetsPage'
+import { AttendancePage } from '@/features/attendance/pages/AttendancePage'
+import { ExamsPage } from '@/features/exams/pages/ExamsPage'
 import { StorePage } from '@/features/store/pages/StorePage'
+import { SchemesPage } from '@/features/sow/pages/SchemesPage'
 import { SuppliersPage } from '@/features/suppliers/pages/SuppliersPage'
 import { TransportPage } from '@/features/transport/pages/TransportPage'
 import { VisitorsPage } from '@/features/visitors/pages/VisitorsPage'
@@ -56,6 +59,9 @@ export function AppRoutes(): ReactNode {
           <Route path="/learners/:id/edit" element={<LearnerEditPage />} />
           <Route path="/learners/:id" element={<LearnerDetailsPage />} />
           <Route path={paths.academics} element={<AcademicsPage />} />
+          <Route path={paths.attendance} element={<AttendancePage />} />
+          <Route path={paths.exams} element={<ExamsPage />} />
+          <Route path={paths.schemes} element={<SchemesPage />} />
           <Route path={paths.logistics} element={<LogisticsPage />} />
           <Route path={paths.assets} element={<AssetsPage />} />
           <Route path={paths.store} element={<StorePage />} />

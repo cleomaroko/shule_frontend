@@ -7,7 +7,10 @@ import { EmptyState, PageHeader } from '@/components/feedback/PageStates'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AcademicReportsPanel } from '@/features/reports/components/AcademicReportsPanel'
 import { AssetReportsPanel } from '@/features/reports/components/AssetReportsPanel'
+import { AttendanceReportsPanel } from '@/features/reports/components/AttendanceReportsPanel'
+import { ExamReportsPanel } from '@/features/reports/components/ExamReportsPanel'
 import { PeopleReportsPanel } from '@/features/reports/components/PeopleReportsPanel'
+import { SchemeReportsPanel } from '@/features/reports/components/SchemeReportsPanel'
 import { StoreReportsPanel } from '@/features/reports/components/StoreReportsPanel'
 import { RequisitionReportsPanel } from '@/features/reports/components/RequisitionReportsPanel'
 import { SupplierReportsPanel } from '@/features/reports/components/SupplierReportsPanel'
@@ -19,6 +22,9 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 const REPORT_TABS = [
   'people',
   'academics',
+  'attendance',
+  'exams',
+  'schemes',
   'visitors',
   'assets',
   'stores',
@@ -55,12 +61,15 @@ export function ReportsPage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Reports and analysis"
-        description="Department summaries from existing records. Dedicated report APIs are used where they exist (store stock-take, requisition summary, asset search, transport logs, and system usage). Other tabs summarise the same list endpoints as each module."
+        description="Department summaries from existing records. Dedicated report APIs are used where they exist (attendance report, exam analysis and pathway distribution, scheme of work report, store stock-take, requisition summary, asset search, transport logs, and system usage). Other tabs summarise the same list endpoints as each module."
       />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
         <TabsList>
           <TabsTrigger value="people">People</TabsTrigger>
           <TabsTrigger value="academics">Academics</TabsTrigger>
+          <TabsTrigger value="attendance">Attendance</TabsTrigger>
+          <TabsTrigger value="exams">Exams</TabsTrigger>
+          <TabsTrigger value="schemes">Schemes</TabsTrigger>
           <TabsTrigger value="visitors">Visitors</TabsTrigger>
           <TabsTrigger value="assets">Assets</TabsTrigger>
           <TabsTrigger value="stores">Stores</TabsTrigger>
@@ -74,6 +83,15 @@ export function ReportsPage(): ReactNode {
         </TabsContent>
         <TabsContent value="academics">
           <AcademicReportsPanel />
+        </TabsContent>
+        <TabsContent value="attendance">
+          <AttendanceReportsPanel />
+        </TabsContent>
+        <TabsContent value="exams">
+          <ExamReportsPanel />
+        </TabsContent>
+        <TabsContent value="schemes">
+          <SchemeReportsPanel />
         </TabsContent>
         <TabsContent value="visitors">
           <VisitorReportsPanel />

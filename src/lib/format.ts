@@ -20,6 +20,14 @@ export function getInitials(parts: { firstName?: string | null; lastName?: strin
   return (parts.fallback ?? '?').slice(0, 2).toUpperCase()
 }
 
+/** Local calendar date as `YYYY-MM-DD`, matching Java `LocalDate` JSON. */
+export function todayIso(date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export function formatDate(value: string | null | undefined): string {
   if (!value) return '—'
   const date = new Date(value)

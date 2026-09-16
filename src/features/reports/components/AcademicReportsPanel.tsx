@@ -75,7 +75,7 @@ export function AcademicReportsPanel(): ReactNode {
     <div className="flex flex-col gap-8">
       <ReportSection
         title="Teacher assignments"
-        note="Coverage is counted from GET /api/academic/assignments. There is no exam or timetable report API."
+        note="Coverage is counted from GET /api/academic/assignments. Exam reports live under Reports → Exams."
       >
         <StatGrid
           items={[

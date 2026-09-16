@@ -51,6 +51,19 @@ import type { UserRole } from '@/auth/auth.types'
  * Authorization header so the controller can resolve staff via workEmail and
  * write audit logs. The UI still gates workflow and settings actions.
  *
+ * Attendance writes (`AttendanceController`) have no role check. Mark,
+ * session, and activity mutations require an Authorization header for
+ * `recordedBy` / audit logs. The UI still gates register and lookup edits.
+ *
+ * Scheme of Work uploads (`SchemeOfWorkController`) have no role check. The
+ * controller comments that only teachers should upload; the UI hides the form
+ * from other roles. GET `/sow/report` is unauthenticated in the controller.
+ *
+ * Exam mark, type, and config writes (`ExamController`, `ExamTypeController`)
+ * require an Authorization header for audit logging and have no role check.
+ * `POST /exams/grading` has no Authorization parameter. The UI still gates
+ * marks vs setup.
+ *
  * The backend remains the security authority — these helpers only hide UI that
  * the current session is known to be declined for.
  */
@@ -71,6 +84,11 @@ export type Capability =
   | 'requisition:approve'
   | 'requisition:receive'
   | 'requisition:settings'
+  | 'attendance:write'
+  | 'attendance:settings'
+  | 'sow:upload'
+  | 'exam:write'
+  | 'exam:setup'
   | 'system:super'
   | 'system:analytics'
 
@@ -143,6 +161,21 @@ export function can(role: UserRole | null | undefined, capability: Capability): 
       return roleContains(role, 'ADMIN') || roleContains(role, 'OPERATOR') || roleContains(role, 'HEAD')
     case 'requisition:settings':
       return roleContains(role, 'ADMIN')
+    case 'attendance:write':
+      return (
+        roleContains(role, 'ADMIN') ||
+        roleContains(role, 'HEAD') ||
+        roleContains(role, 'TEACHER') ||
+        roleContains(role, 'OPERATOR')
+      )
+    case 'attendance:settings':
+      return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
+    case 'sow:upload':
+      return roleContains(role, 'TEACHER') || roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
+    case 'exam:write':
+      return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD') || roleContains(role, 'TEACHER')
+    case 'exam:setup':
+      return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
     case 'system:super':
       return hasRole(role, 'ROLE_SUPER_ADMIN')
     case 'system:analytics':

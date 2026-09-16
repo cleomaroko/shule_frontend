@@ -1,4 +1,4 @@
-import { ArrowUpRight, BarChart3, BookOpen, Building2, Bus, ClipboardList, FileText, GraduationCap, Package, Plus, Settings2, Truck, UserRound, Users, Warehouse } from 'lucide-react'
+import { ArrowUpRight, BarChart3, BookOpen, Building2, Bus, CalendarCheck, ClipboardCheck, ClipboardList, FileText, GraduationCap, NotebookPen, Package, Plus, Settings2, Truck, UserRound, Users, Warehouse } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
@@ -196,6 +196,27 @@ export function AppPlaceholderPage(): ReactNode {
               description="Classes, learning areas, and teacher assignments"
               icon={<BookOpen className="size-5" aria-hidden="true" />}
               tone="violet"
+            />
+            <ModuleLink
+              to={paths.attendance}
+              title="Attendance"
+              description="Class register, sessions, and daily reports"
+              icon={<CalendarCheck className="size-5" aria-hidden="true" />}
+              tone="teal"
+            />
+            <ModuleLink
+              to={paths.exams}
+              title="Exams"
+              description="Marks, grading, and pathway analysis"
+              icon={<ClipboardCheck className="size-5" aria-hidden="true" />}
+              tone="blue"
+            />
+            <ModuleLink
+              to={paths.schemes}
+              title="Schemes of work"
+              description="Teacher document links by class and subject"
+              icon={<NotebookPen className="size-5" aria-hidden="true" />}
+              tone="indigo"
             />
             <ModuleLink
               to={paths.logistics}
