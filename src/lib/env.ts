@@ -30,9 +30,10 @@ export const env = {
    */
   routerBasename,
   /**
-   * Google Apps Script web-app URL that saves photos into the school Drive.
-   * Same pattern as the careers form (`VITE_GOOGLE_JOBS_URL`): the browser posts
-   * the file; Java only stores the returned share link. Public — not a secret.
+   * Google Apps Script web-app URL that saves files into the school Drive
+   * (staff photos and scheme-of-work documents). Same pattern as the careers
+   * form (`VITE_GOOGLE_JOBS_URL`): the browser posts the file; Java only stores
+   * the returned share link. Public — not a secret.
    */
   googleDriveUploadUrl: readString(import.meta.env.VITE_GOOGLE_DRIVE_UPLOAD_URL, ''),
   isDevelopment: import.meta.env.DEV,

@@ -32,11 +32,11 @@ export function SchemeReportsPanel(): ReactNode {
         note="Unfiltered GET /api/sow/report. The controller applies only one query filter at a time on the Schemes page."
       >
         <StatGrid
-          items={[{ label: 'Schemes', value: rows.length.toLocaleString(), hint: 'Document links on file' }]}
+          items={[{ label: 'Schemes', value: rows.length.toLocaleString(), hint: 'Documents on file' }]}
           loading={list.isLoading}
         />
         {rows.length === 0 && !list.isLoading ? (
-          <EmptyState title="No schemes uploaded" description="Teachers upload an HTTPS link from the Schemes of work module." />
+          <EmptyState title="No schemes uploaded" description="Teachers upload a PDF or Word file from the Schemes of work module." />
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
             <BreakdownCard title="By learning area" rows={bySubject} empty="No schemes yet." loading={list.isLoading} />

@@ -11,7 +11,7 @@ import { useRequisitionList } from '@/features/requisitions/hooks/useRequisition
 import { requisitionStatusLabel, requisitionTypeLabel } from '@/features/requisitions/types/requisition.types'
 import { useVehicleList } from '@/features/transport/hooks/useTransport'
 import { useLearningAreaList } from '@/features/academic/hooks/useAcademic'
-import { useExamTypeList } from '@/features/exams/hooks/useExams'
+import { useExamTypeList, useGradingScaleList } from '@/features/exams/hooks/useExams'
 import { useStaffRoles } from '@/features/lookups/useLookups'
 import { useLearnerList } from '@/features/learners/hooks/useLearners'
 import { useStaffList } from '@/features/staff/hooks/useStaff'
@@ -38,6 +38,7 @@ export function CommandSearch(): ReactNode {
   const learners = useLearnerList()
   const learningAreas = useLearningAreaList()
   const examTypes = useExamTypeList()
+  const grading = useGradingScaleList()
   const assets = useAssetList()
   const storeItems = useStoreItems()
   const requisitions = useRequisitionList()
@@ -136,6 +137,19 @@ export function CommandSearch(): ReactNode {
       }))
   }, [examTypes.data, needle])
 
+  const gradingHits = useMemo<SearchHit[]>(() => {
+    if (!needle) return []
+    return (grading.data ?? [])
+      .filter((item) => matches([item.name, item.descriptiveLevel].join(' '), needle))
+      .slice(0, 6)
+      .map((item) => ({
+        id: `grading-${item.id}`,
+        label: item.descriptiveLevel || item.name || `Band ${item.id}`,
+        hint: item.name || 'Grading band',
+        to: `${paths.exams}?tab=setup&lookup=grading`,
+      }))
+  }, [grading.data, needle])
+
   const assetHits = useMemo<SearchHit[]>(() => {
     if (!needle) return []
     return (assets.data ?? [])
@@ -231,6 +245,7 @@ export function CommandSearch(): ReactNode {
     learnerHits.length > 0 ||
     learningAreaHits.length > 0 ||
     examTypeHits.length > 0 ||
+    gradingHits.length > 0 ||
     assetHits.length > 0 ||
     storeHits.length > 0 ||
     requisitionHits.length > 0 ||
@@ -288,6 +303,7 @@ export function CommandSearch(): ReactNode {
                 <ResultGroup title="Staff" items={staffHits} onSelect={go} />
                 <ResultGroup title="Learning areas" items={learningAreaHits} onSelect={go} />
                 <ResultGroup title="Exam types" items={examTypeHits} onSelect={go} />
+                <ResultGroup title="Grading" items={gradingHits} onSelect={go} />
                 <ResultGroup title="Asset Management" items={assetHits} onSelect={go} />
                 <ResultGroup title="Store Management" items={storeHits} onSelect={go} />
                 <ResultGroup title="Requisitions" items={requisitionHits} onSelect={go} />

@@ -40,21 +40,24 @@ import {
   usePathwayDistribution,
 } from '@/features/exams/hooks/useExams'
 import {
+  buildExamMarkPayload,
   configContributesToTotal,
+  examClusterAverages,
   examTypeIncludedInFinal,
   gradeForMark,
   markPercent,
-  type ExamMarkPayload,
+  pathwayDistributionRows,
   type ExamRecord,
   type ExamSubjectConfig,
   type ExamType,
   type ExamTypeWritePayload,
   type GradingScale,
+  type GradingScaleWritePayload,
 } from '@/features/exams/types/exam.types'
 import { useLearnerList } from '@/features/learners/hooks/useLearners'
 import { BreakdownCard, StatGrid } from '@/features/reports/components/ReportPrimitives'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { displayValue, formatClassLabel, formatPersonName } from '@/lib/format'
+import { displayValue, formatClassLabel, formatDate, formatPersonName } from '@/lib/format'
 import { learnerMatchesClass, learnerMatchesClassStream } from '@/lib/learner-class'
 
 const PAGE_SIZE = 10
@@ -77,6 +80,44 @@ function joinRequired(items: string[]): string {
   return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`
 }
 
+function optionalNumber(raw: string | undefined): number | undefined {
+  const trimmed = raw?.trim() ?? ''
+  if (!trimmed) return undefined
+  const value = Number(trimmed)
+  return Number.isFinite(value) ? value : undefined
+}
+
+function parseOptionalScore(raw: string | undefined, label: string): string | null {
+  const trimmed = raw?.trim() ?? ''
+  if (!trimmed) return null
+  const value = Number(trimmed)
+  if (!Number.isFinite(value)) return `${label} must be a number.`
+  if (value < 0) return `${label} cannot be negative.`
+  return null
+}
+
+function gradingPayload(
+  name: string,
+  level: string,
+  points: string,
+  minMark: string,
+  maxMark: string,
+): GradingScaleWritePayload | null {
+  const pointsValue = Number(points)
+  const min = Number(minMark)
+  const max = Number(maxMark)
+  if (!name.trim() || !level.trim() || !Number.isFinite(pointsValue) || !Number.isFinite(min) || !Number.isFinite(max)) {
+    return null
+  }
+  return {
+    name: name.trim(),
+    descriptiveLevel: level.trim(),
+    points: pointsValue,
+    minMark: min,
+    maxMark: max,
+  }
+}
+
 export function ExamsPage(): ReactNode {
   useDocumentTitle('Exams')
   const { user } = useAuth()
@@ -90,7 +131,7 @@ export function ExamsPage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Exams"
-        description="Enter marks, configure which subjects count, and view pathway analysis. Analysis requires a learner and term; distribution requires a class and term."
+        description="Enter marks, configure exam types and grading, and view pathway, track, and school-tier analysis. Analysis needs a learner and term; distribution needs a class and term."
       />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
         <TabsList>
@@ -133,7 +174,11 @@ function MarksPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const [termId, setTermId] = useState('')
   const [outOf, setOutOf] = useState('100')
   const [query, setQuery] = useState('')
+  const [showExtraScores, setShowExtraScores] = useState(false)
   const [scores, setScores] = useState<Record<number, string>>({})
+  const [sbaScores, setSbaScores] = useState<Record<number, string>>({})
+  const [kjseaScores, setKjseaScores] = useState<Record<number, string>>({})
+  const [kpseaScores, setKpseaScores] = useState<Record<number, string>>({})
   const [scoreErrors, setScoreErrors] = useState<Record<number, string>>({})
   const [fieldErrors, setFieldErrors] = useState<{
     classId?: string | undefined
@@ -206,7 +251,7 @@ function MarksPanel({ canWrite }: { canWrite: boolean }): ReactNode {
     const subject = Number(subjectId)
     const term = Number(termId)
     const nextScoreErrors: Record<number, string> = {}
-    const rows: ExamMarkPayload[] = []
+    const rows: ReturnType<typeof buildExamMarkPayload>[] = []
     let typedCount = 0
 
     for (const learner of roster) {
@@ -226,17 +271,34 @@ function MarksPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         nextScoreErrors[learner.id] = `Cannot be more than ${max}.`
         continue
       }
-      const body: ExamMarkPayload = {
-        learner: { id: learner.id },
-        examType: { id: examType },
-        subject: { id: subject },
-        term: { id: term },
-        schoolClass: { id: schoolClass },
-        marksScored,
-        outOf: max,
+
+      const extraError =
+        parseOptionalScore(sbaScores[learner.id], 'SBA') ??
+        parseOptionalScore(kjseaScores[learner.id], 'KJSEA') ??
+        parseOptionalScore(kpseaScores[learner.id], 'KPSEA')
+      if (extraError) {
+        nextScoreErrors[learner.id] = extraError
+        continue
       }
-      if (streamId) body.stream = { id: Number(streamId) }
-      rows.push(body)
+
+      const sbaScore = optionalNumber(sbaScores[learner.id])
+      const kjseaScore = optionalNumber(kjseaScores[learner.id])
+      const kpseaScore = optionalNumber(kpseaScores[learner.id])
+      rows.push(
+        buildExamMarkPayload({
+          learnerId: learner.id,
+          examTypeId: examType,
+          subjectId: subject,
+          termId: term,
+          schoolClassId: schoolClass,
+          marksScored,
+          outOf: max,
+          ...(streamId ? { streamId: Number(streamId) } : {}),
+          ...(sbaScore != null ? { sbaScore } : {}),
+          ...(kjseaScore != null ? { kjseaScore } : {}),
+          ...(kpseaScore != null ? { kpseaScore } : {}),
+        }),
+      )
     }
 
     setScoreErrors(nextScoreErrors)
@@ -341,6 +403,12 @@ function MarksPanel({ canWrite }: { canWrite: boolean }): ReactNode {
           </Button>
         ) : null}
       </div>
+      <SwitchField
+        label="SBA, KJSEA, and KPSEA"
+        description="Optional extra scores stored on the same exam record. Leave blank to skip."
+        checked={showExtraScores}
+        onCheckedChange={setShowExtraScores}
+      />
 
       {roster.length === 0 ? (
         <EmptyState
@@ -360,29 +428,71 @@ function MarksPanel({ canWrite }: { canWrite: boolean }): ReactNode {
                   <p className="type-heading truncate">{formatPersonName(learner)}</p>
                   <p className="type-caption text-muted-foreground">{displayValue(learner.admissionNumber)}</p>
                 </div>
-                <div className="flex items-end gap-3">
-                  <TextField
-                    label="Marks"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={raw}
-                    onChange={(event) => {
-                      setScores((current) => ({ ...current, [learner.id]: event.target.value }))
-                      setScoreErrors((current) => {
-                        const next = { ...current }
-                        delete next[learner.id]
-                        return next
-                      })
-                    }}
-                    containerClassName="w-36"
-                    disabled={!canWrite}
-                    error={scoreErrors[learner.id]}
-                  />
-                  <p className="type-caption w-24 pb-2.5 text-muted-foreground">
-                    {percent == null ? '—' : `${percent.toFixed(0)}%`}
-                    {grade?.descriptiveLevel ? ` · ${grade.descriptiveLevel}` : ''}
-                  </p>
+                <div className="flex flex-col items-stretch gap-3 sm:items-end">
+                  <div className="flex items-end gap-3">
+                    <TextField
+                      label="Marks"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={raw}
+                      onChange={(event) => {
+                        setScores((current) => ({ ...current, [learner.id]: event.target.value }))
+                        setScoreErrors((current) => {
+                          const next = { ...current }
+                          delete next[learner.id]
+                          return next
+                        })
+                      }}
+                      containerClassName="w-36"
+                      disabled={!canWrite}
+                      error={scoreErrors[learner.id]}
+                    />
+                    <p className="type-caption w-24 pb-2.5 text-muted-foreground">
+                      {percent == null ? '—' : `${percent.toFixed(0)}%`}
+                      {grade?.descriptiveLevel ? ` · ${grade.descriptiveLevel}` : ''}
+                    </p>
+                  </div>
+                  {showExtraScores ? (
+                    <div className="grid grid-cols-3 gap-2">
+                      <TextField
+                        label="SBA"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={sbaScores[learner.id] ?? ''}
+                        onChange={(event) =>
+                          setSbaScores((current) => ({ ...current, [learner.id]: event.target.value }))
+                        }
+                        containerClassName="w-24"
+                        disabled={!canWrite}
+                      />
+                      <TextField
+                        label="KJSEA"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={kjseaScores[learner.id] ?? ''}
+                        onChange={(event) =>
+                          setKjseaScores((current) => ({ ...current, [learner.id]: event.target.value }))
+                        }
+                        containerClassName="w-24"
+                        disabled={!canWrite}
+                      />
+                      <TextField
+                        label="KPSEA"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={kpseaScores[learner.id] ?? ''}
+                        onChange={(event) =>
+                          setKpseaScores((current) => ({ ...current, [learner.id]: event.target.value }))
+                        }
+                        containerClassName="w-24"
+                        disabled={!canWrite}
+                      />
+                    </div>
+                  ) : null}
                 </div>
               </li>
             )
@@ -401,6 +511,10 @@ function AnalysisPanel(): ReactNode {
   const [termId, setTermId] = useState('')
   const analysis = useExamAnalysis(learnerId ? Number(learnerId) : null, termId ? Number(termId) : null)
   const results = analysis.data?.results ?? []
+  const clusters = examClusterAverages(results)
+  const hasExtraScores = results.some(
+    (row) => (row.sbaScore ?? 0) > 0 || (row.kjseaScore ?? 0) > 0 || (row.kpseaScore ?? 0) > 0,
+  )
 
   const columns: Array<DataColumn<ExamRecord>> = [
     { id: 'subject', header: 'Learning area', cell: (row) => displayValue(row.subject?.name) },
@@ -419,6 +533,19 @@ function AnalysisPanel(): ReactNode {
       },
     },
   ]
+  if (hasExtraScores) {
+    columns.push(
+      { id: 'sba', header: 'SBA', hideOnMobile: true, cell: (row) => displayValue(row.sbaScore) },
+      { id: 'kjsea', header: 'KJSEA', hideOnMobile: true, cell: (row) => displayValue(row.kjseaScore) },
+      { id: 'kpsea', header: 'KPSEA', hideOnMobile: true, cell: (row) => displayValue(row.kpseaScore) },
+    )
+  }
+  columns.push({
+    id: 'date',
+    header: 'Recorded',
+    hideOnMobile: true,
+    cell: (row) => formatDate(row.dateRecorded),
+  })
 
   if (analysis.isError) {
     return <ErrorState message={toUserMessage(analysis.error)} onRetry={() => void analysis.refetch()} />
@@ -451,40 +578,40 @@ function AnalysisPanel(): ReactNode {
       {!learnerId || !termId ? (
         <EmptyState
           title="Select learner and term"
-          description="GET /api/exams/report/analysis requires learnerId and termId. It returns pathway, track, and the exam records for that term."
+          description="GET /api/exams/report/analysis requires learnerId and termId. It returns pathway, track, school tier, and the exam records for that term."
         />
       ) : analysis.isLoading ? (
-        <EmptyState title="Loading analysis" description="Fetching pathway and results." />
+        <EmptyState title="Loading analysis" description="Fetching pathway, school tier, and results." />
+      ) : !analysis.data || results.length === 0 ? (
+        <EmptyState title="No papers for this term" description="Enter marks first, then reopen this analysis." />
       ) : (
         <>
           <StatGrid
             items={[
-              { label: 'Pathway', value: analysis.data?.pathway || '—', hint: 'From subject-name grouping on the server' },
-              { label: 'Track', value: analysis.data?.track || '—', hint: 'Returned with the analysis payload' },
+              { label: 'Pathway', value: analysis.data.pathway || '—', hint: 'Highest subject-cluster average' },
+              { label: 'Track', value: analysis.data.track || '—', hint: 'STEM computer subjects map to Applied Sciences' },
+              { label: 'School tier', value: analysis.data.schoolTier || '—', hint: 'C1–C4 placement from normalised subject points' },
               { label: 'Papers', value: results.length.toLocaleString(), hint: 'Exam records in this term' },
             ]}
           />
-          {results.length === 0 ? (
-            <EmptyState title="No papers for this term" description="Enter marks first, then reopen this analysis." />
-          ) : (
-            <DataTable
-              columns={columns}
-              rows={results}
-              getRowId={(row) => row.id}
-              page={1}
-              pageSize={Math.max(results.length, 1)}
-              total={results.length}
-              onPageChange={() => undefined}
-              mobileCard={(row) => (
-                <div>
-                  <p className="type-heading">{displayValue(row.subject?.name)}</p>
-                  <p className="type-caption text-muted-foreground">
-                    {percentLabel(row)} · {displayValue(row.examType?.name)}
-                  </p>
-                </div>
-              )}
-            />
-          )}
+          <StatGrid items={clusters.map((item) => ({ ...item, hint: 'Average % from matching learning-area names' }))} />
+          <DataTable
+            columns={columns}
+            rows={results}
+            getRowId={(row) => row.id}
+            page={1}
+            pageSize={Math.max(results.length, 1)}
+            total={results.length}
+            onPageChange={() => undefined}
+            mobileCard={(row) => (
+              <div>
+                <p className="type-heading">{displayValue(row.subject?.name)}</p>
+                <p className="type-caption text-muted-foreground">
+                  {percentLabel(row)} · {displayValue(row.examType?.name)}
+                </p>
+              </div>
+            )}
+          />
         </>
       )}
     </div>
@@ -497,10 +624,7 @@ function PathwaysPanel(): ReactNode {
   const [classId, setClassId] = useState('')
   const [termId, setTermId] = useState('')
   const distribution = usePathwayDistribution(classId ? Number(classId) : null, termId ? Number(termId) : null)
-  const entries = Object.entries(distribution.data ?? {}).map(([label, count]) => ({
-    label,
-    count: Number(count) || 0,
-  }))
+  const entries = pathwayDistributionRows(distribution.data)
 
   if (distribution.isError) {
     return <ErrorState message={toUserMessage(distribution.error)} onRetry={() => void distribution.refetch()} />
@@ -529,7 +653,7 @@ function PathwaysPanel(): ReactNode {
       {!classId || !termId ? (
         <EmptyState
           title="Select class and term"
-          description="GET /api/exams/report/pathway-distribution requires classId and termId."
+          description="GET /api/exams/report/pathway-distribution requires classId and termId. Counts are STEM, Arts, and Social Sciences."
         />
       ) : (
         <BreakdownCard
@@ -724,16 +848,32 @@ function ExamTypesManager({ canWrite }: { canWrite: boolean }): ReactNode {
 
 function GradingManager({ canWrite }: { canWrite: boolean }): ReactNode {
   const list = useGradingScaleList()
-  const { createGrading } = useExamMutations()
+  const { createGrading, updateGrading, deleteGrading } = useExamMutations()
   const [name, setName] = useState('')
   const [level, setLevel] = useState('')
   const [points, setPoints] = useState('')
   const [minMark, setMinMark] = useState('')
   const [maxMark, setMaxMark] = useState('')
   const [page, setPage] = useState(1)
+  const [editing, setEditing] = useState<GradingScale | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editLevel, setEditLevel] = useState('')
+  const [editPoints, setEditPoints] = useState('')
+  const [editMinMark, setEditMinMark] = useState('')
+  const [editMaxMark, setEditMaxMark] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<GradingScale | null>(null)
 
   const rows = list.data ?? []
   const paged = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  const openEdit = (row: GradingScale) => {
+    setEditing(row)
+    setEditName(row.name ?? '')
+    setEditLevel(row.descriptiveLevel ?? '')
+    setEditPoints(row.points == null ? '' : String(row.points))
+    setEditMinMark(row.minMark == null ? '' : String(row.minMark))
+    setEditMaxMark(row.maxMark == null ? '' : String(row.maxMark))
+  }
 
   const columns: Array<DataColumn<GradingScale>> = [
     { id: 'name', header: 'Scale', cell: (row) => displayValue(row.name) },
@@ -744,6 +884,22 @@ function GradingManager({ canWrite }: { canWrite: boolean }): ReactNode {
       header: 'Range',
       cell: (row) => `${displayValue(row.minMark)}–${displayValue(row.maxMark)}`,
     },
+    {
+      id: 'actions',
+      header: '',
+      className: 'w-24 text-right',
+      cell: (row) =>
+        canWrite ? (
+          <span className="flex justify-end gap-1">
+            <Button variant="ghost" size="icon" aria-label={`Edit ${row.descriptiveLevel ?? row.name ?? 'band'}`} onClick={() => openEdit(row)}>
+              <Pencil aria-hidden="true" />
+            </Button>
+            <Button variant="ghost" size="icon" aria-label={`Delete ${row.descriptiveLevel ?? row.name ?? 'band'}`} onClick={() => setPendingDelete(row)}>
+              <Trash2 aria-hidden="true" />
+            </Button>
+          </span>
+        ) : null,
+    },
   ]
 
   if (list.isError) {
@@ -752,35 +908,21 @@ function GradingManager({ canWrite }: { canWrite: boolean }): ReactNode {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="type-caption text-muted-foreground">
-        POST /api/exams/grading creates a band. There is no update or delete endpoint.
-      </p>
       {canWrite ? (
         <form
           onSubmit={(event) => {
             event.preventDefault()
-            const pointsValue = Number(points)
-            const min = Number(minMark)
-            const max = Number(maxMark)
-            if (!name.trim() || !Number.isFinite(pointsValue) || !Number.isFinite(min) || !Number.isFinite(max)) return
-            createGrading.mutate(
-              {
-                name: name.trim(),
-                descriptiveLevel: level.trim(),
-                points: pointsValue,
-                minMark: min,
-                maxMark: max,
+            const body = gradingPayload(name, level, points, minMark, maxMark)
+            if (!body) return
+            createGrading.mutate(body, {
+              onSuccess: () => {
+                setName('')
+                setLevel('')
+                setPoints('')
+                setMinMark('')
+                setMaxMark('')
               },
-              {
-                onSuccess: () => {
-                  setName('')
-                  setLevel('')
-                  setPoints('')
-                  setMinMark('')
-                  setMaxMark('')
-                },
-              },
-            )
+            })
           }}
           className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6 xl:items-end"
         >
@@ -817,6 +959,59 @@ function GradingManager({ canWrite }: { canWrite: boolean }): ReactNode {
           )}
         />
       )}
+
+      <Dialog open={editing !== null} onOpenChange={(next) => { if (!next) setEditing(null) }}>
+        <DialogContent>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (!editing) return
+              const body = gradingPayload(editName, editLevel, editPoints, editMinMark, editMaxMark)
+              if (!body) return
+              updateGrading.mutate({ id: editing.id, body }, { onSuccess: () => setEditing(null) })
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>Edit grading band</DialogTitle>
+              <DialogDescription>PUT /api/exams/grading/{'{id}'} updates name, level, points, and mark range.</DialogDescription>
+            </DialogHeader>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <TextField label="Scale name" value={editName} onChange={(event) => setEditName(event.target.value)} required />
+              <TextField label="Level" value={editLevel} onChange={(event) => setEditLevel(event.target.value)} required />
+              <TextField label="Points" type="number" value={editPoints} onChange={(event) => setEditPoints(event.target.value)} required />
+              <TextField label="Min mark" type="number" step="0.01" value={editMinMark} onChange={(event) => setEditMinMark(event.target.value)} required />
+              <TextField label="Max mark" type="number" step="0.01" value={editMaxMark} onChange={(event) => setEditMaxMark(event.target.value)} required />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" isLoading={updateGrading.isPending} loadingLabel="Saving">
+                Save
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(next) => { if (!next) setPendingDelete(null) }}
+        title="Delete grading band?"
+        description={
+          pendingDelete
+            ? `This will remove ${pendingDelete.descriptiveLevel ?? pendingDelete.name ?? 'this band'}.`
+            : ''
+        }
+        confirmLabel="Delete"
+        loadingLabel="Deleting"
+        isConfirming={deleteGrading.isPending}
+        onConfirm={() => {
+          if (!pendingDelete) return
+          deleteGrading.mutate(pendingDelete.id)
+          setPendingDelete(null)
+        }}
+      />
     </div>
   )
 }

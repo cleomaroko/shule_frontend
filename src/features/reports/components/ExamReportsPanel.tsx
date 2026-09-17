@@ -6,7 +6,7 @@ import { SelectField } from '@/components/forms/SelectField'
 import { academicTermLabel } from '@/features/academic/types/academic.types'
 import { useAcademicTermList, useClassList } from '@/features/academic/hooks/useAcademic'
 import { useExamTypeList, useGradingScaleList, usePathwayDistribution } from '@/features/exams/hooks/useExams'
-import { examTypeIncludedInFinal } from '@/features/exams/types/exam.types'
+import { examTypeIncludedInFinal, pathwayDistributionRows } from '@/features/exams/types/exam.types'
 import { BreakdownCard, ReportSection, StatGrid } from '@/features/reports/components/ReportPrimitives'
 import { formatClassLabel } from '@/lib/format'
 
@@ -19,10 +19,7 @@ export function ExamReportsPanel(): ReactNode {
   const [termId, setTermId] = useState('')
   const distribution = usePathwayDistribution(classId ? Number(classId) : null, termId ? Number(termId) : null)
   const included = (types.data ?? []).filter(examTypeIncludedInFinal).length
-  const entries = Object.entries(distribution.data ?? {}).map(([label, count]) => ({
-    label,
-    count: Number(count) || 0,
-  }))
+  const entries = pathwayDistributionRows(distribution.data)
 
   if (types.isError) {
     return <ErrorState message={toUserMessage(types.error)} onRetry={() => void types.refetch()} />
@@ -35,7 +32,7 @@ export function ExamReportsPanel(): ReactNode {
     <div className="flex flex-col gap-8">
       <ReportSection
         title="Exam setup"
-        note="Types from GET /api/exams/types and bands from GET /api/exams/grading. There is no list-all-marks endpoint."
+        note="Types from GET /api/exams/types and bands from GET /api/exams/grading. Grading bands can be updated or deleted. There is no list-all-marks endpoint; learner analysis is on the Exams page."
       >
         <StatGrid
           items={[
@@ -48,7 +45,7 @@ export function ExamReportsPanel(): ReactNode {
       </ReportSection>
       <ReportSection
         title="Pathway distribution"
-        note="GET /api/exams/report/pathway-distribution requires classId and termId. Learner analysis lives on the Exams page."
+        note="GET /api/exams/report/pathway-distribution requires classId and termId. Counts are STEM, Arts, and Social Sciences. Learner analysis (pathway, track, school tier) lives on the Exams page."
       >
         <div className="grid gap-3 sm:grid-cols-2">
           <SelectField

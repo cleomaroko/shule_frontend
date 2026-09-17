@@ -97,6 +97,25 @@ export function useExamMutations() {
     onError: (error: unknown) => toast.error(toUserMessage(error)),
   })
 
+  const updateGrading = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: GradingScaleWritePayload }) =>
+      examsApi.updateGrading(id, body),
+    onSuccess: async () => {
+      await invalidateGrading()
+      toast.success('Grading band updated.')
+    },
+    onError: (error: unknown) => toast.error(toUserMessage(error)),
+  })
+
+  const deleteGrading = useMutation({
+    mutationFn: (id: number) => examsApi.deleteGrading(id),
+    onSuccess: async () => {
+      await invalidateGrading()
+      toast.success('Grading band removed.')
+    },
+    onError: (error: unknown) => toast.error(toUserMessage(error)),
+  })
+
   const saveConfig = useMutation({
     mutationFn: (body: ExamSubjectConfigWritePayload) => examsApi.saveConfig(body),
     onSuccess: async () => {
@@ -130,5 +149,15 @@ export function useExamMutations() {
     },
   })
 
-  return { createType, updateType, deleteType, createGrading, saveConfig, addMark, addMarksBatch }
+  return {
+    createType,
+    updateType,
+    deleteType,
+    createGrading,
+    updateGrading,
+    deleteGrading,
+    saveConfig,
+    addMark,
+    addMarksBatch,
+  }
 }

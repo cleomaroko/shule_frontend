@@ -1,4 +1,10 @@
-import { extractDriveFileId, assertGoogleDriveImageFile, type UploadedDriveImage } from '@/lib/google-drive'
+import {
+  assertGoogleDriveDocumentFile,
+  assertGoogleDriveImageFile,
+  extractDriveFileId,
+  googleDriveDocumentMimeType,
+  type UploadedDriveFile,
+} from '@/lib/google-drive'
 import { env } from '@/lib/env'
 
 const UPLOAD_TIMEOUT_MS = 60_000
@@ -51,9 +57,9 @@ function parseJson(body: unknown): DriveScriptResponse {
   return body as DriveScriptResponse
 }
 
-function toUploadedImage(payload: DriveScriptResponse): UploadedDriveImage | null {
+function toUploadedFile(payload: DriveScriptResponse): UploadedDriveFile | null {
   if (payload.success === false) {
-    throw new Error(payload.message || 'Google Drive rejected the photo.')
+    throw new Error(payload.message || 'Google Drive rejected the file.')
   }
   if (payload.pending) return null
   const url = payload.url || payload.fileUrl || payload.webViewLink || ''
@@ -61,7 +67,7 @@ function toUploadedImage(payload: DriveScriptResponse): UploadedDriveImage | nul
   if (!url && !id) return null
   return {
     id,
-    name: payload.name || 'photo',
+    name: payload.name || 'file',
     url: url || `https://drive.google.com/file/d/${id}/view?usp=sharing`,
   }
 }
@@ -72,7 +78,7 @@ function statusUrl(endpoint: string, requestId: string): string {
   return url.toString()
 }
 
-async function waitForShareLink(endpoint: string, requestId: string, deadline: number): Promise<UploadedDriveImage> {
+async function waitForShareLink(endpoint: string, requestId: string, deadline: number): Promise<UploadedDriveFile> {
   while (Date.now() < deadline) {
     const response = await fetch(statusUrl(endpoint, requestId), {
       method: 'GET',
@@ -83,26 +89,20 @@ async function waitForShareLink(endpoint: string, requestId: string, deadline: n
         'Could not read the Google Drive upload result. Redeploy DriveUpload.gs as a web app with access Anyone.',
       )
     }
-    const uploaded = toUploadedImage(parseJson(await response.text()))
+    const uploaded = toUploadedFile(parseJson(await response.text()))
     if (uploaded) return uploaded
     await delay(POLL_INTERVAL_MS)
   }
   throw new Error(
-    'The photo did not finish uploading. Paste the latest DriveUpload.gs, deploy a new version (Anyone), and try again.',
+    'The file did not finish uploading. Paste the latest DriveUpload.gs, deploy a new version (Anyone), and try again.',
   )
 }
 
-/**
- * Saves the image in the school Drive via the same browser → Apps Script path
- * as the careers form: POST with `no-cors` (`ApplyModal`), then GET the JSON
- * (`CareersPage`). Java only stores the returned share link.
- */
-export async function uploadImageToSchoolDrive(file: File): Promise<UploadedDriveImage> {
-  assertGoogleDriveImageFile(file)
+async function postFileToSchoolDrive(file: File, mimeType?: string): Promise<UploadedDriveFile> {
   const endpoint = env.googleDriveUploadUrl
   if (!endpoint) {
     throw new Error(
-      'Photo upload is not configured. Set VITE_GOOGLE_DRIVE_UPLOAD_URL to the deployed Apps Script web app URL.',
+      'File upload is not configured. Set VITE_GOOGLE_DRIVE_UPLOAD_URL to the deployed Apps Script web app URL.',
     )
   }
 
@@ -121,9 +121,39 @@ export async function uploadImageToSchoolDrive(file: File): Promise<UploadedDriv
       request_id: requestId,
       file_data: fileData,
       file_name: file.name,
-      mime_type: file.type,
+      mime_type: mimeType || file.type,
     }),
   })
 
   return waitForShareLink(endpoint, requestId, deadline)
+}
+
+/**
+ * Saves the image in the school Drive via the same browser → Apps Script path
+ * as the careers form: POST with `no-cors` (`ApplyModal`), then GET the JSON
+ * (`CareersPage`). Java only stores the returned share link.
+ */
+export async function uploadImageToSchoolDrive(file: File): Promise<UploadedDriveFile> {
+  assertGoogleDriveImageFile(file)
+  return postFileToSchoolDrive(file)
+}
+
+function isStaleImageOnlyDriveScript(message: string): boolean {
+  return /png,\s*jpeg,\s*gif,\s*or\s*webp image/i.test(message) && !/pdf/i.test(message)
+}
+
+/** Same Drive web app as staff photos; Java only stores the returned share link. */
+export async function uploadDocumentToSchoolDrive(file: File): Promise<UploadedDriveFile> {
+  assertGoogleDriveDocumentFile(file)
+  try {
+    return await postFileToSchoolDrive(file, googleDriveDocumentMimeType(file))
+  } catch (error) {
+    const message = error instanceof Error ? error.message : ''
+    if (isStaleImageOnlyDriveScript(message)) {
+      throw new Error(
+        'Google Drive is still set to photos only. Paste the updated Example Files/DriveUpload.gs into the Apps Script project, deploy a new web app version with access Anyone, then try the PDF or Word file again.',
+      )
+    }
+    throw error
+  }
 }

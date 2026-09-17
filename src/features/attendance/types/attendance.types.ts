@@ -26,7 +26,7 @@ export interface AttendanceRecord {
 export interface AttendanceMarkPayload {
   learner: { id: number }
   schoolClass: { id: number }
-  stream: { id: number }
+  stream?: { id: number }
   session: { id: number }
   attendanceDate: string
   present: boolean

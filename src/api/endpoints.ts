@@ -202,15 +202,16 @@ export const endpoints = {
     configByClass: (classId: number) => `/exams/config/${classId}`,
     /** POST wrapped. Requires Authorization. */
     config: '/exams/config',
-    /** GET wrapped. Required query: learnerId, termId. Data: pathway, track, results. */
+    /** GET wrapped. Required query: learnerId, termId. Empty records → success with null data. */
     analysis: '/exams/report/analysis',
-    /** GET wrapped map. Required query: classId, termId. */
+    /** GET wrapped map STEM / Arts / Social Sciences. Required query: classId, termId. */
     pathwayDistribution: '/exams/report/pathway-distribution',
     /** GET wrapped. POST/PUT/DELETE wrapped. Auth on writes for audit. */
     types: '/exams/types',
     typeById: (id: number) => `/exams/types/${id}`,
-    /** GET wrapped. POST wrapped. No PUT/DELETE. Grading POST has no Authorization param. */
+    /** GET wrapped. POST/PUT/DELETE wrapped. Grading writes have no Authorization param. */
     grading: '/exams/grading',
+    gradingById: (id: number) => `/exams/grading/${id}`,
   },
   visitors: {
     /** GET wrapped. POST check-in wrapped. DELETE wrapped. */

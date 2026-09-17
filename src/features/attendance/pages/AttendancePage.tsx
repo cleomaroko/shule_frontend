@@ -26,7 +26,7 @@ import { isPresent, type AttendanceMarkPayload, type AttendanceRecord } from '@/
 import { useLearnerList } from '@/features/learners/hooks/useLearners'
 import { useCampuses } from '@/features/lookups/useLookups'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { learnerMatchesClassStream } from '@/lib/learner-class'
+import { learnerMatchesClass, learnerMatchesClassStream } from '@/lib/learner-class'
 import { displayValue, formatClassLabel, formatDate, formatPersonName, todayIso } from '@/lib/format'
 
 const PAGE_SIZE = 10
@@ -99,7 +99,6 @@ function RegisterPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const [presentMap, setPresentMap] = useState<Record<number, boolean>>({})
   const [fieldErrors, setFieldErrors] = useState<{
     classId?: string | undefined
-    streamId?: string | undefined
     sessionId?: string | undefined
     date?: string | undefined
   }>({})
@@ -110,12 +109,14 @@ function RegisterPanel({ canWrite }: { canWrite: boolean }): ReactNode {
 
   const matchedRoster = useMemo(() => {
     const all = learners.data ?? []
-    if (!selectedClass || !selectedStream) return []
-    return all.filter((learner) => learnerMatchesClassStream(learner, selectedClass, selectedStream))
+    if (!selectedClass) return []
+    return selectedStream
+      ? all.filter((learner) => learnerMatchesClassStream(learner, selectedClass, selectedStream))
+      : all.filter((learner) => learnerMatchesClass(learner, selectedClass))
   }, [learners.data, selectedClass, selectedStream])
 
   const roster = useMemo(() => {
-    const source = matchedRoster.length > 0 ? matchedRoster : selectedClass && selectedStream ? (learners.data ?? []) : []
+    const source = matchedRoster.length > 0 ? matchedRoster : selectedClass ? (learners.data ?? []) : []
     const needle = query.trim().toLowerCase()
     return source.filter((learner) => {
       if (!needle) return true
@@ -124,7 +125,7 @@ function RegisterPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         .toLowerCase()
         .includes(needle)
     })
-  }, [learners.data, matchedRoster, query, selectedClass, selectedStream])
+  }, [learners.data, matchedRoster, query, selectedClass])
 
   useEffect(() => {
     setPresentMap((current) => {
@@ -136,7 +137,7 @@ function RegisterPanel({ canWrite }: { canWrite: boolean }): ReactNode {
     })
   }, [roster])
 
-  const usedFullList = Boolean(selectedClass && selectedStream) && matchedRoster.length === 0 && (learners.data ?? []).length > 0
+  const usedFullList = Boolean(selectedClass) && matchedRoster.length === 0 && (learners.data ?? []).length > 0
 
   const handleSave = (event: FormEvent) => {
     event.preventDefault()
@@ -147,10 +148,6 @@ function RegisterPanel({ canWrite }: { canWrite: boolean }): ReactNode {
     if (!classId) {
       nextErrors.classId = 'Select a class.'
       missing.push('class')
-    }
-    if (!streamId) {
-      nextErrors.streamId = 'Select a stream.'
-      missing.push('stream')
     }
     if (!sessionId) {
       nextErrors.sessionId =
@@ -171,10 +168,9 @@ function RegisterPanel({ canWrite }: { canWrite: boolean }): ReactNode {
     }
 
     const schoolClass = Number(classId)
-    const stream = Number(streamId)
     const session = Number(sessionId)
     if (roster.length === 0) {
-      toast.error('No learners to mark for this class and stream.')
+      toast.error('No learners to mark for this class.')
       return
     }
 
@@ -182,11 +178,11 @@ function RegisterPanel({ canWrite }: { canWrite: boolean }): ReactNode {
       const body: AttendanceMarkPayload = {
         learner: { id: learner.id },
         schoolClass: { id: schoolClass },
-        stream: { id: stream },
         session: { id: session },
         attendanceDate: date,
         present: presentMap[learner.id] ?? true,
       }
+      if (streamId) body.stream = { id: Number(streamId) }
       if (activityId) body.activity = { id: Number(activityId) }
       if (unitId) body.unit = { id: Number(unitId) }
       if (campusId) body.campusId = Number(campusId)
@@ -204,7 +200,7 @@ function RegisterPanel({ canWrite }: { canWrite: boolean }): ReactNode {
           onChange={(value) => {
             setClassId(value)
             setStreamId('')
-            setFieldErrors((current) => ({ ...current, classId: undefined, streamId: undefined }))
+            setFieldErrors((current) => ({ ...current, classId: undefined }))
           }}
           options={(classes.data ?? []).map((item) => ({ value: String(item.id), label: formatClassLabel(item) }))}
           allowEmpty={false}
@@ -215,15 +211,10 @@ function RegisterPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         <SelectField
           label="Stream"
           value={streamId}
-          onChange={(value) => {
-            setStreamId(value)
-            setFieldErrors((current) => ({ ...current, streamId: undefined }))
-          }}
+          onChange={setStreamId}
           options={streamOptions.map((item) => ({ value: String(item.id), label: item.name }))}
-          allowEmpty={false}
-          placeholder="Select stream"
-          hint="Required"
-          error={fieldErrors.streamId}
+          emptyLabel="Optional"
+          hint="Leave unset to mark the whole class"
         />
         <SelectField
           label="Session"
@@ -276,8 +267,8 @@ function RegisterPanel({ canWrite }: { canWrite: boolean }): ReactNode {
 
       {usedFullList ? (
         <p className="type-caption text-muted-foreground">
-          No learners have this class and stream on their profile names, so the full learner list is shown. Filter
-          before saving.
+          No learners have this class{streamId ? ' and stream' : ''} on their profile names, so the full learner list is
+          shown. Filter before saving.
         </p>
       ) : null}
 
@@ -300,8 +291,8 @@ function RegisterPanel({ canWrite }: { canWrite: boolean }): ReactNode {
 
       {roster.length === 0 ? (
         <EmptyState
-          title={classId && streamId ? 'No learners to mark' : 'Choose class and stream'}
-          description="Class, stream, session, and date are required. The backend only accepts one POST per learner."
+          title={classId ? 'No learners to mark' : 'Choose a class'}
+          description="Class, session, and date are required. Stream is optional. The backend only accepts one POST per learner."
         />
       ) : (
         <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">

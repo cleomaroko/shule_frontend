@@ -61,8 +61,8 @@ import type { UserRole } from '@/auth/auth.types'
  *
  * Exam mark, type, and config writes (`ExamController`, `ExamTypeController`)
  * require an Authorization header for audit logging and have no role check.
- * `POST /exams/grading` has no Authorization parameter. The UI still gates
- * marks vs setup.
+ * Grading GET/POST/PUT/DELETE (`GradingScaleController`) have no Authorization
+ * parameter. The UI still gates marks vs setup.
  *
  * The backend remains the security authority — these helpers only hide UI that
  * the current session is known to be declined for.

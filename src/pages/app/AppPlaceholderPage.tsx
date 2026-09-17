@@ -207,14 +207,14 @@ export function AppPlaceholderPage(): ReactNode {
             <ModuleLink
               to={paths.exams}
               title="Exams"
-              description="Marks, grading, and pathway analysis"
+              description="Marks, grading, pathways, and school-tier analysis"
               icon={<ClipboardCheck className="size-5" aria-hidden="true" />}
               tone="blue"
             />
             <ModuleLink
               to={paths.schemes}
               title="Schemes of work"
-              description="Teacher document links by class and subject"
+              description="Teacher documents by class and subject"
               icon={<NotebookPen className="size-5" aria-hidden="true" />}
               tone="indigo"
             />

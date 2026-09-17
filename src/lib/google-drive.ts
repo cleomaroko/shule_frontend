@@ -1,13 +1,23 @@
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024
+const MAX_DOCUMENT_BYTES = 15 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
+const ALLOWED_DOCUMENT_TYPES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+])
 
 export const GOOGLE_DRIVE_IMAGE_ACCEPT = 'image/png,image/jpeg,image/gif,image/webp,.png,.jpg,.jpeg,.gif,.webp'
+export const GOOGLE_DRIVE_DOCUMENT_ACCEPT =
+  'application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.doc,.docx'
 
 export interface UploadedDriveImage {
   id: string
   name: string
   url: string
 }
+
+export type UploadedDriveFile = UploadedDriveImage
 
 export function extractDriveFileId(url: string): string | null {
   const trimmed = url.trim()
@@ -67,5 +77,31 @@ export function assertGoogleDriveImageFile(file: File): void {
   const type = normalizeImageType(file.type)
   if (!ALLOWED_IMAGE_TYPES.has(type)) {
     throw new Error('Use a PNG, JPEG, GIF, or WebP image.')
+  }
+}
+
+function documentTypeFromName(name: string): string {
+  const lower = name.trim().toLowerCase()
+  if (lower.endsWith('.pdf')) return 'application/pdf'
+  if (lower.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  if (lower.endsWith('.doc')) return 'application/msword'
+  return ''
+}
+
+export function googleDriveDocumentMimeType(file: File): string {
+  const type = file.type.trim().toLowerCase()
+  if (ALLOWED_DOCUMENT_TYPES.has(type)) return type
+  return documentTypeFromName(file.name)
+}
+
+export function assertGoogleDriveDocumentFile(file: File): void {
+  if (!file.size) {
+    throw new Error('The selected file is empty.')
+  }
+  if (file.size > MAX_DOCUMENT_BYTES) {
+    throw new Error('Choose a PDF or Word document smaller than 15 MB.')
+  }
+  if (!googleDriveDocumentMimeType(file)) {
+    throw new Error('Use a PDF or Word document (.pdf, .doc, or .docx).')
   }
 }

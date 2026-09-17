@@ -24,6 +24,9 @@ export const examsApi = {
   listGrading: () => api.get<GradingScale[]>(endpoints.exams.grading).then((r) => r.data ?? []),
   createGrading: (body: GradingScaleWritePayload) =>
     api.post<GradingScale>(endpoints.exams.grading, body).then((r) => r.data as GradingScale),
+  updateGrading: (id: number, body: GradingScaleWritePayload) =>
+    api.put<GradingScale>(endpoints.exams.gradingById(id), body).then((r) => r.data as GradingScale),
+  deleteGrading: (id: number) => api.delete(endpoints.exams.gradingById(id)).then(() => undefined),
 
   listConfig: (classId: number) =>
     api.get<ExamSubjectConfig[]>(endpoints.exams.configByClass(classId)).then((r) => r.data ?? []),
@@ -37,8 +40,8 @@ export const examsApi = {
 
   analysis: (learnerId: number, termId: number) =>
     api
-      .get<ExamAnalysis>(endpoints.exams.analysis, { params: { learnerId, termId } })
-      .then((r) => r.data as ExamAnalysis),
+      .get<ExamAnalysis | null>(endpoints.exams.analysis, { params: { learnerId, termId } })
+      .then((r) => r.data ?? null),
 
   pathwayDistribution: (classId: number, termId: number) =>
     api

@@ -1,5 +1,5 @@
 import { ExternalLink, Plus } from 'lucide-react'
-import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 
 import { toUserMessage } from '@/api/errors'
 import { can } from '@/auth/permissions'
@@ -7,9 +7,12 @@ import { useAuth } from '@/auth/useAuth'
 import { DataTable, type DataColumn } from '@/components/data/DataTable'
 import { SearchField } from '@/components/data/FilterBar'
 import { EmptyState, ErrorState, PageHeader } from '@/components/feedback/PageStates'
+import {
+  GoogleDriveDocumentField,
+  type GoogleDriveDocumentFieldHandle,
+} from '@/components/forms/GoogleDriveDocumentField'
 import { SelectField } from '@/components/forms/SelectField'
 import { TextareaField } from '@/components/forms/TextareaField'
-import { TextField } from '@/components/forms/TextField'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -47,15 +50,6 @@ const FILTER_LABELS: Record<SowFilterDimension, string> = {
   termId: 'Term',
   campusId: 'Campus',
   subjectId: 'Learning area',
-}
-
-function isHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value)
-    return url.protocol === 'http:' || url.protocol === 'https:'
-  } catch {
-    return false
-  }
 }
 
 export function SchemesPage(): ReactNode {
@@ -131,7 +125,7 @@ export function SchemesPage(): ReactNode {
   if (list.isError) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="Schemes of work" description="Teacher schemes stored as document links." />
+        <PageHeader title="Schemes of work" description="Teacher schemes stored as Google Drive document links." />
         <ErrorState message={toUserMessage(list.error)} onRetry={() => void list.refetch()} />
       </div>
     )
@@ -141,7 +135,7 @@ export function SchemesPage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Schemes of work"
-        description="Upload a Google Drive, Dropbox, or other HTTPS link. The report API applies only one filter at a time (teacher, class, term, campus, or subject)."
+        description="Upload a PDF or Word file to Google Drive. Only the share link is stored. The report API applies only one filter at a time (teacher, class, term, campus, or subject)."
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -183,7 +177,7 @@ export function SchemesPage(): ReactNode {
       {filtered.length === 0 && !list.isLoading ? (
         <EmptyState
           title="No schemes of work"
-          description="GET /api/sow/report returns all rows when no filter is set. Upload a document link to add one."
+          description="GET /api/sow/report returns all rows when no filter is set. Upload a PDF or Word file to add one."
         />
       ) : (
         <DataTable
@@ -268,6 +262,7 @@ function UploadDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
   const years = useAcademicYearList()
   const terms = useAcademicTermList()
   const { upload } = useSowMutations()
+  const documentRef = useRef<GoogleDriveDocumentFieldHandle>(null)
 
   const currentTerm = resolveCurrentTerm(terms.data ?? [])
   const currentYear = resolveCurrentAcademicYear(years.data ?? [], currentTerm)
@@ -280,7 +275,8 @@ function UploadDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
   const [termId, setTermId] = useState('')
   const [documentLink, setDocumentLink] = useState('')
   const [remarks, setRemarks] = useState('')
-  const [linkError, setLinkError] = useState('')
+  const [fileError, setFileError] = useState('')
+  const [uploading, setUploading] = useState(false)
 
   const reset = () => {
     setTeacherId('')
@@ -291,7 +287,7 @@ function UploadDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
     setTermId(currentTerm ? String(currentTerm.id) : '')
     setDocumentLink('')
     setRemarks('')
-    setLinkError('')
+    setFileError('')
   }
 
   const handleOpenChange = (next: boolean) => {
@@ -304,12 +300,8 @@ function UploadDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
     onOpenChange(next)
   }
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!isHttpUrl(documentLink.trim())) {
-      setLinkError('Enter a full http or https link.')
-      return
-    }
     const teacher = Number(teacherId)
     const campus = Number(campusId)
     const schoolClass = Number(classId)
@@ -318,17 +310,29 @@ function UploadDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
     const term = Number(termId)
     if (!teacher || !campus || !schoolClass || !subject || !academicYear || !term) return
 
-    const body: SchemeOfWorkPayload = {
-      teacher: { id: teacher },
-      campus: { id: campus },
-      schoolClass: { id: schoolClass },
-      subject: { id: subject },
-      academicYear: { id: academicYear },
-      term: { id: term },
-      documentLink: documentLink.trim(),
+    setUploading(true)
+    try {
+      const url = (await documentRef.current?.commit())?.trim() ?? ''
+      if (!url) {
+        setFileError('Choose a PDF or Word document.')
+        return
+      }
+      const body: SchemeOfWorkPayload = {
+        teacher: { id: teacher },
+        campus: { id: campus },
+        schoolClass: { id: schoolClass },
+        subject: { id: subject },
+        academicYear: { id: academicYear },
+        term: { id: term },
+        documentLink: url,
+      }
+      if (remarks.trim()) body.remarks = remarks.trim()
+      upload.mutate(body, { onSuccess: () => handleOpenChange(false) })
+    } catch {
+      return
+    } finally {
+      setUploading(false)
     }
-    if (remarks.trim()) body.remarks = remarks.trim()
-    upload.mutate(body, { onSuccess: () => handleOpenChange(false) })
   }
 
   return (
@@ -338,7 +342,7 @@ function UploadDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
           <DialogHeader>
             <DialogTitle>Upload scheme of work</DialogTitle>
             <DialogDescription>
-              The file itself stays in Drive or another host. Only the URL is stored.
+              The file is saved to Google Drive. Only the share link is stored on the scheme record.
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -396,17 +400,17 @@ function UploadDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
               allowEmpty={false}
               placeholder="Select term"
             />
-            <TextField
-              label="Document link"
+            <GoogleDriveDocumentField
+              ref={documentRef}
+              label="Document"
               value={documentLink}
-              onChange={(event) => {
-                setDocumentLink(event.target.value)
-                setLinkError('')
+              onChange={(url) => {
+                setDocumentLink(url)
+                setFileError('')
               }}
-              placeholder="https://"
+              {...(fileError ? { error: fileError } : {})}
+              disabled={uploading || upload.isPending}
               containerClassName="sm:col-span-2"
-              required
-              {...(linkError ? { error: linkError } : {})}
             />
             <TextareaField
               label="Remarks"
@@ -420,7 +424,7 @@ function UploadDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
             <Button type="button" variant="secondary" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" isLoading={upload.isPending} loadingLabel="Saving">
+            <Button type="submit" isLoading={uploading || upload.isPending} loadingLabel={uploading ? 'Uploading' : 'Saving'}>
               Save
             </Button>
           </DialogFooter>
