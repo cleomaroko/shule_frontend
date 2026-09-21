@@ -99,6 +99,11 @@ export const endpoints = {
     itemById: (id: number) => `/store/items/${id}`,
     /** GET wrapped `StockLog[]` ordered by date desc. */
     itemMovements: (id: number) => `/store/items/${id}/movements`,
+    /**
+     * GET raw `Grn[]`. POST wrapped. Authorization on POST sets `recordedBy`.
+     * No role check. Controller does not update the linked PO status.
+     */
+    grn: '/store/grn',
     /** GET wrapped. Filter only when storeId, termId, startDate, and endDate are all set. */
     logs: '/store/logs',
     logById: (id: number) => `/store/logs/${id}`,
@@ -175,6 +180,10 @@ export const endpoints = {
   attendance: {
     /** POST wrapped. Requires Authorization. Year/term default to current if omitted. */
     mark: '/attendance',
+    /** POST wrapped `AttendanceRecord[]`. Requires Authorization. */
+    batch: '/attendance/batch',
+    /** GET wrapped. Required query: classId, date (`YYYY-MM-DD`). */
+    byClass: '/attendance/by-class',
     /** GET wrapped. Optional query: learnerId, classId, streamId, date (`YYYY-MM-DD`). */
     report: '/attendance/report',
     /** GET raw `AttendanceSession[]`. POST/PUT/DELETE wrapped. Auth on writes for audit. */
@@ -212,6 +221,53 @@ export const endpoints = {
     /** GET wrapped. POST/PUT/DELETE wrapped. Grading writes have no Authorization param. */
     grading: '/exams/grading',
     gradingById: (id: number) => `/exams/grading/${id}`,
+  },
+  fees: {
+    /** POST wrapped. Optional query `termId`. No Authorization parameter. */
+    pay: '/finance/fees/pay',
+    /**
+     * GET wrapped `BigDecimal`. Path learnerId only — the controller does not
+     * accept `termId` and always calculates against term `1L`.
+     */
+    balance: (learnerId: number) => `/finance/fees/balance/${learnerId}`,
+  },
+  finance: {
+    /** POST wrapped. Procurement access. Forces poNumber and PENDING_FINANCE_APPROVAL. */
+    createPo: '/finance',
+    /** PATCH wrapped. Finance access. Sets status APPROVED. */
+    approvePo: (id: number) => `/finance/${id}/approve`,
+    /** POST wrapped. Finance access. Forces status UNPAID. */
+    invoices: '/finance/invoices',
+    /** POST wrapped. Query `amount`. Finance access. */
+    invoicePayment: (id: number) => `/finance/invoices/${id}/payment`,
+    /** GET wrapped map. Finance access. */
+    summary: '/finance/reports/summary',
+  },
+  forms: {
+    /** GET/POST wrapped. */
+    templates: '/forms/templates',
+    /** POST wrapped. Body is a JSON string of answers. */
+    submit: (templateId: number) => `/forms/${templateId}/submit`,
+    /** GET wrapped. */
+    responses: (templateId: number) => `/forms/${templateId}/responses`,
+    /** GET wrapped. Public — no token required. */
+    shared: (templateId: number) => `/forms/shared/${templateId}`,
+    /** GET wrapped. Public — no token required. */
+    sharedResults: (templateId: number) => `/forms/shared/${templateId}/results`,
+  },
+  tickets: {
+    /** GET wrapped. POST wrapped. Auth on POST sets createdBy and OPEN. */
+    list: '/tickets',
+    /** PUT wrapped. Query `status`. No Authorization parameter. */
+    status: (id: number) => `/tickets/${id}/status`,
+  },
+  projects: {
+    /** GET raw `Project[]`. POST raw `Project`. */
+    list: '/projects',
+    /** POST wrapped. Data is null. */
+    expense: '/projects/expense',
+    /** GET wrapped map: projectName, budget, spent, remaining. */
+    finances: (id: number) => `/projects/${id}/finances`,
   },
   visitors: {
     /** GET wrapped. POST check-in wrapped. DELETE wrapped. */
@@ -275,6 +331,7 @@ export const queryKeys = {
     statuses: ['assets', 'statuses'] as const,
   },
   store: {
+    grn: ['store', 'grn'] as const,
     locations: ['store', 'locations'] as const,
     categories: ['store', 'categories'] as const,
     units: ['store', 'units'] as const,
@@ -311,6 +368,7 @@ export const queryKeys = {
   },
   attendance: {
     report: (params: Record<string, string | number>) => ['attendance', 'report', params] as const,
+    byClass: (classId: number, date: string) => ['attendance', 'by-class', classId, date] as const,
     sessions: ['attendance', 'sessions'] as const,
     activities: ['attendance', 'activities'] as const,
   },
@@ -338,6 +396,25 @@ export const queryKeys = {
     logs: ['system', 'logs'] as const,
     emailUsage: ['system', 'email-usage'] as const,
     analytics: ['system', 'analytics'] as const,
+  },
+  fees: {
+    balance: (learnerId: number) => ['fees', 'balance', learnerId] as const,
+  },
+  finance: {
+    summary: ['finance', 'summary'] as const,
+  },
+  forms: {
+    templates: ['forms', 'templates'] as const,
+    responses: (templateId: number) => ['forms', 'responses', templateId] as const,
+    shared: (templateId: number) => ['forms', 'shared', templateId] as const,
+    sharedResults: (templateId: number) => ['forms', 'shared-results', templateId] as const,
+  },
+  tickets: {
+    all: ['tickets'] as const,
+  },
+  projects: {
+    all: ['projects'] as const,
+    finances: (id: number) => ['projects', 'finances', id] as const,
   },
   lookups: {
     campuses: ['lookups', 'campuses'] as const,

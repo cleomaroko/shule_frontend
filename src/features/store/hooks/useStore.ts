@@ -13,6 +13,7 @@ import type {
   StoreItemWritePayload,
   StoreLocationWritePayload,
 } from '@/features/store/types/store.types'
+import type { CreateGrnPayload } from '@/features/store/types/grn.types'
 import { logger } from '@/lib/logger'
 
 export function useStoreLocations() {
@@ -40,6 +41,13 @@ export function useStoreUnits() {
   return useQuery({
     queryKey: queryKeys.store.units,
     queryFn: storeApi.listUnits,
+  })
+}
+
+export function useGrnList() {
+  return useQuery({
+    queryKey: queryKeys.store.grn,
+    queryFn: storeApi.listGrn,
   })
 }
 
@@ -97,6 +105,7 @@ export function useStoreMutations() {
   const invalidateLocations = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.locations })
   const invalidateCategories = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.categories })
   const invalidateUnits = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.units })
+  const invalidateGrn = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.grn })
   const invalidateBatches = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.store.expiringSoon }),
@@ -234,6 +243,17 @@ export function useStoreMutations() {
     },
     onError: (error: unknown) => toast.error(toUserMessage(error)),
   })
+  const createGrn = useMutation({
+    mutationFn: (body: CreateGrnPayload) => storeApi.createGrn(body),
+    onSuccess: async (saved) => {
+      await invalidateGrn()
+      toast.success(saved.grnNumber ? `${saved.grnNumber} recorded.` : 'GRN recorded.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Create GRN failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
 
   return {
     createLocation,
@@ -250,5 +270,6 @@ export function useStoreMutations() {
     deleteLog,
     receiveLog,
     correctExpiry,
+    createGrn,
   }
 }

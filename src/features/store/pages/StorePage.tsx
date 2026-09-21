@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { StoreItemDialog } from '@/features/store/components/StoreItemDialog'
 import { StoreLogDialog } from '@/features/store/components/StoreLogDialog'
 import { ExpiryPanel } from '@/features/store/components/ExpiryPanel'
+import { GrnPanel } from '@/features/store/components/GrnPanel'
 import { ItemMovementsDialog } from '@/features/store/components/ItemMovementsDialog'
 import { WeeklyStockReportPanel } from '@/features/store/components/WeeklyStockReportPanel'
 import { useAcademicTermList } from '@/features/academic/hooks/useAcademic'
@@ -62,7 +63,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { displayValue, formatDate } from '@/lib/format'
 
 const PAGE_SIZE = 10
-const STORE_TABS = ['locations', 'categories', 'units', 'items', 'transactions', 'expiry', 'report'] as const
+const STORE_TABS = ['locations', 'categories', 'units', 'items', 'transactions', 'grn', 'expiry', 'report'] as const
 type StoreTab = (typeof STORE_TABS)[number]
 
 function tabFromParam(value: string | null): StoreTab {
@@ -86,6 +87,7 @@ export function StorePage(): ReactNode {
   useDocumentTitle('Store Management')
   const { user } = useAuth()
   const canWrite = can(user?.role, 'store:write')
+  const canGrn = can(user?.role, 'grn:write')
   const [params, setParams] = useSearchParams()
   const tab = tabFromParam(params.get('tab'))
 
@@ -93,7 +95,7 @@ export function StorePage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Store Management"
-        description="Locations, units, catalogue, receipts, two-step transfers, expiry batches, and weekly stock-take sheets."
+        description="Locations, units, catalogue, receipts, goods received notes, two-step transfers, expiry batches, and weekly stock-take sheets."
       />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
         <TabsList>
@@ -102,6 +104,7 @@ export function StorePage(): ReactNode {
           <TabsTrigger value="units">Units</TabsTrigger>
           <TabsTrigger value="items">Items</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
+          <TabsTrigger value="grn">GRN</TabsTrigger>
           <TabsTrigger value="expiry">Expiry</TabsTrigger>
           <TabsTrigger value="report">Weekly report</TabsTrigger>
         </TabsList>
@@ -119,6 +122,9 @@ export function StorePage(): ReactNode {
         </TabsContent>
         <TabsContent value="transactions">
           <TransactionsPanel canWrite={canWrite} />
+        </TabsContent>
+        <TabsContent value="grn">
+          <GrnPanel canWrite={canGrn} />
         </TabsContent>
         <TabsContent value="expiry">
           <ExpiryPanel canWrite={canWrite} />

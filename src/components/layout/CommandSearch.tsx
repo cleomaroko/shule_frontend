@@ -13,6 +13,10 @@ import { useVehicleList } from '@/features/transport/hooks/useTransport'
 import { useLearningAreaList } from '@/features/academic/hooks/useAcademic'
 import { useExamTypeList, useGradingScaleList } from '@/features/exams/hooks/useExams'
 import { useStaffRoles } from '@/features/lookups/useLookups'
+import { useFormTemplates } from '@/features/forms/hooks/useForms'
+import { useProjectList } from '@/features/projects/hooks/useProjects'
+import { useTicketList } from '@/features/tickets/hooks/useTickets'
+import { ticketStatusLabel } from '@/features/tickets/types/ticket.types'
 import { useLearnerList } from '@/features/learners/hooks/useLearners'
 import { useStaffList } from '@/features/staff/hooks/useStaff'
 import { formatPersonName } from '@/lib/format'
@@ -44,6 +48,9 @@ export function CommandSearch(): ReactNode {
   const requisitions = useRequisitionList()
   const vehicles = useVehicleList()
   const staffRoles = useStaffRoles()
+  const tickets = useTicketList()
+  const projects = useProjectList()
+  const forms = useFormTemplates()
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -234,6 +241,47 @@ export function CommandSearch(): ReactNode {
       }))
   }, [needle, staffRoles.data])
 
+  const ticketHits = useMemo<SearchHit[]>(() => {
+    if (!needle) return []
+    return (tickets.data ?? [])
+      .filter((item) =>
+        matches([item.title, item.description, item.status, item.createdBy, item.targetDepartment?.name].join(' '), needle),
+      )
+      .slice(0, 6)
+      .map((item) => ({
+        id: `ticket-${item.id}`,
+        label: item.title || `Ticket ${item.id}`,
+        hint: [ticketStatusLabel(item.status), item.targetDepartment?.name].filter(Boolean).join(' · ') || 'Ticket',
+        to: `${paths.tickets}?tab=incoming`,
+      }))
+  }, [needle, tickets.data])
+
+  const projectHits = useMemo<SearchHit[]>(() => {
+    if (!needle) return []
+    return (projects.data ?? [])
+      .filter((item) => matches([item.name, item.description, item.status, item.department?.name].join(' '), needle))
+      .slice(0, 6)
+      .map((item) => ({
+        id: `project-${item.id}`,
+        label: item.name || `Project ${item.id}`,
+        hint: item.department?.name || 'Project',
+        to: paths.projects,
+      }))
+  }, [needle, projects.data])
+
+  const formHits = useMemo<SearchHit[]>(() => {
+    if (!needle) return []
+    return (forms.data ?? [])
+      .filter((item) => matches([item.name, item.description].join(' '), needle))
+      .slice(0, 6)
+      .map((item) => ({
+        id: `form-${item.id}`,
+        label: item.name || `Form ${item.id}`,
+        hint: 'Form template',
+        to: `${paths.forms}?tab=fill&id=${item.id}`,
+      }))
+  }, [forms.data, needle])
+
   const go = (to: string) => {
     setOpen(false)
     void navigate(to)
@@ -250,7 +298,10 @@ export function CommandSearch(): ReactNode {
     storeHits.length > 0 ||
     requisitionHits.length > 0 ||
     vehicleHits.length > 0 ||
-    roleHits.length > 0
+    roleHits.length > 0 ||
+    ticketHits.length > 0 ||
+    projectHits.length > 0 ||
+    formHits.length > 0
 
   return (
     <>
@@ -309,6 +360,9 @@ export function CommandSearch(): ReactNode {
                 <ResultGroup title="Requisitions" items={requisitionHits} onSelect={go} />
                 <ResultGroup title="Transport" items={vehicleHits} onSelect={go} />
                 <ResultGroup title="Staff roles" items={roleHits} onSelect={go} />
+                <ResultGroup title="Tickets" items={ticketHits} onSelect={go} />
+                <ResultGroup title="Projects" items={projectHits} onSelect={go} />
+                <ResultGroup title="Forms" items={formHits} onSelect={go} />
               </>
             )}
           </div>

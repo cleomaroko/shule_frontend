@@ -16,6 +16,7 @@ import type {
   StoreLocation,
   StoreLocationWritePayload,
 } from '@/features/store/types/store.types'
+import type { CreateGrnPayload, Grn } from '@/features/store/types/grn.types'
 
 function compactExpiryParams(params: ExpiryReportQuery): Record<string, string | number> {
   const out: Record<string, string | number> = {}
@@ -71,4 +72,8 @@ export const storeApi = {
     api
       .patch<ItemBatch>(endpoints.store.correctExpiry(id), { expiryDate })
       .then((r) => r.data as ItemBatch),
+
+  listGrn: () => api.getList<Grn>(endpoints.store.grn),
+  createGrn: (body: CreateGrnPayload) =>
+    api.post<Grn>(endpoints.store.grn, body).then((r) => r.data as Grn),
 }

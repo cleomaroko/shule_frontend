@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useClassList, useLearningAreaList, useStreamList } from '@/features/academic/hooks/useAcademic'
 import {
   useAttendanceActivityList,
+  useAttendanceByClass,
   useAttendanceMutations,
   useAttendanceReport,
   useAttendanceSessionList,
@@ -56,7 +57,7 @@ export function AttendancePage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Attendance"
-        description="Mark the class register and review who was present. Year and term default to the ones flagged current if you leave them off the payload."
+        description="Mark the class register in one POST /api/attendance/batch. Existing rows for the class and date are loaded so corrections send those ids."
       />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
         <TabsList>
@@ -95,6 +96,7 @@ function RegisterPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const [unitId, setUnitId] = useState('')
   const [campusId, setCampusId] = useState('')
   const [date, setDate] = useState(todayIso())
+  const existing = useAttendanceByClass(classId ? Number(classId) : null, date)
   const [query, setQuery] = useState('')
   const [presentMap, setPresentMap] = useState<Record<number, boolean>>({})
   const [fieldErrors, setFieldErrors] = useState<{
@@ -136,6 +138,37 @@ function RegisterPanel({ canWrite }: { canWrite: boolean }): ReactNode {
       return next
     })
   }, [roster])
+
+  const existingByLearner = useMemo(() => {
+    const map = new Map<number, AttendanceRecord>()
+    const sessionNum = sessionId ? Number(sessionId) : null
+    for (const row of existing.data ?? []) {
+      const learnerId = row.learner?.id
+      if (!learnerId) continue
+      const prev = map.get(learnerId)
+      if (!prev) {
+        map.set(learnerId, row)
+        continue
+      }
+      if (sessionNum != null && row.session?.id === sessionNum && prev.session?.id !== sessionNum) {
+        map.set(learnerId, row)
+        continue
+      }
+      if ((row.id ?? 0) > (prev.id ?? 0)) map.set(learnerId, row)
+    }
+    return map
+  }, [existing.data, sessionId])
+
+  useEffect(() => {
+    if (existingByLearner.size === 0) return
+    setPresentMap((current) => {
+      const next = { ...current }
+      for (const [learnerId, row] of existingByLearner) {
+        next[learnerId] = isPresent(row)
+      }
+      return next
+    })
+  }, [existingByLearner])
 
   const usedFullList = Boolean(selectedClass) && matchedRoster.length === 0 && (learners.data ?? []).length > 0
 
@@ -182,6 +215,8 @@ function RegisterPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         attendanceDate: date,
         present: presentMap[learner.id] ?? true,
       }
+      const saved = existingByLearner.get(learner.id)
+      if (saved?.id) body.id = saved.id
       if (streamId) body.stream = { id: Number(streamId) }
       if (activityId) body.activity = { id: Number(activityId) }
       if (unitId) body.unit = { id: Number(unitId) }
@@ -265,6 +300,14 @@ function RegisterPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         />
       </div>
 
+      {existingByLearner.size > 0 ? (
+        <p className="type-caption text-muted-foreground">
+          Loaded {existingByLearner.size} existing record{existingByLearner.size === 1 ? '' : 's'} for this class and
+          date. Saving sends those ids so the batch can update them. The controller does not unique-key by learner/date
+          on its own.
+        </p>
+      ) : null}
+
       {usedFullList ? (
         <p className="type-caption text-muted-foreground">
           No learners have this class{streamId ? ' and stream' : ''} on their profile names, so the full learner list is
@@ -292,7 +335,7 @@ function RegisterPanel({ canWrite }: { canWrite: boolean }): ReactNode {
       {roster.length === 0 ? (
         <EmptyState
           title={classId ? 'No learners to mark' : 'Choose a class'}
-          description="Class, session, and date are required. Stream is optional. The backend only accepts one POST per learner."
+          description="Class, session, and date are required. Stream is optional. The register is saved with POST /api/attendance/batch."
         />
       ) : (
         <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">

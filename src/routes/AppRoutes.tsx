@@ -2,6 +2,12 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
 import { AcademicsPage } from '@/features/academic/pages/AcademicsPage'
+import { FeesPage } from '@/features/fees/pages/FeesPage'
+import { FinancePage } from '@/features/finance/pages/FinancePage'
+import { FormsPage } from '@/features/forms/pages/FormsPage'
+import { SharedFormPage, SharedFormResultsPage } from '@/features/forms/pages/SharedFormPage'
+import { ProjectsPage } from '@/features/projects/pages/ProjectsPage'
+import { TicketsPage } from '@/features/tickets/pages/TicketsPage'
 import { AdmissionsPage } from '@/features/admissions/pages/AdmissionsPage'
 import { AssetsPage } from '@/features/assets/pages/AssetsPage'
 import { AttendancePage } from '@/features/attendance/pages/AttendancePage'
@@ -39,6 +45,9 @@ export function AppRoutes(): ReactNode {
     <Routes>
       <Route index element={<Navigate to={paths.app} replace />} />
 
+      <Route path="/forms/shared/:templateId/results" element={<SharedFormResultsPage />} />
+      <Route path="/forms/shared/:templateId" element={<SharedFormPage />} />
+
       <Route element={<PublicOnlyRoute />}>
         <Route element={<AuthLayout />}>
           <Route path={paths.login} element={<LoginPage />} />
@@ -70,6 +79,11 @@ export function AppRoutes(): ReactNode {
           <Route path={paths.visitors} element={<VisitorsPage />} />
           <Route path={paths.admissions} element={<AdmissionsPage />} />
           <Route path={paths.requisitions} element={<RequisitionsPage />} />
+          <Route path={paths.fees} element={<FeesPage />} />
+          <Route path={paths.finance} element={<FinancePage />} />
+          <Route path={paths.forms} element={<FormsPage />} />
+          <Route path={paths.tickets} element={<TicketsPage />} />
+          <Route path={paths.projects} element={<ProjectsPage />} />
           <Route path={paths.reports} element={<ReportsPage />} />
           <Route path={paths.system} element={<SystemPage />} />
         </Route>

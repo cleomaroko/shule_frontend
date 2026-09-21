@@ -7,6 +7,14 @@ import { attendanceApi, compactAttendanceQuery } from '@/features/attendance/api
 import type { AttendanceMarkPayload, AttendanceReportQuery } from '@/features/attendance/types/attendance.types'
 import { logger } from '@/lib/logger'
 
+export function useAttendanceByClass(classId: number | null, date: string) {
+  return useQuery({
+    queryKey: queryKeys.attendance.byClass(classId ?? 0, date),
+    queryFn: () => attendanceApi.byClass(classId as number, date),
+    enabled: classId != null && Boolean(date),
+  })
+}
+
 export function useAttendanceReport(params?: AttendanceReportQuery) {
   const compact = compactAttendanceQuery(params)
   return useQuery({
@@ -31,7 +39,7 @@ export function useAttendanceActivityList() {
 
 export function useAttendanceMutations() {
   const queryClient = useQueryClient()
-  const invalidateReport = () => queryClient.invalidateQueries({ queryKey: ['attendance', 'report'] })
+  const invalidateReport = () => queryClient.invalidateQueries({ queryKey: ['attendance'] })
   const invalidateSessions = () => queryClient.invalidateQueries({ queryKey: queryKeys.attendance.sessions })
   const invalidateActivities = () => queryClient.invalidateQueries({ queryKey: queryKeys.attendance.activities })
 
@@ -48,14 +56,10 @@ export function useAttendanceMutations() {
   })
 
   const markMany = useMutation({
-    mutationFn: (rows: AttendanceMarkPayload[]) => attendanceApi.markMany(rows),
-    onSuccess: async (result) => {
+    mutationFn: (rows: AttendanceMarkPayload[]) => attendanceApi.markBatch(rows),
+    onSuccess: async () => {
       await invalidateReport()
-      if (result.failed === 0) {
-        toast.success(`Marked ${result.saved} learner${result.saved === 1 ? '' : 's'}.`)
-        return
-      }
-      toast.error(`Saved ${result.saved} of ${result.total}. ${result.failed} failed.`)
+      toast.success('Attendance batch saved.')
     },
     onError: (error: unknown) => {
       logger.error('Batch attendance failed', error)

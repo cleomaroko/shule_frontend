@@ -169,6 +169,26 @@ export const api = {
   post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<ApiResult<T>> {
     return apiRequest<T>({ ...config, url, method: 'POST', data })
   },
+  /**
+   * POST for controllers that return the entity itself instead of `ApiResponse`.
+   * If the body happens to be an envelope, it is unwrapped the usual way.
+   */
+  async postRaw<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+    const response = await httpClient.request<unknown>({ ...config, url, method: 'POST', data })
+    const body = response.data
+    if (isEnvelope(body)) {
+      if (!body.success) {
+        throw new ApiError({
+          kind: 'business',
+          message: body.message ?? '',
+          status: response.status,
+          detail: body,
+        })
+      }
+      return body.data as T
+    }
+    return body as T
+  },
   postMultipart<T>(url: string, data: FormData, config?: AxiosRequestConfig): Promise<ApiResult<T>> {
     return apiRequest<T>({
       ...config,

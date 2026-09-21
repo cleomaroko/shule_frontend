@@ -71,3 +71,19 @@ export function isActiveStatus(status: string | null | undefined): boolean {
   const normalised = status.trim().toLowerCase()
   return normalised === 'active' || normalised === 'yes'
 }
+
+export function asMoney(value: number | string | null | undefined): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  return 0
+}
+
+export function formatKes(value: number | string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return '—'
+  const amount = asMoney(value)
+  if (!Number.isFinite(amount)) return '—'
+  return `KES ${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+}

@@ -26,14 +26,13 @@ export const attendanceApi = {
   mark: (body: AttendanceMarkPayload) =>
     api.post<AttendanceRecord>(endpoints.attendance.mark, body).then((r) => r.data as AttendanceRecord),
 
-  markMany: async (rows: AttendanceMarkPayload[]) => {
-    const results = await Promise.allSettled(rows.map((row) => attendanceApi.mark(row)))
-    return {
-      saved: results.filter((row) => row.status === 'fulfilled').length,
-      failed: results.filter((row) => row.status === 'rejected').length,
-      total: rows.length,
-    }
-  },
+  markBatch: (rows: AttendanceMarkPayload[]) =>
+    api.post<null>(endpoints.attendance.batch, rows).then(() => undefined),
+
+  byClass: (classId: number, date: string) =>
+    api
+      .get<AttendanceRecord[]>(endpoints.attendance.byClass, { params: { classId, date } })
+      .then((r) => r.data ?? []),
 
   listSessions: () => api.getList<AttendanceNamedLookup>(endpoints.attendance.sessions),
   createSession: (body: { name: string }) =>

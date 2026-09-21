@@ -24,6 +24,7 @@ export interface AttendanceRecord {
 }
 
 export interface AttendanceMarkPayload {
+  id?: number
   learner: { id: number }
   schoolClass: { id: number }
   stream?: { id: number }

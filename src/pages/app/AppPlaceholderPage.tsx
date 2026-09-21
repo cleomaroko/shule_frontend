@@ -1,4 +1,4 @@
-import { ArrowUpRight, BarChart3, BookOpen, Building2, Bus, CalendarCheck, ClipboardCheck, ClipboardList, FileText, GraduationCap, NotebookPen, Package, Plus, Settings2, Truck, UserRound, Users, Warehouse } from 'lucide-react'
+import { ArrowUpRight, BarChart3, BookOpen, Building2, Bus, CalendarCheck, ClipboardCheck, ClipboardList, FileText, FolderKanban, GraduationCap, NotebookPen, Package, Plus, Receipt, Settings2, Ticket, Truck, UserRound, Users, Wallet, Warehouse } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
@@ -252,6 +252,41 @@ export function AppPlaceholderPage(): ReactNode {
               description="Transfers, purchases, expenses, and approvals"
               icon={<FileText className="size-5" aria-hidden="true" />}
               tone="amber"
+            />
+            <ModuleLink
+              to={paths.fees}
+              title="Fees"
+              description="Learner balances and recorded payments"
+              icon={<Receipt className="size-5" aria-hidden="true" />}
+              tone="emerald"
+            />
+            <ModuleLink
+              to={paths.finance}
+              title="Finance"
+              description="Purchase orders, invoices, and commitments"
+              icon={<Wallet className="size-5" aria-hidden="true" />}
+              tone="blue"
+            />
+            <ModuleLink
+              to={paths.forms}
+              title="Forms"
+              description="Templates, public share links, and responses"
+              icon={<ClipboardList className="size-5" aria-hidden="true" />}
+              tone="violet"
+            />
+            <ModuleLink
+              to={paths.tickets}
+              title="Tickets"
+              description="Issues raised to departments"
+              icon={<Ticket className="size-5" aria-hidden="true" />}
+              tone="orange"
+            />
+            <ModuleLink
+              to={paths.projects}
+              title="Projects"
+              description="Budgets, expenses, and remaining funds"
+              icon={<FolderKanban className="size-5" aria-hidden="true" />}
+              tone="indigo"
             />
             <ModuleLink
               to={paths.suppliers}

@@ -26,6 +26,13 @@ export const paths = {
   visitors: '/visitors',
   admissions: '/admissions',
   requisitions: '/requisitions',
+  fees: '/fees',
+  finance: '/finance',
+  forms: '/forms',
+  formShared: (id: number | string) => `/forms/shared/${id}`,
+  formSharedResults: (id: number | string) => `/forms/shared/${id}/results`,
+  tickets: '/tickets',
+  projects: '/projects',
   reports: '/reports',
   system: '/system',
 } as const

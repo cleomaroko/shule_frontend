@@ -9,11 +9,15 @@ import { AcademicReportsPanel } from '@/features/reports/components/AcademicRepo
 import { AssetReportsPanel } from '@/features/reports/components/AssetReportsPanel'
 import { AttendanceReportsPanel } from '@/features/reports/components/AttendanceReportsPanel'
 import { ExamReportsPanel } from '@/features/reports/components/ExamReportsPanel'
+import { FinanceReportsPanel } from '@/features/reports/components/FinanceReportsPanel'
+import { FormReportsPanel } from '@/features/reports/components/FormReportsPanel'
 import { PeopleReportsPanel } from '@/features/reports/components/PeopleReportsPanel'
+import { ProjectReportsPanel } from '@/features/reports/components/ProjectReportsPanel'
 import { SchemeReportsPanel } from '@/features/reports/components/SchemeReportsPanel'
 import { StoreReportsPanel } from '@/features/reports/components/StoreReportsPanel'
 import { RequisitionReportsPanel } from '@/features/reports/components/RequisitionReportsPanel'
 import { SupplierReportsPanel } from '@/features/reports/components/SupplierReportsPanel'
+import { TicketReportsPanel } from '@/features/reports/components/TicketReportsPanel'
 import { TransportReportsPanel } from '@/features/reports/components/TransportReportsPanel'
 import { UsageReportsPanel } from '@/features/reports/components/UsageReportsPanel'
 import { VisitorReportsPanel } from '@/features/reports/components/VisitorReportsPanel'
@@ -29,6 +33,10 @@ const REPORT_TABS = [
   'assets',
   'stores',
   'requisitions',
+  'finance',
+  'forms',
+  'tickets',
+  'projects',
   'transport',
   'suppliers',
   'usage',
@@ -61,7 +69,7 @@ export function ReportsPage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Reports and analysis"
-        description="Department summaries from existing records. Dedicated report APIs are used where they exist (attendance report, exam analysis and pathway distribution, scheme of work report, store stock-take, requisition summary, asset search, transport logs, and system usage). Other tabs summarise the same list endpoints as each module."
+        description="Department summaries from existing records and report APIs (attendance, exams, schemes, store stock-take, requisition summary, finance summary, asset search, transport logs, and system usage)."
       />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
         <TabsList>
@@ -74,6 +82,10 @@ export function ReportsPage(): ReactNode {
           <TabsTrigger value="assets">Assets</TabsTrigger>
           <TabsTrigger value="stores">Stores</TabsTrigger>
           <TabsTrigger value="requisitions">Requisitions</TabsTrigger>
+          <TabsTrigger value="finance">Finance</TabsTrigger>
+          <TabsTrigger value="forms">Forms</TabsTrigger>
+          <TabsTrigger value="tickets">Tickets</TabsTrigger>
+          <TabsTrigger value="projects">Projects</TabsTrigger>
           <TabsTrigger value="transport">Transport</TabsTrigger>
           <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
           {canUsage ? <TabsTrigger value="usage">Usage</TabsTrigger> : null}
@@ -104,6 +116,18 @@ export function ReportsPage(): ReactNode {
         </TabsContent>
         <TabsContent value="requisitions">
           <RequisitionReportsPanel />
+        </TabsContent>
+        <TabsContent value="finance">
+          <FinanceReportsPanel />
+        </TabsContent>
+        <TabsContent value="forms">
+          <FormReportsPanel />
+        </TabsContent>
+        <TabsContent value="tickets">
+          <TicketReportsPanel />
+        </TabsContent>
+        <TabsContent value="projects">
+          <ProjectReportsPanel />
         </TabsContent>
         <TabsContent value="transport">
           <TransportReportsPanel />

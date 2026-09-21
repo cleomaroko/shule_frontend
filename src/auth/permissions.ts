@@ -64,6 +64,23 @@ import type { UserRole } from '@/auth/auth.types'
  * Grading GET/POST/PUT/DELETE (`GradingScaleController`) have no Authorization
  * parameter. The UI still gates marks vs setup.
  *
+ * Fee payments (`FeeController`) have no role check and no Authorization
+ * parameter. Balance GET has no `termId` query — the controller hardcodes term
+ * `1L`. There is no fee-structure endpoint in the controller.
+ *
+ * Finance writes (`FinanceController`, `FinanceReportController`) call
+ * `SecurityUtils.hasFinanceAccess` / `hasProcurementAccess` against `users.role`:
+ *   finance: ROLE_SUPER_ADMIN, FINANCE_ADMIN, FINANCE_OFFICER,
+ *            HEAD_OF_ADMINS_AND_FINANCE
+ *   procurement: ROLE_SUPER_ADMIN, PROCUREMENT_ADMIN, PROCUREMENT_OFFICER
+ * There is no GET for purchase orders or invoices.
+ *
+ * GRN POST (`GrnController`) requires Authorization for `recordedBy` and has no
+ * role check. GET `/api/store/grn` returns a raw list.
+ *
+ * Forms, tickets, and projects have no role checks. Ticket create and GRN
+ * create require an Authorization header. Project GET/POST are unwrapped.
+ *
  * The backend remains the security authority — these helpers only hide UI that
  * the current session is known to be declined for.
  */
@@ -89,6 +106,15 @@ export type Capability =
   | 'sow:upload'
   | 'exam:write'
   | 'exam:setup'
+  | 'fees:write'
+  | 'finance:access'
+  | 'procurement:access'
+  | 'grn:write'
+  | 'forms:write'
+  | 'ticket:create'
+  | 'ticket:manage'
+  | 'project:write'
+  | 'project:expense'
   | 'system:super'
   | 'system:analytics'
 
@@ -176,6 +202,47 @@ export function can(role: UserRole | null | undefined, capability: Capability): 
       return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD') || roleContains(role, 'TEACHER')
     case 'exam:setup':
       return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
+    case 'fees:write':
+      return roleContains(role, 'ADMIN') || roleContains(role, 'FINANCE') || roleContains(role, 'HEAD')
+    case 'finance:access':
+      return (
+        hasRole(role, 'ROLE_SUPER_ADMIN') ||
+        roleContains(role, 'FINANCE_ADMIN') ||
+        roleContains(role, 'FINANCE_OFFICER') ||
+        roleContains(role, 'HEAD_OF_ADMINS_AND_FINANCE') ||
+        roleContains(role, 'FINANCE') ||
+        roleContains(role, 'ADMIN')
+      )
+    case 'procurement:access':
+      return (
+        hasRole(role, 'ROLE_SUPER_ADMIN') ||
+        roleContains(role, 'PROCUREMENT_ADMIN') ||
+        roleContains(role, 'PROCUREMENT_OFFICER') ||
+        roleContains(role, 'PROCUREMENT') ||
+        roleContains(role, 'ADMIN')
+      )
+    case 'grn:write':
+      return (
+        roleContains(role, 'ADMIN') ||
+        roleContains(role, 'MANAGER') ||
+        roleContains(role, 'OPERATOR') ||
+        roleContains(role, 'PROCUREMENT')
+      )
+    case 'forms:write':
+      return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
+    case 'ticket:create':
+      return Boolean(role)
+    case 'ticket:manage':
+      return (
+        roleContains(role, 'ADMIN') ||
+        roleContains(role, 'IT') ||
+        roleContains(role, 'HEAD') ||
+        roleContains(role, 'OPERATOR')
+      )
+    case 'project:write':
+      return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
+    case 'project:expense':
+      return roleContains(role, 'ADMIN') || roleContains(role, 'FINANCE') || roleContains(role, 'HEAD')
     case 'system:super':
       return hasRole(role, 'ROLE_SUPER_ADMIN')
     case 'system:analytics':
