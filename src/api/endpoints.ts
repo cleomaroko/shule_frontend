@@ -235,7 +235,8 @@ export const endpoints = {
     myAppraisals: "/hr/my-appraisals",
     leaveApplication: "/hr/leave-application",
     attendanceBulk: "/hr/attendance/bulk",
-    processPayroll: (month: string) => `/hr/payroll/process/${encodeURIComponent(month)}`,
+    processPayroll: (month: string) =>
+      `/hr/payroll/process/${encodeURIComponent(month)}`,
     leaves: "/hr/leave/list",
     leaveStatus: (id: number) => `/hr/leave/${id}/status`,
     payroll: "/hr/payroll/list",

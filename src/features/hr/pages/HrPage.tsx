@@ -2,7 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { toUserMessage } from '@/api/errors'
-import { can } from '@/auth/permissions'
+import { can, hasRole } from '@/auth/permissions'
 import { useAuth } from '@/auth/useAuth'
 import { DataTable, type DataColumn } from '@/components/data/DataTable'
 import { EmptyState, ErrorState, PageHeader } from '@/components/feedback/PageStates'
@@ -59,6 +59,7 @@ export function HrPage(): ReactNode {
   useDocumentTitle('Human resources')
   const { user } = useAuth()
   const canManage = can(user?.role, 'finance:access')
+  const hasStaffProfile = !hasRole(user?.role, 'ROLE_SUPER_ADMIN')
 
   return (
     <div className="flex flex-col gap-6">
@@ -73,24 +74,35 @@ export function HrPage(): ReactNode {
               <TabsTrigger value="salary">Salary & processing</TabsTrigger>
             </TabsList>
           </div>
-          <TabsContent value="self"><SelfServicePanel /></TabsContent>
+          <TabsContent value="self"><SelfServicePanel hasStaffProfile={hasStaffProfile} /></TabsContent>
           <TabsContent value="attendance"><AttendancePanel /></TabsContent>
           <TabsContent value="leave"><LeaveReviewPanel /></TabsContent>
           <TabsContent value="salary"><SalaryPanel /></TabsContent>
         </Tabs>
       ) : (
-        <SelfServicePanel />
+        <SelfServicePanel hasStaffProfile={hasStaffProfile} />
       )}
     </div>
   )
 }
 
-function SelfServicePanel(): ReactNode {
+function SelfServicePanel({ hasStaffProfile }: { hasStaffProfile: boolean }): ReactNode {
   return (
     <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-      <LeaveApplicationPanel />
-      <PersonalRecordsPanel />
+      {hasStaffProfile ? <LeaveApplicationPanel /> : <StaffProfileRequired title="Staff leave self-service unavailable" />}
+      <PersonalRecordsPanel hasStaffProfile={hasStaffProfile} />
     </div>
+  )
+}
+
+function StaffProfileRequired({ title }: { title: string }): ReactNode {
+  return (
+    <FormSection title={title}>
+      <p className="type-body text-muted-foreground sm:col-span-2">
+        This super-admin login is not linked to a staff profile. Ask an administrator to link the account to a staff
+        record before using staff self-service.
+      </p>
+    </FormSection>
   )
 }
 
@@ -130,9 +142,9 @@ function LeaveApplicationPanel(): ReactNode {
   )
 }
 
-function PersonalRecordsPanel(): ReactNode {
-  const appraisals = useMyAppraisals()
-  const payroll = useMyPayroll()
+function PersonalRecordsPanel({ hasStaffProfile }: { hasStaffProfile: boolean }): ReactNode {
+  const appraisals = useMyAppraisals(hasStaffProfile)
+  const payroll = useMyPayroll(hasStaffProfile)
   const [appraisalPage, setAppraisalPage] = useState(1)
   const [payrollPage, setPayrollPage] = useState(1)
 
@@ -150,7 +162,7 @@ function PersonalRecordsPanel(): ReactNode {
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <FormSection title="My appraisals" description="Appraisal records linked to your staff profile.">
-        {appraisals.isError ? <ErrorState message={toUserMessage(appraisals.error)} onRetry={() => void appraisals.refetch()} /> :
+        {!hasStaffProfile ? <p className="type-body text-muted-foreground sm:col-span-2">Unavailable until this account is linked to a staff profile.</p> : appraisals.isError ? <ErrorState message={toUserMessage(appraisals.error)} onRetry={() => void appraisals.refetch()} /> :
           (appraisals.data?.length ?? 0) === 0 && !appraisals.isLoading ? <p className="type-body text-muted-foreground">No appraisals are available.</p> : (
             <div className="sm:col-span-2">
               <DataTable columns={appraisalColumns} rows={(appraisals.data ?? []).slice((appraisalPage - 1) * 5, appraisalPage * 5)} getRowId={(row) => row.id} isLoading={appraisals.isLoading} page={appraisalPage} pageSize={5} total={appraisals.data?.length ?? 0} onPageChange={setAppraisalPage}
@@ -159,7 +171,7 @@ function PersonalRecordsPanel(): ReactNode {
           )}
       </FormSection>
       <FormSection title="My payroll" description="Your processed salary records.">
-        {payroll.isError ? <ErrorState message={toUserMessage(payroll.error)} onRetry={() => void payroll.refetch()} /> :
+        {!hasStaffProfile ? <p className="type-body text-muted-foreground sm:col-span-2">Unavailable until this account is linked to a staff profile.</p> : payroll.isError ? <ErrorState message={toUserMessage(payroll.error)} onRetry={() => void payroll.refetch()} /> :
           (payroll.data?.length ?? 0) === 0 && !payroll.isLoading ? <p className="type-body text-muted-foreground">No payroll records are available.</p> : (
             <div className="sm:col-span-2">
               <DataTable columns={payrollColumns} rows={(payroll.data ?? []).slice((payrollPage - 1) * 5, payrollPage * 5)} getRowId={(row) => row.id} isLoading={payroll.isLoading} page={payrollPage} pageSize={5} total={payroll.data?.length ?? 0} onPageChange={setPayrollPage}
