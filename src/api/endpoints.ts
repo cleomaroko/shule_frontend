@@ -6,96 +6,96 @@
  */
 export const endpoints = {
   auth: {
-    login: '/auth/login',
-    forgotPassword: '/auth/forgot-password',
-    resetPassword: '/auth/reset-password',
+    login: "/auth/login",
+    forgotPassword: "/auth/forgot-password",
+    resetPassword: "/auth/reset-password",
   },
   staff: {
     /** GET — `ApiResponse<Staff[]>` */
-    list: '/staff',
+    list: "/staff",
     /** GET — `ApiResponse<Staff[]>` teachers/heads/deans (StaffRepository.findAllTeachers). */
-    teachers: '/staff/teachers',
+    teachers: "/staff/teachers",
     /** POST — requires Authorization; creates Staff and a User login. */
-    register: '/staff/register',
+    register: "/staff/register",
     /** PUT / DELETE — requires Authorization */
     byId: (id: number) => `/staff/${id}`,
   },
   learners: {
-    list: '/learners',
-    register: '/learners/register',
+    list: "/learners",
+    register: "/learners/register",
     byId: (id: number) => `/learners/${id}`,
   },
   admissions: {
     /** POST public — website lead capture. */
-    submit: '/admissions/submit',
+    submit: "/admissions/submit",
     /** GET wrapped pending leads (`processed == false`). Requires Authorization. */
-    list: '/admissions/list',
+    list: "/admissions/list",
     /** PATCH wrapped. Requires Authorization. */
     process: (id: number) => `/admissions/process/${id}`,
   },
   campuses: {
-    list: '/campuses',
+    list: "/campuses",
     byId: (id: number) => `/campuses/${id}`,
   },
   departments: {
-    list: '/departments',
+    list: "/departments",
     byId: (id: number) => `/departments/${id}`,
   },
   academic: {
-    classes: '/academic/classes',
+    classes: "/academic/classes",
     classById: (id: number) => `/academic/classes/${id}`,
-    streams: '/academic/streams',
+    streams: "/academic/streams",
     streamById: (id: number) => `/academic/streams/${id}`,
-    years: '/academic/years',
+    years: "/academic/years",
     yearById: (id: number) => `/academic/years/${id}`,
-    terms: '/academic/terms',
+    terms: "/academic/terms",
     termById: (id: number) => `/academic/terms/${id}`,
     assignments: {
-      list: '/academic/assignments',
+      list: "/academic/assignments",
       byId: (id: number) => `/academic/assignments/${id}`,
     },
   },
   subjects: {
-    list: '/subjects',
+    list: "/subjects",
     byId: (id: number) => `/subjects/${id}`,
   },
   logistics: {
-    zones: '/logistics/zones',
+    zones: "/logistics/zones",
     zoneById: (id: number) => `/logistics/zones/${id}`,
-    houses: '/logistics/houses',
+    houses: "/logistics/houses",
     houseById: (id: number) => `/logistics/houses/${id}`,
   },
   assets: {
     /** GET wrapped `ApiResponse<Asset[]>`. POST/PUT/DELETE: ADMIN, PROCUREMENT, or IT. */
-    list: '/assets',
+    list: "/assets",
     byId: (id: number) => `/assets/${id}`,
     byTag: (tagId: string) => `/assets/tag/${encodeURIComponent(tagId)}`,
     /** GET wrapped. Optional query: brand, model, serialNumber, *Id filters, purchaseDate. */
-    search: '/assets/search',
+    search: "/assets/search",
     /** GET wrapped map: categories, descriptions, conditions, statuses. */
-    lookups: '/assets/lookups',
+    lookups: "/assets/lookups",
     /** GET raw arrays. POST/PUT/DELETE wrapped. */
-    categories: '/assets/categories',
+    categories: "/assets/categories",
     categoryById: (id: number) => `/assets/categories/${id}`,
-    descriptions: '/assets/descriptions',
+    descriptions: "/assets/descriptions",
     descriptionById: (id: number) => `/assets/descriptions/${id}`,
-    conditions: '/assets/conditions',
+    conditions: "/assets/conditions",
     conditionById: (id: number) => `/assets/conditions/${id}`,
-    statuses: '/assets/statuses',
+    statuses: "/assets/statuses",
     statusById: (id: number) => `/assets/statuses/${id}`,
   },
   store: {
     /** GET wrapped. POST/DELETE wrapped. No PUT. Auth: ADMIN, MANAGER, or OPERATOR. */
-    locations: '/store/locations',
+    locations: "/store/locations",
     locationById: (id: number) => `/store/locations/${id}`,
     /** GET wrapped. POST/DELETE wrapped. Optional parentCategory on POST. */
-    categories: '/store/categories',
+    categories: "/store/categories",
     categoryById: (id: number) => `/store/categories/${id}`,
     /** GET wrapped. POST/DELETE wrapped. No PUT. Auth: ADMIN, MANAGER, or OPERATOR. */
-    units: '/store/units',
+    units: "/store/units",
     unitById: (id: number) => `/store/units/${id}`,
     /** GET wrapped. POST/PUT/DELETE wrapped. */
-    items: '/store/items',
+    items: "/store/items",
     itemById: (id: number) => `/store/items/${id}`,
     /** GET wrapped `StockLog[]` ordered by date desc. */
     itemMovements: (id: number) => `/store/items/${id}/movements`,
@@ -103,9 +103,9 @@ export const endpoints = {
      * GET raw `Grn[]`. POST wrapped. Authorization on POST sets `recordedBy`.
      * No role check. Controller does not update the linked PO status.
      */
-    grn: '/store/grn',
+    grn: "/store/grn",
     /** GET wrapped. Filter only when storeId, termId, startDate, and endDate are all set. */
-    logs: '/store/logs',
+    logs: "/store/logs",
     logById: (id: number) => `/store/logs/${id}`,
     /** PATCH wrapped. Marks a PENDING transfer as RECEIVED and adds stock at destination. */
     receiveLog: (id: number) => `/store/logs/${id}/receive`,
@@ -114,138 +114,151 @@ export const endpoints = {
      * Some deployments return aggregated weekly rows; this repo's controller
      * still returns `StockLog[]` for the same path.
      */
-    stockTake: '/store/stock-take',
+    stockTake: "/store/stock-take",
     /** GET wrapped `ItemBatch[]`. Batches with status AVAILABLE expiring within 30 days. */
-    expiringSoon: '/store/alerts/expiring-soon',
+    expiringSoon: "/store/alerts/expiring-soon",
     /** GET wrapped. Optional query: itemId, storeId, status (AVAILABLE, EXPIRED, CONSUMED). */
-    expiryReport: '/store/reports/expiries',
+    expiryReport: "/store/reports/expiries",
     /** PATCH wrapped body `{ expiryDate }`. Auth: ADMIN, MANAGER, or OPERATOR. */
     correctExpiry: (id: number) => `/store/batches/${id}/correct-expiry`,
   },
   transport: {
-    vehicles: '/transport/vehicles',
+    vehicles: "/transport/vehicles",
     vehicleById: (id: number) => `/transport/vehicles/${id}`,
     /** GET wrapped. Optional query: logType, vehicleId, driverId, serviceTypeId, start, end. */
-    logs: '/transport/logs',
+    logs: "/transport/logs",
     logById: (id: number) => `/transport/logs/${id}`,
     /** GET wrapped. POST wrapped. No PUT/DELETE. */
-    stops: '/transport/stops',
+    stops: "/transport/stops",
     /** GET raw. POST wrapped. No PUT/DELETE. */
-    serviceTypes: '/transport/service-types',
+    serviceTypes: "/transport/service-types",
     /** GET raw `ExternalHire[]`. POST wrapped. No PUT/DELETE. */
-    hires: '/transport/hires',
+    hires: "/transport/hires",
     /**
      * GET raw. Required query: vehicleId, tripType, term.
      * POST wrapped. DELETE wrapped. No PUT.
      */
-    assignments: '/transport/assignments',
+    assignments: "/transport/assignments",
     assignmentById: (id: number) => `/transport/assignments/${id}`,
   },
   shuleAi: {
     /** GET plain text. Query: `message`. Same-origin `/api`; proxy forwards to the VPS. */
-    chat: '/shule-ai/chat',
+    chat: "/shule-ai/chat",
   },
   suppliers: {
     /** GET raw `Supplier[]`. POST/PUT/DELETE wrapped. */
-    list: '/suppliers',
+    list: "/suppliers",
     byId: (id: number) => `/suppliers/${id}`,
     /** GET raw. POST/PUT/DELETE wrapped. */
-    types: '/suppliers/types',
+    types: "/suppliers/types",
     typeById: (id: number) => `/suppliers/types/${id}`,
     /** GET raw `SupplierContract[]`. */
     contractsBySupplier: (id: number) => `/suppliers/${id}/contracts`,
-    contracts: '/suppliers/contracts',
+    contracts: "/suppliers/contracts",
     contractById: (id: number) => `/suppliers/contracts/${id}`,
     /** PATCH `?status=` */
     contractStatus: (id: number) => `/suppliers/contracts/${id}/status`,
   },
   requisitions: {
     /** GET wrapped. Optional query: status, type, campusId, departmentId, costCenterId, staffId, startDate, endDate. */
-    list: '/requisitions',
+    list: "/requisitions",
     /** GET wrapped. Requires Authorization. Resolves staff via workEmail == JWT username. */
-    mine: '/requisitions/my-requisitions',
+    mine: "/requisitions/my-requisitions",
     byId: (id: number) => `/requisitions/${id}`,
     /** GET wrapped `RequisitionReportSummary`. Same filters as list. */
-    summary: '/requisitions/reports/summary',
+    summary: "/requisitions/reports/summary",
     /** POST wrapped. Requires Authorization. Status is forced SUBMITTED. */
-    create: '/requisitions',
+    create: "/requisitions",
     review: (id: number) => `/requisitions/${id}/review`,
     approve: (id: number) => `/requisitions/${id}/approve`,
     receive: (id: number) => `/requisitions/${id}/receive`,
     reject: (id: number) => `/requisitions/${id}/reject`,
     /** GET wrapped. POST/PUT/DELETE wrapped. Auth header on writes for audit. No role check. */
-    costCenters: '/requisitions/cost-centers',
+    costCenters: "/requisitions/cost-centers",
     costCenterById: (id: number) => `/requisitions/cost-centers/${id}`,
   },
   attendance: {
     /** POST wrapped. Requires Authorization. Year/term default to current if omitted. */
-    mark: '/attendance',
+    mark: "/attendance",
     /** POST wrapped `AttendanceRecord[]`. Requires Authorization. */
-    batch: '/attendance/batch',
+    batch: "/attendance/batch",
     /** GET wrapped. Required query: classId, date (`YYYY-MM-DD`). */
-    byClass: '/attendance/by-class',
+    byClass: "/attendance/by-class",
     /** GET wrapped. Optional query: learnerId, classId, streamId, date (`YYYY-MM-DD`). */
-    report: '/attendance/report',
+    report: "/attendance/report",
     /** GET raw `AttendanceSession[]`. POST/PUT/DELETE wrapped. Auth on writes for audit. */
-    sessions: '/attendance/sessions',
+    sessions: "/attendance/sessions",
     sessionById: (id: number) => `/attendance/sessions/${id}`,
     /** GET raw `AttendanceActivity[]`. POST/PUT/DELETE wrapped. Auth on writes for audit. */
-    activities: '/attendance/activities',
+    activities: "/attendance/activities",
     activityById: (id: number) => `/attendance/activities/${id}`,
   },
   sow: {
     /** POST wrapped. Requires Authorization. No role check in the controller. */
-    create: '/sow',
+    create: "/sow",
     /**
      * GET wrapped. Optional query uses the first set of: teacherId, classId,
      * termId, campusId, subjectId. With none, returns all schemes.
      */
-    report: '/sow/report',
+    report: "/sow/report",
   },
   exams: {
     /** POST wrapped. Requires Authorization. */
-    marks: '/exams/marks',
+    marks: "/exams/marks",
     /** POST wrapped `ExamRecord[]`. Requires Authorization. */
-    marksBatch: '/exams/marks/batch',
+    marksBatch: "/exams/marks/batch",
     /** GET wrapped. */
     configByClass: (classId: number) => `/exams/config/${classId}`,
     /** POST wrapped. Requires Authorization. */
-    config: '/exams/config',
+    config: "/exams/config",
     /** GET wrapped. Required query: learnerId, termId. Empty records → success with null data. */
-    analysis: '/exams/report/analysis',
+    analysis: "/exams/report/analysis",
     /** GET wrapped map STEM / Arts / Social Sciences. Required query: classId, termId. */
-    pathwayDistribution: '/exams/report/pathway-distribution',
+    pathwayDistribution: "/exams/report/pathway-distribution",
     /** GET wrapped. POST/PUT/DELETE wrapped. Auth on writes for audit. */
-    types: '/exams/types',
+    types: "/exams/types",
     typeById: (id: number) => `/exams/types/${id}`,
     /** GET wrapped. POST/PUT/DELETE wrapped. Grading writes have no Authorization param. */
-    grading: '/exams/grading',
+    grading: "/exams/grading",
     gradingById: (id: number) => `/exams/grading/${id}`,
   },
   fees: {
     /** POST wrapped. Optional query `termId`. No Authorization parameter. */
-    pay: '/finance/fees/pay',
+    pay: "/finance/fees/pay",
     /**
      * GET wrapped `BigDecimal`. Path learnerId only — the controller does not
      * accept `termId` and always calculates against term `1L`.
      */
     balance: (learnerId: number) => `/finance/fees/balance/${learnerId}`,
   },
+  hr: {
+    myAppraisals: "/hr/my-appraisals",
+    leaveApplication: "/hr/leave-application",
+    attendanceBulk: "/hr/attendance/bulk",
+    processPayroll: (month: string) => `/hr/payroll/process/${encodeURIComponent(month)}`,
+    leaves: "/hr/leave/list",
+    leaveStatus: (id: number) => `/hr/leave/${id}/status`,
+    payroll: "/hr/payroll/list",
+    salarySettings: "/hr/salary-settings",
+    myPayroll: "/hr/my-payroll",
+  },
   finance: {
     /** POST wrapped. Procurement access. Forces poNumber and PENDING_FINANCE_APPROVAL. */
-    createPo: '/finance',
+    createPo: "/finance",
     /** PATCH wrapped. Finance access. Sets status APPROVED. */
     approvePo: (id: number) => `/finance/${id}/approve`,
     /** POST wrapped. Finance access. Forces status UNPAID. */
-    invoices: '/finance/invoices',
+    invoices: "/finance/invoices",
     /** POST wrapped. Query `amount`. Finance access. */
     invoicePayment: (id: number) => `/finance/invoices/${id}/payment`,
     /** GET wrapped map. Finance access. */
-    summary: '/finance/reports/summary',
+    summary: "/finance/reports/summary",
+    /** PATCH wrapped. Finance access. Query `status=PAID`. */
+    payrollStatus: (id: number) => `/finance/payroll/${id}/status`,
   },
   forms: {
     /** GET/POST wrapped. */
-    templates: '/forms/templates',
+    templates: "/forms/templates",
     /** POST wrapped. Body is a JSON string of answers. */
     submit: (templateId: number) => `/forms/${templateId}/submit`,
     /** GET wrapped. */
@@ -253,183 +266,210 @@ export const endpoints = {
     /** GET wrapped. Public — no token required. */
     shared: (templateId: number) => `/forms/shared/${templateId}`,
     /** GET wrapped. Public — no token required. */
-    sharedResults: (templateId: number) => `/forms/shared/${templateId}/results`,
+    sharedResults: (templateId: number) =>
+      `/forms/shared/${templateId}/results`,
   },
   tickets: {
     /** GET wrapped. POST wrapped. Auth on POST sets createdBy and OPEN. */
-    list: '/tickets',
+    list: "/tickets",
     /** PUT wrapped. Query `status`. No Authorization parameter. */
     status: (id: number) => `/tickets/${id}/status`,
   },
   projects: {
     /** GET raw `Project[]`. POST raw `Project`. */
-    list: '/projects',
+    list: "/projects",
     /** POST wrapped. Data is null. */
-    expense: '/projects/expense',
+    expense: "/projects/expense",
     /** GET wrapped map: projectName, budget, spent, remaining. */
     finances: (id: number) => `/projects/${id}/finances`,
   },
   visitors: {
     /** GET wrapped. POST check-in wrapped. DELETE wrapped. */
-    list: '/visitors',
+    list: "/visitors",
     byId: (id: number) => `/visitors/${id}`,
     checkOut: (id: number) => `/visitors/${id}/check-out`,
     /** GET raw. POST wrapped. */
-    categories: '/visitors/categories',
-    purposes: '/visitors/purposes',
+    categories: "/visitors/categories",
+    purposes: "/visitors/purposes",
   },
   system: {
-    reset: '/system/reset-to-defaults',
-    logs: '/system/logs',
-    emailUsage: '/system/email-usage',
-    analytics: '/system/analytics',
+    reset: "/system/reset-to-defaults",
+    logs: "/system/logs",
+    emailUsage: "/system/email-usage",
+    analytics: "/system/analytics",
   },
   lookups: {
-    roles: '/lookups/roles',
+    roles: "/lookups/roles",
     roleById: (id: number) => `/lookups/roles/${id}`,
-    titles: '/lookups/titles',
-    genders: '/lookups/genders',
-    maritalStatuses: '/lookups/marital-statuses',
-    banks: '/lookups/banks',
-    employmentStatuses: '/lookups/employment-statuses',
-    taxExemptReasons: '/lookups/tax-exempt-reasons',
+    titles: "/lookups/titles",
+    genders: "/lookups/genders",
+    maritalStatuses: "/lookups/marital-statuses",
+    banks: "/lookups/banks",
+    employmentStatuses: "/lookups/employment-statuses",
+    taxExemptReasons: "/lookups/tax-exempt-reasons",
   },
   pickers: {
-    counties: '/pickers/counties',
-    classes: '/pickers/classes',
-    streams: '/pickers/streams',
-    zones: '/pickers/zones',
-    houses: '/pickers/houses',
+    counties: "/pickers/counties",
+    classes: "/pickers/classes",
+    streams: "/pickers/streams",
+    zones: "/pickers/zones",
+    houses: "/pickers/houses",
   },
-} as const
+} as const;
 
 export const queryKeys = {
   staff: {
-    all: ['staff'] as const,
-    teachers: ['staff', 'teachers'] as const,
+    all: ["staff"] as const,
+    teachers: ["staff", "teachers"] as const,
   },
   learners: {
-    all: ['learners'] as const,
+    all: ["learners"] as const,
   },
   admissions: {
-    pending: ['admissions', 'pending'] as const,
+    pending: ["admissions", "pending"] as const,
   },
   academic: {
-    classes: ['academic', 'classes'] as const,
-    streams: ['academic', 'streams'] as const,
-    assignments: ['academic', 'assignments'] as const,
-    subjects: ['academic', 'subjects'] as const,
-    years: ['academic', 'years'] as const,
-    terms: ['academic', 'terms'] as const,
+    classes: ["academic", "classes"] as const,
+    streams: ["academic", "streams"] as const,
+    assignments: ["academic", "assignments"] as const,
+    subjects: ["academic", "subjects"] as const,
+    years: ["academic", "years"] as const,
+    terms: ["academic", "terms"] as const,
   },
   assets: {
-    all: ['assets'] as const,
-    lookups: ['assets', 'lookups'] as const,
-    categories: ['assets', 'categories'] as const,
-    descriptions: ['assets', 'descriptions'] as const,
-    conditions: ['assets', 'conditions'] as const,
-    statuses: ['assets', 'statuses'] as const,
+    all: ["assets"] as const,
+    lookups: ["assets", "lookups"] as const,
+    categories: ["assets", "categories"] as const,
+    descriptions: ["assets", "descriptions"] as const,
+    conditions: ["assets", "conditions"] as const,
+    statuses: ["assets", "statuses"] as const,
   },
   store: {
-    grn: ['store', 'grn'] as const,
-    locations: ['store', 'locations'] as const,
-    categories: ['store', 'categories'] as const,
-    units: ['store', 'units'] as const,
-    logs: ['store', 'logs'] as const,
-    items: ['store', 'items'] as const,
-    stockTake: (params: { storeId: number; termId: number; startDate: string; endDate: string }) =>
-      ['store', 'stock-take', params] as const,
-    itemMovements: (itemId: number) => ['store', 'items', itemId, 'movements'] as const,
-    expiringSoon: ['store', 'alerts', 'expiring-soon'] as const,
-    expiryReport: (params: { itemId?: number; storeId?: number; status?: string }) =>
-      ['store', 'reports', 'expiries', params] as const,
+    grn: ["store", "grn"] as const,
+    locations: ["store", "locations"] as const,
+    categories: ["store", "categories"] as const,
+    units: ["store", "units"] as const,
+    logs: ["store", "logs"] as const,
+    items: ["store", "items"] as const,
+    stockTake: (params: {
+      storeId: number;
+      termId: number;
+      startDate: string;
+      endDate: string;
+    }) => ["store", "stock-take", params] as const,
+    itemMovements: (itemId: number) =>
+      ["store", "items", itemId, "movements"] as const,
+    expiringSoon: ["store", "alerts", "expiring-soon"] as const,
+    expiryReport: (params: {
+      itemId?: number;
+      storeId?: number;
+      status?: string;
+    }) => ["store", "reports", "expiries", params] as const,
   },
   transport: {
-    vehicles: ['transport', 'vehicles'] as const,
-    logs: ['transport', 'logs'] as const,
-    stops: ['transport', 'stops'] as const,
-    serviceTypes: ['transport', 'service-types'] as const,
-    hires: ['transport', 'hires'] as const,
-    assignments: (params: { vehicleId: number; tripType: string; term: string }) =>
-      ['transport', 'assignments', params] as const,
+    vehicles: ["transport", "vehicles"] as const,
+    logs: ["transport", "logs"] as const,
+    stops: ["transport", "stops"] as const,
+    serviceTypes: ["transport", "service-types"] as const,
+    hires: ["transport", "hires"] as const,
+    assignments: (params: {
+      vehicleId: number;
+      tripType: string;
+      term: string;
+    }) => ["transport", "assignments", params] as const,
   },
   suppliers: {
-    all: ['suppliers'] as const,
-    types: ['suppliers', 'types'] as const,
-    contracts: (supplierId: number) => ['suppliers', 'contracts', supplierId] as const,
+    all: ["suppliers"] as const,
+    types: ["suppliers", "types"] as const,
+    contracts: (supplierId: number) =>
+      ["suppliers", "contracts", supplierId] as const,
   },
   requisitions: {
-    all: ['requisitions'] as const,
-    list: (params: Record<string, string | number>) => ['requisitions', 'list', params] as const,
-    mine: (username: string) => ['requisitions', 'mine', username] as const,
-    detail: (id: number) => ['requisitions', 'detail', id] as const,
-    summary: (params: Record<string, string | number>) => ['requisitions', 'summary', params] as const,
-    costCenters: ['requisitions', 'cost-centers'] as const,
+    all: ["requisitions"] as const,
+    list: (params: Record<string, string | number>) =>
+      ["requisitions", "list", params] as const,
+    mine: (username: string) => ["requisitions", "mine", username] as const,
+    detail: (id: number) => ["requisitions", "detail", id] as const,
+    summary: (params: Record<string, string | number>) =>
+      ["requisitions", "summary", params] as const,
+    costCenters: ["requisitions", "cost-centers"] as const,
   },
   attendance: {
-    report: (params: Record<string, string | number>) => ['attendance', 'report', params] as const,
-    byClass: (classId: number, date: string) => ['attendance', 'by-class', classId, date] as const,
-    sessions: ['attendance', 'sessions'] as const,
-    activities: ['attendance', 'activities'] as const,
+    report: (params: Record<string, string | number>) =>
+      ["attendance", "report", params] as const,
+    byClass: (classId: number, date: string) =>
+      ["attendance", "by-class", classId, date] as const,
+    sessions: ["attendance", "sessions"] as const,
+    activities: ["attendance", "activities"] as const,
   },
   sow: {
-    report: (params: Record<string, string | number>) => ['sow', 'report', params] as const,
+    report: (params: Record<string, string | number>) =>
+      ["sow", "report", params] as const,
   },
   exams: {
-    types: ['exams', 'types'] as const,
-    grading: ['exams', 'grading'] as const,
-    config: (classId: number) => ['exams', 'config', classId] as const,
-    analysis: (learnerId: number, termId: number) => ['exams', 'analysis', learnerId, termId] as const,
+    types: ["exams", "types"] as const,
+    grading: ["exams", "grading"] as const,
+    config: (classId: number) => ["exams", "config", classId] as const,
+    analysis: (learnerId: number, termId: number) =>
+      ["exams", "analysis", learnerId, termId] as const,
     pathwayDistribution: (classId: number, termId: number) =>
-      ['exams', 'pathway-distribution', classId, termId] as const,
+      ["exams", "pathway-distribution", classId, termId] as const,
   },
   visitors: {
-    all: ['visitors'] as const,
-    categories: ['visitors', 'categories'] as const,
-    purposes: ['visitors', 'purposes'] as const,
+    all: ["visitors"] as const,
+    categories: ["visitors", "categories"] as const,
+    purposes: ["visitors", "purposes"] as const,
   },
   logistics: {
-    zones: ['logistics', 'zones'] as const,
-    houses: ['logistics', 'houses'] as const,
+    zones: ["logistics", "zones"] as const,
+    houses: ["logistics", "houses"] as const,
   },
   system: {
-    logs: ['system', 'logs'] as const,
-    emailUsage: ['system', 'email-usage'] as const,
-    analytics: ['system', 'analytics'] as const,
+    logs: ["system", "logs"] as const,
+    emailUsage: ["system", "email-usage"] as const,
+    analytics: ["system", "analytics"] as const,
   },
   fees: {
-    balance: (learnerId: number) => ['fees', 'balance', learnerId] as const,
+    balance: (learnerId: number) => ["fees", "balance", learnerId] as const,
   },
   finance: {
-    summary: ['finance', 'summary'] as const,
+    summary: ["finance", "summary"] as const,
+  },
+  hr: {
+    myAppraisals: ["hr", "my-appraisals"] as const,
+    myPayroll: ["hr", "my-payroll"] as const,
+    leaves: ["hr", "leaves"] as const,
+    payroll: ["hr", "payroll"] as const,
   },
   forms: {
-    templates: ['forms', 'templates'] as const,
-    responses: (templateId: number) => ['forms', 'responses', templateId] as const,
-    shared: (templateId: number) => ['forms', 'shared', templateId] as const,
-    sharedResults: (templateId: number) => ['forms', 'shared-results', templateId] as const,
+    templates: ["forms", "templates"] as const,
+    responses: (templateId: number) =>
+      ["forms", "responses", templateId] as const,
+    shared: (templateId: number) => ["forms", "shared", templateId] as const,
+    sharedResults: (templateId: number) =>
+      ["forms", "shared-results", templateId] as const,
   },
   tickets: {
-    all: ['tickets'] as const,
+    all: ["tickets"] as const,
   },
   projects: {
-    all: ['projects'] as const,
-    finances: (id: number) => ['projects', 'finances', id] as const,
+    all: ["projects"] as const,
+    finances: (id: number) => ["projects", "finances", id] as const,
   },
   lookups: {
-    campuses: ['lookups', 'campuses'] as const,
-    departments: ['lookups', 'departments'] as const,
-    roles: ['lookups', 'roles'] as const,
-    titles: ['lookups', 'titles'] as const,
-    genders: ['lookups', 'genders'] as const,
-    maritalStatuses: ['lookups', 'marital-statuses'] as const,
-    banks: ['lookups', 'banks'] as const,
-    employmentStatuses: ['lookups', 'employment-statuses'] as const,
-    taxExemptReasons: ['lookups', 'tax-exempt-reasons'] as const,
-    counties: ['lookups', 'counties'] as const,
-    classes: ['lookups', 'classes'] as const,
-    streams: ['lookups', 'streams'] as const,
-    zones: ['lookups', 'zones'] as const,
-    houses: ['lookups', 'houses'] as const,
+    campuses: ["lookups", "campuses"] as const,
+    departments: ["lookups", "departments"] as const,
+    roles: ["lookups", "roles"] as const,
+    titles: ["lookups", "titles"] as const,
+    genders: ["lookups", "genders"] as const,
+    maritalStatuses: ["lookups", "marital-statuses"] as const,
+    banks: ["lookups", "banks"] as const,
+    employmentStatuses: ["lookups", "employment-statuses"] as const,
+    taxExemptReasons: ["lookups", "tax-exempt-reasons"] as const,
+    counties: ["lookups", "counties"] as const,
+    classes: ["lookups", "classes"] as const,
+    streams: ["lookups", "streams"] as const,
+    zones: ["lookups", "zones"] as const,
+    houses: ["lookups", "houses"] as const,
   },
-} as const
+} as const;

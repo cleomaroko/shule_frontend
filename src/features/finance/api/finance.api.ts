@@ -7,6 +7,7 @@ import type {
   Invoice,
   PurchaseOrder,
 } from '@/features/finance/types/finance.types'
+import type { PayrollRecord } from '@/features/hr/types/hr.types'
 
 export const financeApi = {
   createPo: (body: CreatePurchaseOrderPayload) =>
@@ -24,4 +25,7 @@ export const financeApi = {
       .then((r) => r.data as Invoice),
 
   summary: () => api.get<FinanceSummary>(endpoints.finance.summary).then((r) => r.data as FinanceSummary),
+
+  updatePayrollStatus: (id: number, status: 'PAID') =>
+    api.patch<PayrollRecord>(endpoints.finance.payrollStatus(id), undefined, { params: { status } }).then((r) => r.data as PayrollRecord),
 }

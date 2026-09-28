@@ -20,6 +20,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useFinanceMutations, useFinanceSummary } from '@/features/finance/hooks/useFinance'
+import { useHrPayroll } from '@/features/hr/hooks/useHr'
+import { payrollBadgeVariant, payrollStatusLabel, staffDisplayName, type PayrollRecord } from '@/features/hr/types/hr.types'
 import {
   invoiceBadgeVariant,
   invoiceStatusLabel,
@@ -39,7 +41,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { displayValue, todayIso } from '@/lib/format'
 import { paths } from '@/routes/paths'
 
-const TABS = ['summary', 'orders', 'invoices'] as const
+const TABS = ['summary', 'orders', 'invoices', 'payroll'] as const
 type FinanceTab = (typeof TABS)[number]
 
 function isTab(value: string | null): value is FinanceTab {
@@ -90,6 +92,7 @@ export function FinancePage(): ReactNode {
           <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="orders">Purchase orders</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
+          <TabsTrigger value="payroll">Payroll</TabsTrigger>
         </TabsList>
         <TabsContent value="summary">
           <SummaryPanel canFinance={canFinance} />
@@ -110,9 +113,32 @@ export function FinancePage(): ReactNode {
             onInvoice={upsertInvoice}
           />
         </TabsContent>
+        <TabsContent value="payroll"><PayrollPanel canFinance={canFinance} /></TabsContent>
       </Tabs>
     </div>
   )
+}
+
+function PayrollPanel({ canFinance }: { canFinance: boolean }): ReactNode {
+  const payroll = useHrPayroll(canFinance)
+  const { updatePayrollStatus } = useFinanceMutations()
+  const rows = payroll.data ?? []
+  const [page, setPage] = useState(1)
+  const columns: Array<DataColumn<PayrollRecord>> = [
+    { id: 'staff', header: 'Staff member', cell: (row) => staffDisplayName(row.staff) },
+    { id: 'period', header: 'Pay period', cell: (row) => row.payPeriod || '—' },
+    { id: 'gross', header: 'Gross pay', cell: (row) => formatKes(row.grossSalary), hideOnMobile: true },
+    { id: 'net', header: 'Net pay', cell: (row) => formatKes(row.netSalary) },
+    { id: 'status', header: 'Status', cell: (row) => <Badge variant={payrollBadgeVariant(row.status)}>{payrollStatusLabel(row.status)}</Badge> },
+    { id: 'actions', header: 'Payment', className: 'w-36', cell: (row) => row.status === 'PROCESSED' ? <Button size="sm" onClick={() => updatePayrollStatus.mutate({ id: row.id, status: 'PAID' })} disabled={updatePayrollStatus.isPending}>Mark paid</Button> : '—' },
+  ]
+
+  if (!canFinance) return <EmptyState title="Finance access required" description="Payroll records and payment confirmation require finance access." />
+  if (payroll.isError) return <ErrorState message={toUserMessage(payroll.error)} onRetry={() => void payroll.refetch()} />
+  if (!payroll.isLoading && rows.length === 0) return <EmptyState title="No payroll records" description="Processed staff payroll will appear here." />
+
+  return <FormSection title="Staff payroll" description="Confirm payment after salary has been wired."><div className="sm:col-span-2"><DataTable columns={columns} rows={rows.slice((page - 1) * 10, page * 10)} getRowId={(row) => row.id} isLoading={payroll.isLoading} page={page} pageSize={10} total={rows.length} onPageChange={setPage}
+    mobileCard={(row) => <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="type-label">{staffDisplayName(row.staff)}</p><p className="type-caption text-muted-foreground">{row.payPeriod || 'Pay period not set'} · Net {formatKes(row.netSalary)}</p></div><Badge variant={payrollBadgeVariant(row.status)}>{payrollStatusLabel(row.status)}</Badge></div>} /></div></FormSection>
 }
 
 function SummaryPanel({ canFinance }: { canFinance: boolean }): ReactNode {

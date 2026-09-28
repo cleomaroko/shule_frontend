@@ -1,4 +1,4 @@
-import type { UserRole } from '@/auth/auth.types'
+import type { UserRole } from "@/auth/auth.types";
 
 /**
  * Capability checks derived from the actual Java controllers.
@@ -85,171 +85,211 @@ import type { UserRole } from '@/auth/auth.types'
  * the current session is known to be declined for.
  */
 export type Capability =
-  | 'staff:write'
-  | 'learner:write'
-  | 'academic:setup'
-  | 'subject:write'
-  | 'assignment:write'
-  | 'asset:write'
-  | 'store:write'
-  | 'transport:write'
-  | 'supplier:write'
-  | 'visitor:write'
-  | 'admissions:write'
-  | 'requisition:create'
-  | 'requisition:review'
-  | 'requisition:approve'
-  | 'requisition:receive'
-  | 'requisition:settings'
-  | 'attendance:write'
-  | 'attendance:settings'
-  | 'sow:upload'
-  | 'exam:write'
-  | 'exam:setup'
-  | 'fees:write'
-  | 'finance:access'
-  | 'procurement:access'
-  | 'grn:write'
-  | 'forms:write'
-  | 'ticket:create'
-  | 'ticket:manage'
-  | 'project:write'
-  | 'project:expense'
-  | 'system:super'
-  | 'system:analytics'
+  | "staff:write"
+  | "learner:write"
+  | "academic:setup"
+  | "subject:write"
+  | "assignment:write"
+  | "asset:write"
+  | "store:write"
+  | "transport:write"
+  | "supplier:write"
+  | "visitor:write"
+  | "admissions:write"
+  | "requisition:create"
+  | "requisition:review"
+  | "requisition:approve"
+  | "requisition:receive"
+  | "requisition:settings"
+  | "attendance:write"
+  | "attendance:settings"
+  | "sow:upload"
+  | "exam:write"
+  | "exam:setup"
+  | "fees:write"
+  | "finance:access"
+  | "procurement:access"
+  | "grn:write"
+  | "forms:write"
+  | "ticket:create"
+  | "ticket:manage"
+  | "project:write"
+  | "project:expense"
+  | "system:super"
+  | "system:analytics";
 
-export function hasRole(role: UserRole | null | undefined, expected: string): boolean {
-  if (!role) return false
-  return role.toUpperCase() === expected.toUpperCase()
+export function hasRole(
+  role: UserRole | null | undefined,
+  expected: string,
+): boolean {
+  if (!role) return false;
+  return role.toUpperCase() === expected.toUpperCase();
 }
 
-export function hasAnyRole(role: UserRole | null | undefined, expected: string[]): boolean {
-  return expected.some((value) => hasRole(role, value))
+export function hasAnyRole(
+  role: UserRole | null | undefined,
+  expected: string[],
+): boolean {
+  return expected.some((value) => hasRole(role, value));
 }
 
-export function roleContains(role: UserRole | null | undefined, fragment: string): boolean {
-  if (!role) return false
-  return role.toUpperCase().includes(fragment.toUpperCase())
+export function roleContains(
+  role: UserRole | null | undefined,
+  fragment: string,
+): boolean {
+  if (!role) return false;
+  return role.toUpperCase().includes(fragment.toUpperCase());
 }
 
-export function can(role: UserRole | null | undefined, capability: Capability): boolean {
+export function can(
+  role: UserRole | null | undefined,
+  capability: Capability,
+): boolean {
   switch (capability) {
-    case 'staff:write':
-      return hasRole(role, 'ROLE_SUPER_ADMIN') || roleContains(role, 'ADMIN')
-    case 'learner:write':
-      return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
-    case 'academic:setup':
-      return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
-    case 'subject:write':
+    case "staff:write":
+      return hasRole(role, "ROLE_SUPER_ADMIN") || roleContains(role, "ADMIN");
+    case "learner:write":
+      return roleContains(role, "ADMIN") || roleContains(role, "HEAD");
+    case "academic:setup":
+      return roleContains(role, "ADMIN") || roleContains(role, "HEAD");
+    case "subject:write":
       return (
-        hasRole(role, 'ROLE_SUPER_ADMIN') ||
-        roleContains(role, 'IT_ADMIN') ||
-        roleContains(role, 'HEAD_OF_SCHOOL') ||
-        roleContains(role, 'SECTION_HEAD')
-      )
-    case 'assignment:write':
-      return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
-    case 'asset:write':
+        hasRole(role, "ROLE_SUPER_ADMIN") ||
+        roleContains(role, "IT_ADMIN") ||
+        roleContains(role, "HEAD_OF_SCHOOL") ||
+        roleContains(role, "SECTION_HEAD")
+      );
+    case "assignment:write":
+      return roleContains(role, "ADMIN") || roleContains(role, "HEAD");
+    case "asset:write":
       return (
-        roleContains(role, 'ADMIN') ||
-        roleContains(role, 'PROCUREMENT') ||
-        roleContains(role, 'IT')
-      )
-    case 'store:write':
+        roleContains(role, "ADMIN") ||
+        roleContains(role, "PROCUREMENT") ||
+        roleContains(role, "IT")
+      );
+    case "store:write":
       return (
-        roleContains(role, 'ADMIN') ||
-        roleContains(role, 'MANAGER') ||
-        roleContains(role, 'OPERATOR')
-      )
-    case 'transport:write':
-      return roleContains(role, 'ADMIN') || roleContains(role, 'OPERATOR')
-    case 'supplier:write':
+        roleContains(role, "ADMIN") ||
+        roleContains(role, "MANAGER") ||
+        roleContains(role, "OPERATOR")
+      );
+    case "transport:write":
+      return roleContains(role, "ADMIN") || roleContains(role, "OPERATOR");
+    case "supplier:write":
       return (
-        roleContains(role, 'ADMIN') ||
-        roleContains(role, 'PROCUREMENT') ||
-        roleContains(role, 'MANAGER')
-      )
-    case 'visitor:write':
-      return roleContains(role, 'ADMIN') || roleContains(role, 'OPERATOR') || roleContains(role, 'HEAD')
-    case 'admissions:write':
-      return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
-    case 'requisition:create':
-      return Boolean(role)
-    case 'requisition:review':
-      return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD') || roleContains(role, 'DEAN')
-    case 'requisition:approve':
+        roleContains(role, "ADMIN") ||
+        roleContains(role, "PROCUREMENT") ||
+        roleContains(role, "MANAGER")
+      );
+    case "visitor:write":
       return (
-        roleContains(role, 'ADMIN') ||
-        roleContains(role, 'HEAD_OF_SCHOOL') ||
-        roleContains(role, 'FINANCE')
-      )
-    case 'requisition:receive':
-      return roleContains(role, 'ADMIN') || roleContains(role, 'OPERATOR') || roleContains(role, 'HEAD')
-    case 'requisition:settings':
-      return roleContains(role, 'ADMIN')
-    case 'attendance:write':
+        roleContains(role, "ADMIN") ||
+        roleContains(role, "OPERATOR") ||
+        roleContains(role, "HEAD")
+      );
+    case "admissions:write":
+      return roleContains(role, "ADMIN") || roleContains(role, "HEAD");
+    case "requisition:create":
+      return Boolean(role);
+    case "requisition:review":
       return (
-        roleContains(role, 'ADMIN') ||
-        roleContains(role, 'HEAD') ||
-        roleContains(role, 'TEACHER') ||
-        roleContains(role, 'OPERATOR')
-      )
-    case 'attendance:settings':
-      return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
-    case 'sow:upload':
-      return roleContains(role, 'TEACHER') || roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
-    case 'exam:write':
-      return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD') || roleContains(role, 'TEACHER')
-    case 'exam:setup':
-      return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
-    case 'fees:write':
-      return roleContains(role, 'ADMIN') || roleContains(role, 'FINANCE') || roleContains(role, 'HEAD')
-    case 'finance:access':
+        roleContains(role, "ADMIN") ||
+        roleContains(role, "HEAD") ||
+        roleContains(role, "DEAN")
+      );
+    case "requisition:approve":
       return (
-        hasRole(role, 'ROLE_SUPER_ADMIN') ||
-        roleContains(role, 'FINANCE_ADMIN') ||
-        roleContains(role, 'FINANCE_OFFICER') ||
-        roleContains(role, 'HEAD_OF_ADMINS_AND_FINANCE') ||
-        roleContains(role, 'FINANCE') ||
-        roleContains(role, 'ADMIN')
-      )
-    case 'procurement:access':
+        roleContains(role, "ADMIN") ||
+        roleContains(role, "HEAD_OF_SCHOOL") ||
+        roleContains(role, "FINANCE")
+      );
+    case "requisition:receive":
       return (
-        hasRole(role, 'ROLE_SUPER_ADMIN') ||
-        roleContains(role, 'PROCUREMENT_ADMIN') ||
-        roleContains(role, 'PROCUREMENT_OFFICER') ||
-        roleContains(role, 'PROCUREMENT') ||
-        roleContains(role, 'ADMIN')
-      )
-    case 'grn:write':
+        roleContains(role, "ADMIN") ||
+        roleContains(role, "OPERATOR") ||
+        roleContains(role, "HEAD")
+      );
+    case "requisition:settings":
+      return roleContains(role, "ADMIN");
+    case "attendance:write":
       return (
-        roleContains(role, 'ADMIN') ||
-        roleContains(role, 'MANAGER') ||
-        roleContains(role, 'OPERATOR') ||
-        roleContains(role, 'PROCUREMENT')
-      )
-    case 'forms:write':
-      return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
-    case 'ticket:create':
-      return Boolean(role)
-    case 'ticket:manage':
+        roleContains(role, "ADMIN") ||
+        roleContains(role, "HEAD") ||
+        roleContains(role, "TEACHER") ||
+        roleContains(role, "OPERATOR")
+      );
+    case "attendance:settings":
+      return roleContains(role, "ADMIN") || roleContains(role, "HEAD");
+    case "sow:upload":
       return (
-        roleContains(role, 'ADMIN') ||
-        roleContains(role, 'IT') ||
-        roleContains(role, 'HEAD') ||
-        roleContains(role, 'OPERATOR')
-      )
-    case 'project:write':
-      return roleContains(role, 'ADMIN') || roleContains(role, 'HEAD')
-    case 'project:expense':
-      return roleContains(role, 'ADMIN') || roleContains(role, 'FINANCE') || roleContains(role, 'HEAD')
-    case 'system:super':
-      return hasRole(role, 'ROLE_SUPER_ADMIN')
-    case 'system:analytics':
+        roleContains(role, "TEACHER") ||
+        roleContains(role, "ADMIN") ||
+        roleContains(role, "HEAD")
+      );
+    case "exam:write":
       return (
-        hasRole(role, 'ROLE_SUPER_ADMIN') ||
-        roleContains(role, 'IT_ADMIN') ||
-        roleContains(role, 'IT_OFFICER')
-      )
+        roleContains(role, "ADMIN") ||
+        roleContains(role, "HEAD") ||
+        roleContains(role, "TEACHER")
+      );
+    case "exam:setup":
+      return roleContains(role, "ADMIN") || roleContains(role, "HEAD");
+    case "fees:write":
+      return (
+        roleContains(role, "ADMIN") ||
+        roleContains(role, "FINANCE") ||
+        roleContains(role, "HEAD")
+      );
+    case "finance:access":
+      return (
+        hasRole(role, "ROLE_SUPER_ADMIN") ||
+        roleContains(role, "FINANCE_ADMIN") ||
+        roleContains(role, "FINANCE_OFFICER") ||
+        roleContains(role, "HEAD_OF_ADMINS_AND_FINANCE") ||
+        roleContains(role, "FINANCE") ||
+        roleContains(role, "ADMIN")
+      );
+    case "procurement:access":
+      return (
+        hasRole(role, "ROLE_SUPER_ADMIN") ||
+        roleContains(role, "PROCUREMENT_ADMIN") ||
+        roleContains(role, "PROCUREMENT_OFFICER") ||
+        roleContains(role, "PROCUREMENT") ||
+        roleContains(role, "ADMIN")
+      );
+    case "grn:write":
+      return (
+        roleContains(role, "ADMIN") ||
+        roleContains(role, "MANAGER") ||
+        roleContains(role, "OPERATOR") ||
+        roleContains(role, "PROCUREMENT")
+      );
+    case "forms:write":
+      return roleContains(role, "ADMIN") || roleContains(role, "HEAD");
+    case "ticket:create":
+      return Boolean(role);
+    case "ticket:manage":
+      return (
+        roleContains(role, "ADMIN") ||
+        roleContains(role, "IT") ||
+        roleContains(role, "HEAD") ||
+        roleContains(role, "OPERATOR")
+      );
+    case "project:write":
+      return roleContains(role, "ADMIN") || roleContains(role, "HEAD");
+    case "project:expense":
+      return (
+        roleContains(role, "ADMIN") ||
+        roleContains(role, "FINANCE") ||
+        roleContains(role, "HEAD")
+      );
+    case "system:super":
+      return hasRole(role, "ROLE_SUPER_ADMIN");
+    case "system:analytics":
+      return (
+        hasRole(role, "ROLE_SUPER_ADMIN") ||
+        roleContains(role, "IT_ADMIN") ||
+        roleContains(role, "IT_OFFICER")
+      );
   }
 }

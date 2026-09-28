@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { AcademicsPage } from '@/features/academic/pages/AcademicsPage'
 import { FeesPage } from '@/features/fees/pages/FeesPage'
 import { FinancePage } from '@/features/finance/pages/FinancePage'
+import { HrPage } from '@/features/hr/pages/HrPage'
 import { FormsPage } from '@/features/forms/pages/FormsPage'
 import { SharedFormPage, SharedFormResultsPage } from '@/features/forms/pages/SharedFormPage'
 import { ProjectsPage } from '@/features/projects/pages/ProjectsPage'
@@ -81,6 +82,7 @@ export function AppRoutes(): ReactNode {
           <Route path={paths.requisitions} element={<RequisitionsPage />} />
           <Route path={paths.fees} element={<FeesPage />} />
           <Route path={paths.finance} element={<FinancePage />} />
+          <Route path={paths.hr} element={<HrPage />} />
           <Route path={paths.forms} element={<FormsPage />} />
           <Route path={paths.tickets} element={<TicketsPage />} />
           <Route path={paths.projects} element={<ProjectsPage />} />

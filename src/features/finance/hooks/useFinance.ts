@@ -18,6 +18,7 @@ export function useFinanceSummary(enabled = true) {
 export function useFinanceMutations() {
   const queryClient = useQueryClient()
   const invalidateSummary = () => queryClient.invalidateQueries({ queryKey: queryKeys.finance.summary })
+  const invalidatePayroll = () => queryClient.invalidateQueries({ queryKey: queryKeys.hr.payroll })
 
   const createPo = useMutation({
     mutationFn: (body: CreatePurchaseOrderPayload) => financeApi.createPo(body),
@@ -67,5 +68,17 @@ export function useFinanceMutations() {
     },
   })
 
-  return { createPo, approvePo, captureInvoice, recordPayment }
+  const updatePayrollStatus = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: 'PAID' }) => financeApi.updatePayrollStatus(id, status),
+    onSuccess: async () => {
+      await invalidatePayroll()
+      toast.success('Payroll marked as paid.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Payroll status update failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
+  return { createPo, approvePo, captureInvoice, recordPayment, updatePayrollStatus }
 }

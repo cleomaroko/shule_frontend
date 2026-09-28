@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Briefcase,
   BookOpen,
   Building2,
   Bus,
@@ -49,6 +50,7 @@ export const navigation: NavSection[] = [
     items: [
       { label: "Learners", to: paths.learners, icon: GraduationCap },
       { label: "Staff", to: paths.staff, icon: Users },
+      { label: "HR", to: paths.hr, icon: Briefcase },
       { label: "Admissions", to: paths.admissions, icon: ClipboardList },
       { label: "Visitors", to: paths.visitors, icon: UserRound },
     ],
