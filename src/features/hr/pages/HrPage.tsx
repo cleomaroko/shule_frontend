@@ -13,6 +13,7 @@ import { TextField } from '@/components/forms/TextField'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useHrLeaves, useHrMutations, useMyAppraisals, useMyPayroll } from '@/features/hr/hooks/useHr'
 import {
@@ -147,6 +148,7 @@ function PersonalRecordsPanel({ hasStaffProfile }: { hasStaffProfile: boolean })
   const payroll = useMyPayroll(hasStaffProfile)
   const [appraisalPage, setAppraisalPage] = useState(1)
   const [payrollPage, setPayrollPage] = useState(1)
+  const [selectedPayroll, setSelectedPayroll] = useState<PayrollRecord | null>(null)
 
   const appraisalColumns: Array<DataColumn<StaffAppraisal>> = [
     { id: 'period', header: 'Period', cell: (row) => row.period || '—' },
@@ -175,10 +177,59 @@ function PersonalRecordsPanel({ hasStaffProfile }: { hasStaffProfile: boolean })
           (payroll.data?.length ?? 0) === 0 && !payroll.isLoading ? <p className="type-body text-muted-foreground">No payroll records are available.</p> : (
             <div className="sm:col-span-2">
               <DataTable columns={payrollColumns} rows={(payroll.data ?? []).slice((payrollPage - 1) * 5, payrollPage * 5)} getRowId={(row) => row.id} isLoading={payroll.isLoading} page={payrollPage} pageSize={5} total={payroll.data?.length ?? 0} onPageChange={setPayrollPage}
-                mobileCard={(row) => <div className="flex items-center justify-between gap-3"><div><p className="type-label">{row.payPeriod || 'Payroll'}</p><p className="type-caption text-muted-foreground">Net pay · {formatKes(row.netSalary)}</p></div><Badge variant={payrollBadgeVariant(row.status)}>{payrollStatusLabel(row.status)}</Badge></div>} />
+                onRowClick={setSelectedPayroll} rowAriaLabel={(row) => `View payroll details for ${row.payPeriod || 'payment'}`}
+                mobileCard={(row) => <div className="flex items-center justify-between gap-3"><div><p className="type-label">{row.payPeriod || 'Payroll'}</p><p className="type-caption text-muted-foreground">Net pay · {formatKes(row.netSalary)}</p><p className="type-caption mt-1 text-primary">View payment details</p></div><Badge variant={payrollBadgeVariant(row.status)}>{payrollStatusLabel(row.status)}</Badge></div>} />
             </div>
           )}
       </FormSection>
+      <Dialog open={selectedPayroll !== null} onOpenChange={(open) => { if (!open) setSelectedPayroll(null) }}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+          {selectedPayroll ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Payroll details</DialogTitle>
+                <DialogDescription>{selectedPayroll.payPeriod || 'Payment record'}</DialogDescription>
+              </DialogHeader>
+              <div className="mt-5 space-y-5">
+                <div className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-4 py-3">
+                  <span className="type-label">Payment status</span>
+                  <Badge variant={payrollBadgeVariant(selectedPayroll.status)}>{payrollStatusLabel(selectedPayroll.status)}</Badge>
+                </div>
+                <dl className="divide-y divide-border rounded-lg border border-border px-4">
+                  <PayrollDetail label="Pay period" value={selectedPayroll.payPeriod || '—'} />
+                  <PayrollDetail label="Payment date" value={selectedPayroll.paymentDate || 'Not recorded'} />
+                  <PayrollDetail label="Basic salary" value={formatKes(selectedPayroll.basicSalary)} />
+                  <PayrollDetail label="Allowances" value={formatKes(selectedPayroll.allowances)} />
+                  <PayrollDetail label="Gross salary" value={formatKes(selectedPayroll.grossSalary)} emphasize />
+                </dl>
+                <div>
+                  <h3 className="type-label mb-2">Deductions</h3>
+                  <dl className="divide-y divide-border rounded-lg border border-border px-4">
+                    <PayrollDetail label="NHIF" value={formatKes(selectedPayroll.nhif)} />
+                    <PayrollDetail label="NSSF" value={formatKes(selectedPayroll.nssf)} />
+                    <PayrollDetail label="PAYE" value={formatKes(selectedPayroll.paye)} />
+                    <PayrollDetail label="HELB" value={formatKes(selectedPayroll.helb)} />
+                    <PayrollDetail label="Total deductions" value={formatKes(selectedPayroll.totalDeductions)} emphasize />
+                  </dl>
+                </div>
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+                  <span className="type-label">Net pay</span>
+                  <span className="type-heading text-primary">{formatKes(selectedPayroll.netSalary)}</span>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+function PayrollDetail({ label, value, emphasize = false }: { label: string; value: string; emphasize?: boolean }): ReactNode {
+  return (
+    <div className="flex items-center justify-between gap-4 py-3">
+      <dt className="type-caption text-muted-foreground">{label}</dt>
+      <dd className={emphasize ? 'type-label text-right' : 'type-body text-right'}>{value}</dd>
     </div>
   )
 }
