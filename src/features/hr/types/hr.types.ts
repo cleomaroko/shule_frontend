@@ -13,11 +13,34 @@ export interface StaffAppraisal {
 
 export interface StaffLeave {
   id: number;
-  staff?: Pick<Staff, "id" | "firstName" | "lastName" | "staffNumber"> | null;
+  staff?: Pick<Staff, "id" | "firstName" | "lastName" | "staffNumber" | "supervisor"> | null;
   startDate: string;
   endDate: string;
   reason: string;
   status: string;
+  supervisorComment?: string | null;
+  hrComment?: string | null;
+}
+
+export interface StaffAttendanceRecord {
+  id: number;
+  staff?: Pick<Staff, "id" | "firstName" | "secondName" | "lastName" | "staffNumber" | "department"> | null;
+  attendanceDate: string;
+  timeIn?: string | null;
+  timeOut?: string | null;
+  status: StaffAttendanceStatus;
+}
+
+export interface StaffAttendanceFilters {
+  startDate?: string;
+  endDate?: string;
+  staffId?: number;
+}
+
+export interface LeaveReviewPayload {
+  id: number;
+  action: "APPROVED" | "REJECTED";
+  comment?: string;
 }
 
 export interface LeaveApplicationPayload {
@@ -92,13 +115,30 @@ export function payrollBadgeVariant(status: string | null | undefined) {
 export function leaveBadgeVariant(status: string | null | undefined) {
   switch (status) {
     case "APPROVED":
+    case "APPROVED_BY_SUPERVISOR":
       return "success" as const;
     case "REJECTED":
       return "destructive" as const;
     case "PENDING":
+    case "PENDING_SUPERVISOR":
       return "warning" as const;
     default:
       return "neutral" as const;
+  }
+}
+
+export function leaveStatusLabel(status: string | null | undefined): string {
+  switch (status) {
+    case "PENDING_SUPERVISOR":
+      return "Pending supervisor review";
+    case "APPROVED_BY_SUPERVISOR":
+      return "Supervisor approved";
+    case "APPROVED":
+      return "Approved";
+    case "REJECTED":
+      return "Rejected";
+    default:
+      return status?.trim() || "Unknown";
   }
 }
 

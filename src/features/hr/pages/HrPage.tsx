@@ -15,13 +15,23 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useHrLeaves, useHrMutations, useMyAppraisals, useMyPayroll } from '@/features/hr/hooks/useHr'
+import {
+  useHrLeaves,
+  useHrMutations,
+  useMyAppraisals,
+  useMyAttendance,
+  useMyPayroll,
+  useStaffAttendanceReport,
+} from '@/features/hr/hooks/useHr'
 import {
   leaveBadgeVariant,
+  leaveStatusLabel,
   payrollBadgeVariant,
   payrollStatusLabel,
   staffDisplayName,
   type PayrollRecord,
+  type StaffAttendanceFilters,
+  type StaffAttendanceRecord,
   type StaffAppraisal,
   type StaffAttendanceStatus,
   type StaffLeave,
@@ -51,6 +61,12 @@ const MONTHS = [
   'NOVEMBER',
   'DECEMBER',
 ]
+
+function dateDaysAgo(days: number): string {
+  const date = new Date()
+  date.setDate(date.getDate() - days)
+  return todayIso(date)
+}
 
 function currentPayPeriod(): string {
   return `${MONTHS[new Date().getMonth()]}-${new Date().getFullYear()}`
@@ -89,9 +105,10 @@ export function HrPage(): ReactNode {
 
 function SelfServicePanel({ hasStaffProfile }: { hasStaffProfile: boolean }): ReactNode {
   return (
-    <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+    <div className="grid min-w-0 gap-6 xl:grid-cols-2">
       {hasStaffProfile ? <LeaveApplicationPanel /> : <StaffProfileRequired title="Staff leave self-service unavailable" />}
       <PersonalRecordsPanel hasStaffProfile={hasStaffProfile} />
+      {hasStaffProfile ? <MyAttendancePanel /> : <StaffProfileRequired title="Staff attendance unavailable" />}
     </div>
   )
 }
@@ -235,6 +252,19 @@ function PayrollDetail({ label, value, emphasize = false }: { label: string; val
 }
 
 function AttendancePanel(): ReactNode {
+  return (
+    <Tabs defaultValue="mark" className="min-w-0">
+      <TabsList>
+        <TabsTrigger value="mark">Mark attendance</TabsTrigger>
+        <TabsTrigger value="report">Attendance report</TabsTrigger>
+      </TabsList>
+      <TabsContent value="mark"><AttendanceUploadPanel /></TabsContent>
+      <TabsContent value="report"><AttendanceReportPanel /></TabsContent>
+    </Tabs>
+  )
+}
+
+function AttendanceUploadPanel(): ReactNode {
   const staff = useStaffList()
   const { uploadAttendance } = useHrMutations()
   const [attendanceDate, setAttendanceDate] = useState(todayIso())
@@ -290,24 +320,164 @@ function AttendancePanel(): ReactNode {
   )
 }
 
-function LeaveReviewPanel(): ReactNode {
-  const leaves = useHrLeaves()
-  const { updateLeaveStatus } = useHrMutations()
+function MyAttendancePanel(): ReactNode {
+  const [startDate, setStartDate] = useState(dateDaysAgo(29))
+  const [endDate, setEndDate] = useState(todayIso())
+  const [filters, setFilters] = useState<StaffAttendanceFilters | null>(null)
   const [page, setPage] = useState(1)
+  const attendance = useMyAttendance(filters ?? {}, filters !== null)
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    if (!startDate || !endDate || startDate > endDate) {
+      toast.error('Choose a valid date range.')
+      return
+    }
+    setPage(1)
+    setFilters({ startDate, endDate })
+  }
+
+  return (
+    <div className="min-w-0">
+      <FormSection title="My staff attendance" description="View your attendance records for a selected period.">
+        <form onSubmit={submit} className="contents">
+          <TextField label="From" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} required />
+          <TextField label="To" type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} required min={startDate || undefined} />
+          <div className="sm:col-span-2"><Button type="submit">View records</Button></div>
+        </form>
+        {filters ? <AttendanceResults attendance={attendance} page={page} onPageChange={setPage} /> : <p className="type-caption text-muted-foreground sm:col-span-2">Select a date range to view attendance.</p>}
+      </FormSection>
+    </div>
+  )
+}
+
+function AttendanceReportPanel(): ReactNode {
+  const staff = useStaffList()
+  const [staffId, setStaffId] = useState('')
+  const [startDate, setStartDate] = useState(dateDaysAgo(29))
+  const [endDate, setEndDate] = useState(todayIso())
+  const [filters, setFilters] = useState<StaffAttendanceFilters | null>(null)
+  const [page, setPage] = useState(1)
+  const attendance = useStaffAttendanceReport(filters ?? {}, filters !== null)
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    if (!startDate || !endDate || startDate > endDate) {
+      toast.error('Choose a valid date range.')
+      return
+    }
+    setPage(1)
+    setFilters({ startDate, endDate, ...(staffId ? { staffId: Number(staffId) } : {}) })
+  }
+
+  return (
+    <FormSection title="Staff attendance report" description="Filter all staff records or narrow the report to one staff member.">
+      {staff.isError ? <div className="sm:col-span-2"><ErrorState message={toUserMessage(staff.error)} onRetry={() => void staff.refetch()} /></div> : null}
+      <form onSubmit={submit} className="contents">
+        <SelectField label="Staff member" value={staffId} onChange={setStaffId} options={(staff.data ?? []).map((person) => ({ value: String(person.id), label: `${staffName(person)}${person.staffNumber ? ` · ${person.staffNumber}` : ''}` }))} emptyLabel="All staff" placeholder="Select staff" hint="All staff is the default." />
+        <TextField label="From" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} required />
+        <TextField label="To" type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} required min={startDate || undefined} />
+        <div className="flex items-end"><Button type="submit">Run report</Button></div>
+      </form>
+      {filters ? <AttendanceResults attendance={attendance} page={page} onPageChange={setPage} /> : <p className="type-caption text-muted-foreground sm:col-span-2">Choose a date range to run the report.</p>}
+    </FormSection>
+  )
+}
+
+function AttendanceResults({
+  attendance,
+  page,
+  onPageChange,
+}: {
+  attendance: ReturnType<typeof useMyAttendance>;
+  page: number;
+  onPageChange: (page: number) => void;
+}): ReactNode {
+  const records = attendance.data ?? []
+  const columns: Array<DataColumn<StaffAttendanceRecord>> = [
+    { id: 'date', header: 'Date', cell: (row) => row.attendanceDate },
+    { id: 'staff', header: 'Staff member', cell: (row) => staffDisplayName(row.staff) },
+    { id: 'status', header: 'Status', cell: (row) => <Badge variant={row.status === 'PRESENT' ? 'success' : row.status === 'LATE' ? 'warning' : 'destructive'}>{row.status}</Badge> },
+    { id: 'timeIn', header: 'Time in', cell: (row) => row.timeIn || '—' },
+    { id: 'timeOut', header: 'Time out', cell: (row) => row.timeOut || '—' },
+  ]
+
+  if (attendance.isError) return <div className="sm:col-span-2"><ErrorState message={toUserMessage(attendance.error)} onRetry={() => void attendance.refetch()} /></div>
+  if (!attendance.isLoading && records.length === 0) return <p className="type-body text-muted-foreground sm:col-span-2">No attendance records found for this date range.</p>
+
+  return (
+    <div className="sm:col-span-2">
+      <DataTable
+        columns={columns}
+        rows={records.slice((page - 1) * 10, page * 10)}
+        getRowId={(row) => row.id}
+        isLoading={attendance.isLoading}
+        page={page}
+        pageSize={10}
+        total={records.length}
+        onPageChange={onPageChange}
+        mobileCard={(row) => <div className="flex items-start justify-between gap-3"><div><p className="type-label">{row.attendanceDate}</p><p className="type-caption text-muted-foreground">{staffDisplayName(row.staff)} · In {row.timeIn || '—'} · Out {row.timeOut || '—'}</p></div><Badge variant={row.status === 'PRESENT' ? 'success' : row.status === 'LATE' ? 'warning' : 'destructive'}>{row.status}</Badge></div>}
+      />
+    </div>
+  )
+}
+
+function LeaveReviewPanel(): ReactNode {
+  const { user } = useAuth()
+  const staff = useStaffList()
+  const leaves = useHrLeaves()
+  const { reviewLeave } = useHrMutations()
+  const [page, setPage] = useState(1)
+  const [selectedLeave, setSelectedLeave] = useState<StaffLeave | null>(null)
+  const [action, setAction] = useState<'APPROVED' | 'REJECTED'>('APPROVED')
+  const [comment, setComment] = useState('')
   const rows = leaves.data ?? []
+  const reviewer = (staff.data ?? []).find((person) => person.workEmail?.toLowerCase() === user?.username.toLowerCase())
+  const isSupervisorForSelectedLeave = Boolean(
+    reviewer &&
+      selectedLeave?.staff?.supervisor?.trim().toLowerCase() ===
+        `${reviewer.firstName ?? ''} ${reviewer.lastName ?? ''}`.trim().toLowerCase(),
+  )
+  const submitReview = (event: FormEvent) => {
+    event.preventDefault()
+    if (!selectedLeave) return
+    reviewLeave.mutate(
+      { id: selectedLeave.id, action, ...(comment.trim() ? { comment: comment.trim() } : {}) },
+      { onSuccess: () => { setSelectedLeave(null); setComment('') } },
+    )
+  }
+
   const columns: Array<DataColumn<StaffLeave>> = [
     { id: 'staff', header: 'Staff member', cell: (row) => staffDisplayName(row.staff) },
     { id: 'dates', header: 'Dates', cell: (row) => `${row.startDate} – ${row.endDate}` },
     { id: 'reason', header: 'Reason', cell: (row) => row.reason || '—' },
-    { id: 'status', header: 'Status', cell: (row) => <Badge variant={leaveBadgeVariant(row.status)}>{row.status}</Badge> },
-    { id: 'actions', header: 'Decision', className: 'w-48', cell: (row) => row.status === 'PENDING' ? <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => updateLeaveStatus.mutate({ id: row.id, status: 'APPROVED' })} disabled={updateLeaveStatus.isPending}>Approve</Button><Button size="sm" variant="destructive" onClick={() => updateLeaveStatus.mutate({ id: row.id, status: 'REJECTED' })} disabled={updateLeaveStatus.isPending}>Reject</Button></div> : '—' },
+    { id: 'status', header: 'Status', cell: (row) => <Badge variant={leaveBadgeVariant(row.status)}>{leaveStatusLabel(row.status)}</Badge> },
+    { id: 'supervisorComment', header: 'Supervisor comment', cell: (row) => row.supervisorComment || '—', hideOnMobile: true },
+    { id: 'hrComment', header: 'HR comment', cell: (row) => row.hrComment || '—', hideOnMobile: true },
+    { id: 'actions', header: 'Review', className: 'w-32', cell: (row) => ['PENDING', 'PENDING_SUPERVISOR', 'APPROVED_BY_SUPERVISOR'].includes(row.status) ? <Button size="sm" variant="outline" disabled={staff.isLoading || !reviewer} onClick={() => { setSelectedLeave(row); setAction('APPROVED') }}>Review</Button> : '—' },
   ]
 
   if (leaves.isError) return <ErrorState message={toUserMessage(leaves.error)} onRetry={() => void leaves.refetch()} />
   if (!leaves.isLoading && rows.length === 0) return <EmptyState title="No leave requests" description="New staff applications will appear here for review." />
 
-  return <FormSection title="Leave requests" description="Review pending requests or check previous decisions."><div className="sm:col-span-2"><DataTable columns={columns} rows={rows.slice((page - 1) * 10, page * 10)} getRowId={(row) => row.id} isLoading={leaves.isLoading} page={page} pageSize={10} total={rows.length} onPageChange={setPage}
-    mobileCard={(row) => <div className="space-y-2"><div className="flex items-start justify-between gap-2"><p className="type-label">{staffDisplayName(row.staff)}</p><Badge variant={leaveBadgeVariant(row.status)}>{row.status}</Badge></div><p className="type-caption text-muted-foreground">{row.startDate} – {row.endDate}</p><p className="type-body">{row.reason || 'No reason provided.'}</p></div>} /></div></FormSection>
+  return <>
+    <FormSection title="Leave requests" description="Review pending requests or check previous decisions.">
+      {!staff.isLoading && !reviewer ? <p className="type-caption text-warning-foreground sm:col-span-2">This account is not linked to a staff profile. The review endpoint requires the reviewer’s staff record.</p> : null}
+      {staff.isError ? <div className="sm:col-span-2"><ErrorState message={toUserMessage(staff.error)} onRetry={() => void staff.refetch()} /></div> : null}
+      <div className="sm:col-span-2"><DataTable columns={columns} rows={rows.slice((page - 1) * 10, page * 10)} getRowId={(row) => row.id} isLoading={leaves.isLoading} page={page} pageSize={10} total={rows.length} onPageChange={setPage}
+      mobileCard={(row) => <div className="space-y-2"><div className="flex items-start justify-between gap-2"><p className="type-label">{staffDisplayName(row.staff)}</p><Badge variant={leaveBadgeVariant(row.status)}>{leaveStatusLabel(row.status)}</Badge></div><p className="type-caption text-muted-foreground">{row.startDate} – {row.endDate}</p><p className="type-body">{row.reason || 'No reason provided.'}</p>{row.supervisorComment ? <p className="type-caption text-muted-foreground">Supervisor: {row.supervisorComment}</p> : null}{row.hrComment ? <p className="type-caption text-muted-foreground">HR: {row.hrComment}</p> : null}</div>} /></div></FormSection>
+    <Dialog open={selectedLeave !== null} onOpenChange={(open) => { if (!open) setSelectedLeave(null) }}>
+      <DialogContent>
+        {selectedLeave ? <form onSubmit={submitReview} className="space-y-5">
+          <DialogHeader><DialogTitle>Review leave request</DialogTitle><DialogDescription>{staffDisplayName(selectedLeave.staff)} · {selectedLeave.startDate} – {selectedLeave.endDate}</DialogDescription></DialogHeader>
+          <p className="type-body">{selectedLeave.reason || 'No reason provided.'}</p>
+          {selectedLeave.status === 'PENDING_SUPERVISOR' && isSupervisorForSelectedLeave ? <p className="type-caption text-muted-foreground">As the assigned supervisor, you can approve this request to advance it to HR review.</p> : <SelectField label="Decision" value={action} onChange={(value) => setAction(value as 'APPROVED' | 'REJECTED')} options={[{ value: 'APPROVED', label: 'Approve' }, { value: 'REJECTED', label: 'Reject' }]} allowEmpty={false} />}
+          <TextareaField label="Review comment" value={comment} onChange={(event) => setComment(event.target.value)} rows={3} />
+          <div className="flex justify-end"><Button type="submit" isLoading={reviewLeave.isPending} loadingLabel="Saving review" disabled={!reviewer || staff.isLoading}>Submit review</Button></div>
+        </form> : null}
+      </DialogContent>
+    </Dialog>
+  </>
 }
 
 function SalaryPanel(): ReactNode {

@@ -235,10 +235,12 @@ export const endpoints = {
     myAppraisals: "/hr/my-appraisals",
     leaveApplication: "/hr/leave-application",
     attendanceBulk: "/hr/attendance/bulk",
+    myAttendance: "/hr/attendance/my-record",
+    attendanceReport: "/hr/attendance/report",
     processPayroll: (month: string) =>
       `/hr/payroll/process/${encodeURIComponent(month)}`,
     leaves: "/hr/leave/list",
-    leaveStatus: (id: number) => `/hr/leave/${id}/status`,
+    leaveReview: (id: number) => `/hr/leave/${id}/review`,
     payroll: "/hr/payroll/list",
     salarySettings: "/hr/salary-settings",
     myPayroll: "/hr/my-payroll",
@@ -441,6 +443,13 @@ export const queryKeys = {
     myPayroll: ["hr", "my-payroll"] as const,
     leaves: ["hr", "leaves"] as const,
     payroll: ["hr", "payroll"] as const,
+    myAttendance: (filters: { startDate?: string; endDate?: string }) =>
+      ["hr", "my-attendance", filters] as const,
+    attendanceReport: (filters: {
+      staffId?: number;
+      startDate?: string;
+      endDate?: string;
+    }) => ["hr", "attendance-report", filters] as const,
   },
   forms: {
     templates: ["forms", "templates"] as const,

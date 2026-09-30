@@ -6,7 +6,9 @@ import { queryKeys } from "@/api/endpoints";
 import { hrApi } from "@/features/hr/api/hr.api";
 import type {
   LeaveApplicationPayload,
+  LeaveReviewPayload,
   SalarySettingPayload,
+  StaffAttendanceFilters,
   StaffAttendancePayload,
 } from "@/features/hr/types/hr.types";
 import { logger } from "@/lib/logger";
@@ -29,6 +31,22 @@ export function useMyPayroll(enabled = true) {
 
 export function useHrLeaves() {
   return useQuery({ queryKey: queryKeys.hr.leaves, queryFn: hrApi.leaves });
+}
+
+export function useMyAttendance(filters: StaffAttendanceFilters, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.hr.myAttendance(filters),
+    queryFn: () => hrApi.myAttendance(filters),
+    enabled,
+  });
+}
+
+export function useStaffAttendanceReport(filters: StaffAttendanceFilters, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.hr.attendanceReport(filters),
+    queryFn: () => hrApi.attendanceReport(filters),
+    enabled,
+  });
 }
 
 export function useHrPayroll(enabled = true) {
@@ -77,17 +95,11 @@ export function useHrMutations() {
     },
   });
 
-  const updateLeaveStatus = useMutation({
-    mutationFn: ({
-      id,
-      status,
-    }: {
-      id: number;
-      status: "APPROVED" | "REJECTED";
-    }) => hrApi.updateLeaveStatus(id, status),
+  const reviewLeave = useMutation({
+    mutationFn: (body: LeaveReviewPayload) => hrApi.reviewLeave(body),
     onSuccess: async (_saved, variables) => {
       await invalidateLeaves();
-      toast.success(`Leave request ${variables.status.toLowerCase()}.`);
+      toast.success(`Leave request ${variables.action.toLowerCase()}.`);
     },
     onError: (error: unknown) => {
       logger.error("Leave decision failed", error);
@@ -107,8 +119,8 @@ export function useHrMutations() {
   return {
     applyLeave,
     uploadAttendance,
+    reviewLeave,
     processPayroll,
-    updateLeaveStatus,
     saveSalary,
   };
 }
