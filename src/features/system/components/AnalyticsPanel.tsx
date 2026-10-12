@@ -34,7 +34,7 @@ export function AnalyticsPanel(): ReactNode {
     return (
       <EmptyState
         title="No usage data yet"
-        description="Module usage is calculated from system audit logs. It will appear after staff, learners, assets, stores, or academics are changed."
+        description="Module usage is calculated from system audit logs. It appears after learners, staff, assets, stores, academics, attendance, exams, finance, tickets, or projects are changed."
       />
     )
   }
@@ -42,8 +42,9 @@ export function AnalyticsPanel(): ReactNode {
   return (
     <div className="flex flex-col gap-4">
       <p className="type-caption text-muted-foreground">
-        Share of audit-log actions by module. Unclassified actions (zones, transport, and similar) are grouped as
-        Other. Percentages are of all logged actions, so the listed modules may not add up to 100% on their own.
+        Share of audit-log actions for Learners, Staff, Assets, Stores, Academics, Attendance, Exams, Finance,
+        Ticketing, and Projects. Actions that match none of those modules are grouped as Other. Percentages are of
+        all logged actions.
       </p>
       <Card>
         <CardHeader>
@@ -59,7 +60,7 @@ export function AnalyticsPanel(): ReactNode {
           <CardHeader>
             <CardTitle className="type-section-title">Usage mix</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:justify-center">
+          <CardContent className="flex flex-col items-center gap-5 xl:flex-row xl:items-center xl:justify-center">
             <UsagePie slices={slices} />
             <UsageLegend slices={slices} />
           </CardContent>
@@ -79,7 +80,7 @@ export function AnalyticsPanel(): ReactNode {
 
 function UsageLegend({ slices }: { slices: AnalyticsSlice[] }): ReactNode {
   return (
-    <ul className="flex w-full flex-col gap-2 sm:max-w-56">
+    <ul className="flex w-full flex-col gap-2 sm:max-w-xs">
       {slices.map((slice) => (
         <li key={slice.name} className="flex items-center justify-between gap-3">
           <span className="flex min-w-0 items-center gap-2">

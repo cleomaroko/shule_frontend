@@ -12,14 +12,27 @@ export interface EmailUsage {
   remaining: number
 }
 
-/** Keys returned by `GET /api/system/analytics` usage maps. */
-export const ANALYTICS_MODULES = ['Learners', 'Staff', 'Assets', 'Stores', 'Academics'] as const
+/**
+ * Keys of `activityCounts` from `GET /api/system/analytics`, in controller order.
+ * `usageBreakdown` is no longer returned.
+ */
+export const ANALYTICS_MODULES = [
+  'Learners',
+  'Staff',
+  'Assets',
+  'Stores',
+  'Academics',
+  'Attendance',
+  'Exams',
+  'Finance',
+  'Ticketing',
+  'Projects',
+] as const
 
 export type AnalyticsModule = (typeof ANALYTICS_MODULES)[number]
 
 export interface SystemAnalytics {
   totalActions: number
-  usageBreakdown: Record<string, number>
   activityCounts: Record<string, number>
 }
 
@@ -36,6 +49,11 @@ const MODULE_COLORS: Record<string, string> = {
   Assets: '#3b82f6',
   Stores: '#b54708',
   Academics: '#7c3aed',
+  Attendance: '#0f766e',
+  Exams: '#4f46e5',
+  Finance: '#047857',
+  Ticketing: '#c2410c',
+  Projects: '#0369a1',
   Other: '#94a3b8',
 }
 
