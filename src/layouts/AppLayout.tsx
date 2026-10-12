@@ -6,6 +6,7 @@ import { useAuth } from '@/auth/useAuth'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { AppSidebar } from '@/components/layout/AppSidebar'
 import { DiraChat } from '@/features/ai/components/DiraChat'
+import { VisitorAlertListener } from '@/features/visitors/components/VisitorAlertListener'
 import { env } from '@/lib/env'
 
 /**
@@ -36,6 +37,7 @@ export function AppLayout(): ReactNode {
         </main>
       </div>
       <DiraChat />
+      <VisitorAlertListener />
     </div>
   )
 }

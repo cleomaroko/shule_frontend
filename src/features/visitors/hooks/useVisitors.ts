@@ -3,13 +3,35 @@ import { toast } from 'sonner'
 
 import { toUserMessage } from '@/api/errors'
 import { queryKeys } from '@/api/endpoints'
-import { visitorsApi, type VisitorCheckInPayload } from '@/features/visitors/api/visitors.api'
+import {
+  toAnalyticsParams,
+  visitorsApi,
+  type VisitorAnalyticsQuery,
+  type VisitorCheckInPayload,
+} from '@/features/visitors/api/visitors.api'
 import { logger } from '@/lib/logger'
 
-export function useVisitorList() {
+export function useVisitorAnalytics(query: VisitorAnalyticsQuery) {
+  const params = toAnalyticsParams(query)
   return useQuery({
-    queryKey: queryKeys.visitors.all,
-    queryFn: visitorsApi.list,
+    queryKey: queryKeys.visitors.analytics(params),
+    queryFn: () => visitorsApi.analytics(query),
+  })
+}
+
+export function useMyVisitors(page: number, size: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.visitors.myVisitors(page, size),
+    queryFn: () => visitorsApi.myVisitors(page, size),
+    enabled,
+  })
+}
+
+export function useMyVisitorNotifications(page: number, size: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.visitors.notifications(page, size),
+    queryFn: () => visitorsApi.myNotifications(page, size),
+    enabled,
   })
 }
 

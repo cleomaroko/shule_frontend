@@ -1,4 +1,4 @@
-import { ArrowUpRight, BarChart3, BookOpen, Building2, Bus, CalendarCheck, ClipboardCheck, ClipboardList, FileText, FolderKanban, GraduationCap, NotebookPen, Package, Plus, Receipt, Settings2, Ticket, Truck, UserRound, Users, Wallet, Warehouse } from 'lucide-react'
+import { ArrowUpRight, BarChart3, BookOpen, Briefcase, Building2, Bus, CalendarCheck, ClipboardCheck, ClipboardList, FileText, FolderKanban, GraduationCap, NotebookPen, Package, Plus, Receipt, Settings2, Ticket, Truck, UserRound, Users, Wallet, Warehouse } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
@@ -189,6 +189,13 @@ export function AppPlaceholderPage(): ReactNode {
               description="Staff records and employment information"
               icon={<Users className="size-5" aria-hidden="true" />}
               tone="navy"
+            />
+            <ModuleLink
+              to={paths.hr}
+              title="Human resources"
+              description="Leave, staff attendance, payroll, and appraisals"
+              icon={<Briefcase className="size-5" aria-hidden="true" />}
+              tone="violet"
             />
             <ModuleLink
               to={paths.academics}

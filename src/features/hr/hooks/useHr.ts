@@ -29,8 +29,8 @@ export function useMyPayroll(enabled = true) {
   });
 }
 
-export function useHrLeaves() {
-  return useQuery({ queryKey: queryKeys.hr.leaves, queryFn: hrApi.leaves });
+export function useHrLeaves(enabled = true) {
+  return useQuery({ queryKey: queryKeys.hr.leaves, queryFn: hrApi.leaves, enabled });
 }
 
 export function useMyAttendance(filters: StaffAttendanceFilters, enabled = true) {

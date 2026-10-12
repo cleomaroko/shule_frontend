@@ -287,11 +287,23 @@ export const endpoints = {
     finances: (id: number) => `/projects/${id}/finances`,
   },
   visitors: {
-    /** GET wrapped. POST check-in wrapped. DELETE wrapped. */
-    list: "/visitors",
+    /** POST wrapped check-in. There is no GET list — use analytics or my-visitors. */
+    checkIn: "/visitors",
     byId: (id: number) => `/visitors/${id}`,
     checkOut: (id: number) => `/visitors/${id}/check-out`,
-    /** GET raw. POST wrapped. */
+    /** GET wrapped page. Auth. Staff resolved via workEmail == JWT username. */
+    myVisitors: "/visitors/my-visitors",
+    /** GET wrapped page. Auth. Query page, size. */
+    myNotifications: "/visitors/notifications/my",
+    /** GET text/event-stream. Auth header. Events INIT and VISITOR_ALERT. */
+    subscribe: "/visitors/notifications/subscribe",
+    /**
+     * GET wrapped `{ summary, visitors }`. Date window defaults to today.
+     * Optional: day, startDate, endDate, month, termId, year, campusId,
+     * departmentId, staffId, status, page, size.
+     */
+    analytics: "/visitors/report/analytics",
+    /** GET raw. POST wrapped. No update or delete. */
     categories: "/visitors/categories",
     purposes: "/visitors/purposes",
   },
@@ -420,6 +432,9 @@ export const queryKeys = {
   },
   visitors: {
     all: ["visitors"] as const,
+    analytics: (params: Record<string, string | number>) => ["visitors", "analytics", params] as const,
+    myVisitors: (page: number, size: number) => ["visitors", "mine", page, size] as const,
+    notifications: (page: number, size: number) => ["visitors", "notifications", page, size] as const,
     categories: ["visitors", "categories"] as const,
     purposes: ["visitors", "purposes"] as const,
   },

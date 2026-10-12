@@ -57,10 +57,97 @@ export interface VisitorCheckInPayload {
   comments?: string
 }
 
+/** Spring Data `Page` JSON. `number` is zero-based. */
+export interface SpringPage<T> {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  number: number
+  size: number
+}
+
+export interface VisitorAnalyticsSummary {
+  windowStart?: string
+  windowEnd?: string
+  totalVisits?: number
+  uniqueVisitors?: number
+  onPremisesNow?: number
+  visitsByCampus?: Record<string, number>
+  visitsByDepartment?: Record<string, number>
+  topVisitedStaff?: Record<string, number>
+}
+
+export interface VisitorAnalytics {
+  summary: VisitorAnalyticsSummary
+  visitors: SpringPage<Visitor>
+}
+
+export interface VisitorAnalyticsQuery {
+  day?: string
+  startDate?: string
+  endDate?: string
+  month?: string
+  campusId?: number
+  departmentId?: number
+  staffId?: number
+  status?: string
+  page: number
+  size: number
+}
+
+export interface StaffVisitorNotification {
+  id: number
+  title: string | null
+  message: string | null
+  type: string | null
+  /** Lombok `boolean isRead` may serialize as either property. */
+  isRead?: boolean
+  read?: boolean
+  createdAt: string | null
+}
+
+export function toAnalyticsParams(query: VisitorAnalyticsQuery): Record<string, string | number> {
+  const params: Record<string, string | number> = { page: query.page, size: query.size }
+  if (query.day) params.day = query.day
+  if (query.startDate) params.startDate = query.startDate
+  if (query.endDate) params.endDate = query.endDate
+  if (query.month) params.month = query.month
+  if (query.campusId != null) params.campusId = query.campusId
+  if (query.departmentId != null) params.departmentId = query.departmentId
+  if (query.staffId != null) params.staffId = query.staffId
+  if (query.status) params.status = query.status
+  return params
+}
+
+export function notificationIsRead(row: StaffVisitorNotification): boolean {
+  return row.isRead === true || row.read === true
+}
+
+const emptyPage = <T,>(): SpringPage<T> => ({
+  content: [],
+  totalElements: 0,
+  totalPages: 0,
+  number: 0,
+  size: 0,
+})
+
 export const visitorsApi = {
-  list: () => api.get<Visitor[]>(endpoints.visitors.list).then((r) => r.data ?? []),
+  analytics: (query: VisitorAnalyticsQuery) =>
+    api
+      .get<VisitorAnalytics>(endpoints.visitors.analytics, { params: toAnalyticsParams(query) })
+      .then((r) => r.data ?? { summary: {}, visitors: emptyPage<Visitor>() }),
+  myVisitors: (page: number, size: number) =>
+    api
+      .get<SpringPage<Visitor>>(endpoints.visitors.myVisitors, { params: { page, size } })
+      .then((r) => r.data ?? emptyPage<Visitor>()),
+  myNotifications: (page: number, size: number) =>
+    api
+      .get<SpringPage<StaffVisitorNotification>>(endpoints.visitors.myNotifications, {
+        params: { page, size },
+      })
+      .then((r) => r.data ?? emptyPage<StaffVisitorNotification>()),
   checkIn: (body: VisitorCheckInPayload) =>
-    api.post<Visitor>(endpoints.visitors.list, body).then((r) => r.data as Visitor),
+    api.post<Visitor>(endpoints.visitors.checkIn, body).then((r) => r.data as Visitor),
   checkOut: (id: number) => api.patch<Visitor>(endpoints.visitors.checkOut(id)).then((r) => r.data as Visitor),
   remove: (id: number) => api.delete(endpoints.visitors.byId(id)).then(() => undefined),
   listCategories: () => api.getList<VisitorNamedLookup>(endpoints.visitors.categories),

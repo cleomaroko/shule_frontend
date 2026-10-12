@@ -11,6 +11,7 @@ import { AttendanceReportsPanel } from '@/features/reports/components/Attendance
 import { ExamReportsPanel } from '@/features/reports/components/ExamReportsPanel'
 import { FinanceReportsPanel } from '@/features/reports/components/FinanceReportsPanel'
 import { FormReportsPanel } from '@/features/reports/components/FormReportsPanel'
+import { HrReportsPanel } from '@/features/reports/components/HrReportsPanel'
 import { PeopleReportsPanel } from '@/features/reports/components/PeopleReportsPanel'
 import { ProjectReportsPanel } from '@/features/reports/components/ProjectReportsPanel'
 import { SchemeReportsPanel } from '@/features/reports/components/SchemeReportsPanel'
@@ -30,6 +31,7 @@ const REPORT_TABS = [
   'exams',
   'schemes',
   'visitors',
+  'hr',
   'assets',
   'stores',
   'requisitions',
@@ -69,7 +71,7 @@ export function ReportsPage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Reports and analysis"
-        description="Department summaries from existing records and report APIs (attendance, exams, schemes, store stock-take, requisition summary, finance summary, asset search, transport logs, and system usage)."
+        description="Department summaries from existing records and report APIs (attendance, exams, schemes, visitor analytics, HR leave and payroll, store stock-take, requisition summary, finance summary, asset search, transport logs, and system usage)."
       />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
         <TabsList>
@@ -79,6 +81,7 @@ export function ReportsPage(): ReactNode {
           <TabsTrigger value="exams">Exams</TabsTrigger>
           <TabsTrigger value="schemes">Schemes</TabsTrigger>
           <TabsTrigger value="visitors">Visitors</TabsTrigger>
+          <TabsTrigger value="hr">HR</TabsTrigger>
           <TabsTrigger value="assets">Assets</TabsTrigger>
           <TabsTrigger value="stores">Stores</TabsTrigger>
           <TabsTrigger value="requisitions">Requisitions</TabsTrigger>
@@ -107,6 +110,9 @@ export function ReportsPage(): ReactNode {
         </TabsContent>
         <TabsContent value="visitors">
           <VisitorReportsPanel />
+        </TabsContent>
+        <TabsContent value="hr">
+          <HrReportsPanel />
         </TabsContent>
         <TabsContent value="assets">
           <AssetReportsPanel />
