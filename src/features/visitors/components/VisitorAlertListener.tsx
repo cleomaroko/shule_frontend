@@ -1,5 +1,7 @@
+import { Client, type IMessage } from '@stomp/stompjs'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
+import SockJS from 'sockjs-client'
 import { toast } from 'sonner'
 
 import { queryKeys } from '@/api/endpoints'
@@ -11,84 +13,77 @@ interface VisitorAlertPayload {
   title?: string
   message?: string
   visitorName?: string
-}
-
-function parseSseBlock(block: string): { event: string; data: string } {
-  let event = 'message'
-  const dataLines: string[] = []
-  for (const line of block.split('\n')) {
-    if (line.startsWith('event:')) event = line.slice(6).trim()
-    else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim())
-  }
-  return { event, data: dataLines.join('\n') }
+  visitorPhone?: string
 }
 
 /**
- * Keeps a staff notification stream open. Native EventSource cannot send the
- * bearer token, so this uses fetch. The controller keys the stream by JWT
- * username, which must match the staff work email to receive alerts.
+ * SockJS handshake URL. Same origin when the API is the relative `/api` proxy,
+ * otherwise the host that serves `/api`.
+ */
+function visitorSocketUrl(): string {
+  if (env.apiBaseUrl.startsWith('http')) {
+    return `${env.apiBaseUrl.replace(/\/api$/, '')}/ws`
+  }
+  return '/ws'
+}
+
+/** The broker publishes to the staff work email, which may be the username or the account email. */
+function notificationTopics(username: string, email: string | undefined): string[] {
+  const identities = [username, email]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value))
+  return [...new Set(identities)].map((identity) => `/topic/notifications/${identity}`)
+}
+
+/**
+ * Live visitor alerts. The backend no longer exposes an SSE stream; check-in
+ * publishes a STOMP message to `/topic/notifications/{staffWorkEmail}` on `/ws`.
  */
 export function VisitorAlertListener(): null {
-  const { token } = useAuth()
+  const { user } = useAuth()
   const queryClient = useQueryClient()
+  const username = user?.username
+  const email = user?.email
 
   useEffect(() => {
-    if (!token) return
-    const controller = new AbortController()
-    let stopped = false
+    if (!username) return
+    const topics = notificationTopics(username, email)
+    if (topics.length === 0) return
 
-    const run = async () => {
-      while (!stopped) {
-        try {
-          const response = await fetch(`${env.apiBaseUrl}/visitors/notifications/subscribe`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: 'text/event-stream',
-            },
-            signal: controller.signal,
-          })
-          if (response.status === 401 || response.status === 403) return
-          if (!response.ok || !response.body) throw new Error(`Visitor stream ${response.status}`)
-
-          const reader = response.body.getReader()
-          const decoder = new TextDecoder()
-          let buffer = ''
-          while (!stopped) {
-            const { value, done } = await reader.read()
-            if (done) break
-            buffer += decoder.decode(value, { stream: true })
-            const blocks = buffer.split(/\n\n/)
-            buffer = blocks.pop() ?? ''
-            for (const block of blocks) {
-              const parsed = parseSseBlock(block)
-              if (parsed.event !== 'VISITOR_ALERT' || !parsed.data) continue
-              let payload: VisitorAlertPayload = {}
-              try {
-                payload = JSON.parse(parsed.data) as VisitorAlertPayload
-              } catch {
-                payload = { message: parsed.data }
-              }
-              toast.info(payload.title || 'Visitor at reception', {
-                description: payload.message || payload.visitorName,
-              })
-              void queryClient.invalidateQueries({ queryKey: queryKeys.visitors.all })
+    const client = new Client({
+      webSocketFactory: () => new SockJS(visitorSocketUrl()),
+      reconnectDelay: 5000,
+      onConnect: () => {
+        for (const topic of topics) {
+          client.subscribe(topic, (message: IMessage) => {
+            let payload: VisitorAlertPayload = {}
+            try {
+              payload = JSON.parse(message.body) as VisitorAlertPayload
+            } catch {
+              payload = { message: message.body }
             }
-          }
-        } catch (error) {
-          if (stopped || controller.signal.aborted) return
-          logger.warn('Visitor alert stream dropped', error)
+            const phone = payload.visitorPhone?.trim()
+            const description = payload.message || [payload.visitorName, phone].filter(Boolean).join(' · ')
+            const title = payload.title || 'Visitor at reception'
+            if (description) toast.info(title, { description })
+            else toast.info(title)
+            void queryClient.invalidateQueries({ queryKey: queryKeys.visitors.all })
+          })
         }
-        if (stopped) return
-        await new Promise((resolve) => setTimeout(resolve, 4000))
-      }
-    }
+      },
+      onStompError: (frame) => {
+        logger.warn('Visitor alert broker error', frame.headers.message)
+      },
+      onWebSocketError: (event) => {
+        logger.warn('Visitor alert socket error', event)
+      },
+    })
 
-    void run()
+    client.activate()
     return () => {
-      stopped = true
-      controller.abort()
+      void client.deactivate()
     }
-  }, [queryClient, token])
+  }, [email, queryClient, username])
 
   return null
 }

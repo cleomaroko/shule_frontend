@@ -55,7 +55,7 @@ export function VisitorsPage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Visitor Management"
-        description="Check visitors in and out. History comes from the analytics window. Staff see their own visits and live alerts when their work email matches the login."
+        description="Check visitors in and out. History comes from the analytics window. Your visits and live alerts use the staff record matched to your username or account email."
       />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
         <TabsList>
@@ -334,7 +334,7 @@ function MyVisitorsPanel(): ReactNode {
     return (
       <EmptyState
         title="No visitors for you"
-        description="This list is the visits where you are the staff being visited. It needs a staff profile whose work email matches your login."
+        description="This list is the visits where you are the staff being visited. The server matches your username or account email to a staff work email."
       />
     )
   }
@@ -395,7 +395,7 @@ function AlertsPanel(): ReactNode {
     return (
       <EmptyState
         title="No alerts yet"
-        description="A visitor checked in to see you will appear here, and a live notice appears while you stay signed in."
+        description="A visitor checked in to see you will appear here. A live notice is sent over the visitor socket while you stay signed in."
       />
     )
   }

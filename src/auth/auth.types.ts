@@ -14,6 +14,11 @@ export type UserRole = string
 export interface AuthenticatedUser {
   username: string
   role: UserRole
+  /**
+   * Account email from login. Visitor alerts are published to the staff work
+   * email, which the backend matches against this value or the username.
+   */
+  email?: string
 }
 
 /** `data` payload of a successful `POST /api/auth/login`. */
@@ -21,6 +26,7 @@ export interface LoginResponseData {
   token: string
   role: UserRole
   username: string
+  email?: string | null
 }
 
 /** Request body for `POST /api/auth/login`. */

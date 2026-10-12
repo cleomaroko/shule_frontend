@@ -291,12 +291,13 @@ export const endpoints = {
     checkIn: "/visitors",
     byId: (id: number) => `/visitors/${id}`,
     checkOut: (id: number) => `/visitors/${id}/check-out`,
-    /** GET wrapped page. Auth. Staff resolved via workEmail == JWT username. */
+    /**
+     * GET wrapped page. Staff is resolved from the JWT username, then the
+     * account email. Unknown users get an empty page.
+     */
     myVisitors: "/visitors/my-visitors",
-    /** GET wrapped page. Auth. Query page, size. */
+    /** GET wrapped page. Same staff resolution as my-visitors. Query page, size. */
     myNotifications: "/visitors/notifications/my",
-    /** GET text/event-stream. Auth header. Events INIT and VISITOR_ALERT. */
-    subscribe: "/visitors/notifications/subscribe",
     /**
      * GET wrapped `{ summary, visitors }`. Date window defaults to today.
      * Optional: day, startDate, endDate, month, termId, year, campusId,

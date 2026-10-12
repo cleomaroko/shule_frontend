@@ -55,9 +55,12 @@ async function login({ username, password, rememberMe }: LoginParams): Promise<S
       })
     }
 
+    const user: Session['user'] = { username: data.username, role: data.role }
+    if (typeof data.email === 'string' && data.email.trim()) user.email = data.email.trim()
+
     const session: Session = {
       token: data.token,
-      user: { username: data.username, role: data.role },
+      user,
       expiresAt: getTokenExpiryMs(data.token),
     }
 

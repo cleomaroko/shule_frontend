@@ -44,7 +44,9 @@ function isSession(value: unknown): value is Session {
     typeof user === 'object' &&
     user !== null &&
     typeof (user as Record<string, unknown>).username === 'string' &&
-    typeof (user as Record<string, unknown>).role === 'string'
+    typeof (user as Record<string, unknown>).role === 'string' &&
+    ((user as Record<string, unknown>).email === undefined ||
+      typeof (user as Record<string, unknown>).email === 'string')
   )
 }
 

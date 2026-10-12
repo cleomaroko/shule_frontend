@@ -24,6 +24,12 @@ export default defineConfig(({ mode }) => {
       target: proxyTarget,
       changeOrigin: true,
     },
+    // STOMP/SockJS visitor alerts. SockJS starts as HTTP then upgrades.
+    '/ws': {
+      target: proxyTarget,
+      changeOrigin: true,
+      ws: true,
+    },
   }
 
   // Production on dira365.com is served at `/`. Local `npm run dev` is also
@@ -43,6 +49,10 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       proxy: apiProxy,
+    },
+    // sockjs-client still references the Node `global` object.
+    define: {
+      global: 'globalThis',
     },
     // `preview` does not inherit `server.proxy`, so it is repeated here to let the
     // production build be smoke-tested against a local backend.
