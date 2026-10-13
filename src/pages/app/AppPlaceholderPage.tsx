@@ -193,7 +193,7 @@ export function AppPlaceholderPage(): ReactNode {
             <ModuleLink
               to={paths.hr}
               title="Human resources"
-              description="Leave, staff attendance, payroll, and appraisals"
+              description="Leave, staff attendance, biometric punches, payroll, and appraisals"
               icon={<Briefcase className="size-5" aria-hidden="true" />}
               tone="violet"
             />

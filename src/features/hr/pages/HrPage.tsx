@@ -1,4 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { toUserMessage } from '@/api/errors'
@@ -36,6 +37,7 @@ import {
   type StaffAttendanceStatus,
   type StaffLeave,
 } from '@/features/hr/types/hr.types'
+import { BiometricPanel } from '@/features/biometric/components/BiometricPanel'
 import { useStaffList } from '@/features/staff/hooks/useStaff'
 import type { Staff } from '@/features/staff/types/staff.types'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
@@ -72,33 +74,45 @@ function currentPayPeriod(): string {
   return `${MONTHS[new Date().getMonth()]}-${new Date().getFullYear()}`
 }
 
+const MANAGER_TABS = ['self', 'attendance', 'biometric', 'leave', 'salary'] as const
+const STAFF_TABS = ['self', 'biometric'] as const
+
 export function HrPage(): ReactNode {
   useDocumentTitle('Human resources')
   const { user } = useAuth()
   const canManage = can(user?.role, 'finance:access')
   const hasStaffProfile = !hasRole(user?.role, 'ROLE_SUPER_ADMIN')
+  const [params, setParams] = useSearchParams()
+  const requested = params.get('tab')
+  const allowed = canManage ? MANAGER_TABS : STAFF_TABS
+  const tab = allowed.some((item) => item === requested) ? requested ?? 'self' : 'self'
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Human resources" description="Staff leave, attendance, appraisals, and payroll." />
-      {canManage ? (
-        <Tabs defaultValue="self" className="min-w-0">
-          <div className="overflow-x-auto">
-            <TabsList className="w-max min-w-full justify-start sm:w-auto sm:min-w-0">
-              <TabsTrigger value="self">My HR</TabsTrigger>
-              <TabsTrigger value="attendance">Attendance</TabsTrigger>
-              <TabsTrigger value="leave">Leave review</TabsTrigger>
-              <TabsTrigger value="salary">Salary & processing</TabsTrigger>
-            </TabsList>
-          </div>
-          <TabsContent value="self"><SelfServicePanel hasStaffProfile={hasStaffProfile} /></TabsContent>
-          <TabsContent value="attendance"><AttendancePanel /></TabsContent>
-          <TabsContent value="leave"><LeaveReviewPanel /></TabsContent>
-          <TabsContent value="salary"><SalaryPanel /></TabsContent>
-        </Tabs>
-      ) : (
-        <SelfServicePanel hasStaffProfile={hasStaffProfile} />
-      )}
+      <PageHeader
+        title="Human resources"
+        description="Staff leave, attendance, biometric device punches, appraisals, and payroll."
+      />
+      <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })} className="min-w-0">
+        <div className="overflow-x-auto">
+          <TabsList className="w-max min-w-full justify-start sm:w-auto sm:min-w-0">
+            <TabsTrigger value="self">My HR</TabsTrigger>
+            {canManage ? <TabsTrigger value="attendance">Attendance</TabsTrigger> : null}
+            <TabsTrigger value="biometric">Biometric</TabsTrigger>
+            {canManage ? <TabsTrigger value="leave">Leave review</TabsTrigger> : null}
+            {canManage ? <TabsTrigger value="salary">Salary & processing</TabsTrigger> : null}
+          </TabsList>
+        </div>
+        <TabsContent value="self"><SelfServicePanel hasStaffProfile={hasStaffProfile} /></TabsContent>
+        <TabsContent value="biometric"><BiometricPanel /></TabsContent>
+        {canManage ? (
+          <>
+            <TabsContent value="attendance"><AttendancePanel /></TabsContent>
+            <TabsContent value="leave"><LeaveReviewPanel /></TabsContent>
+            <TabsContent value="salary"><SalaryPanel /></TabsContent>
+          </>
+        ) : null}
+      </Tabs>
     </div>
   )
 }

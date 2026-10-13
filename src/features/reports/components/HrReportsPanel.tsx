@@ -6,6 +6,7 @@ import { useAuth } from '@/auth/useAuth'
 import { DataTable, type DataColumn } from '@/components/data/DataTable'
 import { EmptyState, ErrorState } from '@/components/feedback/PageStates'
 import { Badge } from '@/components/ui/badge'
+import { useBiometricSummary } from '@/features/biometric/hooks/useBiometric'
 import {
   useHrLeaves,
   useHrPayroll,
@@ -26,7 +27,7 @@ import {
 } from '@/features/hr/types/hr.types'
 import { BreakdownCard, ReportSection, StatGrid } from '@/features/reports/components/ReportPrimitives'
 import { countBy, currentMonthRange } from '@/features/reports/lib/summaries'
-import { asMoney, displayValue, formatDate, formatKes } from '@/lib/format'
+import { asMoney, displayValue, formatDate, formatKes, todayIso } from '@/lib/format'
 import { paths } from '@/routes/paths'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -39,11 +40,45 @@ export function HrReportsPanel(): ReactNode {
   const month = currentMonthRange()
   const filters = { startDate: month.start, endDate: month.end }
 
-  if (canHr) {
-    return <HrAdminReport filters={filters} periodLabel={`${month.start} to ${month.end}`} />
-  }
+  return (
+    <div className="flex flex-col gap-8">
+      <BiometricReport />
+      {canHr ? (
+        <HrAdminReport filters={filters} periodLabel={`${month.start} to ${month.end}`} />
+      ) : (
+        <HrPersonalReport filters={filters} periodLabel={`${month.start} to ${month.end}`} />
+      )}
+    </div>
+  )
+}
 
-  return <HrPersonalReport filters={filters} periodLabel={`${month.start} to ${month.end}`} />
+function BiometricReport(): ReactNode {
+  const summary = useBiometricSummary(todayIso())
+  if (summary.isError) {
+    return <ErrorState message={toUserMessage(summary.error)} onRetry={() => void summary.refetch()} />
+  }
+  const data = summary.data
+  return (
+    <ReportSection
+      title="Staff biometric punches"
+      note="GET /api/biometric/summary for today. These are device punches, not the learner class register."
+    >
+      <StatGrid
+        items={[
+          { label: 'Punches', value: (data?.totalPunches ?? 0).toLocaleString(), hint: 'Today' },
+          { label: 'People', value: (data?.uniquePeoplePunched ?? 0).toLocaleString(), hint: 'Distinct codes' },
+          { label: 'Check-ins', value: (data?.totalCheckIns ?? 0).toLocaleString() },
+          { label: 'Check-outs', value: (data?.totalCheckOuts ?? 0).toLocaleString() },
+        ]}
+        loading={summary.isLoading}
+      />
+      <div>
+        <Button variant="outline" asChild>
+          <Link to={`${paths.hr}?tab=biometric`}>Open biometric log</Link>
+        </Button>
+      </div>
+    </ReportSection>
+  )
 }
 
 function HrAdminReport({

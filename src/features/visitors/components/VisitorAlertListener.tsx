@@ -27,6 +27,24 @@ function visitorSocketUrl(): string {
   return '/ws'
 }
 
+/**
+ * SockJS advertises itself at `/ws/info` as JSON. On dira365.com that path is
+ * served by the static site, which returns the app HTML. Connecting anyway
+ * makes the browser report failed websockets, a wrong event-stream type, and
+ * 405 responses.
+ */
+async function visitorSocketReady(url: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${url}/info?t=${Date.now()}`, { headers: { Accept: 'application/json' } })
+    const type = response.headers.get('content-type') ?? ''
+    if (!response.ok || !type.includes('json')) return false
+    const body: unknown = await response.json()
+    return typeof body === 'object' && body !== null && 'websocket' in body
+  } catch {
+    return false
+  }
+}
+
 /** The broker publishes to the staff work email, which may be the username or the account email. */
 function notificationTopics(username: string, email: string | undefined): string[] {
   const identities = [username, email]
@@ -50,38 +68,52 @@ export function VisitorAlertListener(): null {
     const topics = notificationTopics(username, email)
     if (topics.length === 0) return
 
-    const client = new Client({
-      webSocketFactory: () => new SockJS(visitorSocketUrl()),
-      reconnectDelay: 5000,
-      onConnect: () => {
-        for (const topic of topics) {
-          client.subscribe(topic, (message: IMessage) => {
-            let payload: VisitorAlertPayload = {}
-            try {
-              payload = JSON.parse(message.body) as VisitorAlertPayload
-            } catch {
-              payload = { message: message.body }
-            }
-            const phone = payload.visitorPhone?.trim()
-            const description = payload.message || [payload.visitorName, phone].filter(Boolean).join(' · ')
-            const title = payload.title || 'Visitor at reception'
-            if (description) toast.info(title, { description })
-            else toast.info(title)
-            void queryClient.invalidateQueries({ queryKey: queryKeys.visitors.all })
-          })
-        }
-      },
-      onStompError: (frame) => {
-        logger.warn('Visitor alert broker error', frame.headers.message)
-      },
-      onWebSocketError: (event) => {
-        logger.warn('Visitor alert socket error', event)
-      },
+    const socketUrl = visitorSocketUrl()
+    let client: Client | null = null
+    let stopped = false
+
+    void visitorSocketReady(socketUrl).then((ready) => {
+      if (!ready || stopped) {
+        if (!stopped) logger.warn('Visitor alerts are off because /ws is not the notification socket')
+        return
+      }
+
+      const stomp = new Client({
+        webSocketFactory: () => new SockJS(socketUrl),
+        reconnectDelay: 5000,
+        onConnect: () => {
+          for (const topic of topics) {
+            stomp.subscribe(topic, (message: IMessage) => {
+              let payload: VisitorAlertPayload = {}
+              try {
+                payload = JSON.parse(message.body) as VisitorAlertPayload
+              } catch {
+                payload = { message: message.body }
+              }
+              const phone = payload.visitorPhone?.trim()
+              const description = payload.message || [payload.visitorName, phone].filter(Boolean).join(' · ')
+              const title = payload.title || 'Visitor at reception'
+              if (description) toast.info(title, { description })
+              else toast.info(title)
+              void queryClient.invalidateQueries({ queryKey: queryKeys.visitors.all })
+            })
+          }
+        },
+        onStompError: (frame) => {
+          logger.warn('Visitor alert broker error', frame.headers.message)
+        },
+        onWebSocketError: (event) => {
+          logger.warn('Visitor alert socket error', event)
+        },
+      })
+
+      client = stomp
+      stomp.activate()
     })
 
-    client.activate()
     return () => {
-      void client.deactivate()
+      stopped = true
+      void client?.deactivate()
     }
   }, [email, queryClient, username])
 

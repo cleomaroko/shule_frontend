@@ -193,6 +193,23 @@ export const endpoints = {
     activities: "/attendance/activities",
     activityById: (id: number) => `/attendance/activities/${id}`,
   },
+  biometric: {
+    /**
+     * GET wrapped page of `DiraPunchView`. Optional `date` (defaults to today),
+     * `page`, `size`. No role check.
+     */
+    logs: "/biometric/logs",
+    /** GET wrapped summary. Optional `date` (defaults to today). */
+    summary: "/biometric/summary",
+    /** GET wrapped page. Query `page`, `size`. Newest punch first. */
+    all: "/biometric/all",
+    /**
+     * GET wrapped page. Optional `query`, `state` (`CHECK_IN` or `CHECK_OUT`),
+     * `date`, or `startDate`/`endDate`, plus `page` and `size`. A `date` wins
+     * over the range.
+     */
+    filter: "/biometric/filter",
+  },
   sow: {
     /** POST wrapped. Requires Authorization. No role check in the controller. */
     create: "/sow",
@@ -417,6 +434,10 @@ export const queryKeys = {
       ["attendance", "by-class", classId, date] as const,
     sessions: ["attendance", "sessions"] as const,
     activities: ["attendance", "activities"] as const,
+  },
+  biometric: {
+    summary: (date: string) => ["biometric", "summary", date] as const,
+    filter: (params: Record<string, string | number>) => ["biometric", "filter", params] as const,
   },
   sow: {
     report: (params: Record<string, string | number>) =>
