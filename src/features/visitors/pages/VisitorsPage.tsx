@@ -28,6 +28,7 @@ import { useLearnerList } from '@/features/learners/hooks/useLearners'
 import { useCampuses, useDepartments, useGenders, useTitles } from '@/features/lookups/useLookups'
 import { useStaffList } from '@/features/staff/hooks/useStaff'
 import type { Visitor, VisitorAnalyticsQuery, VisitorCheckInPayload } from '@/features/visitors/api/visitors.api'
+import { VisitorDetailDialog } from '@/features/visitors/components/VisitorDetailDialog'
 import { notificationIsRead, type StaffVisitorNotification } from '@/features/visitors/api/visitors.api'
 import {
   useMyVisitorNotifications,
@@ -100,6 +101,7 @@ function LogPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<Visitor | null>(null)
+  const [viewing, setViewing] = useState<Visitor | null>(null)
 
   const analyticsQuery = useMemo<VisitorAnalyticsQuery>(() => {
     const next: VisitorAnalyticsQuery = { page: page - 1, size: PAGE_SIZE }
@@ -276,6 +278,8 @@ function LogPanel({ canWrite }: { canWrite: boolean }): ReactNode {
           pageSize={PAGE_SIZE}
           total={total}
           onPageChange={setPage}
+          onRowClick={setViewing}
+          rowAriaLabel={(row) => `View ${row.fullName}`}
           mobileCard={(row) => (
             <div>
               <p className="type-heading">{row.fullName}</p>
@@ -288,6 +292,7 @@ function LogPanel({ canWrite }: { canWrite: boolean }): ReactNode {
           )}
         />
       )}
+      <VisitorDetailDialog visitor={viewing} onOpenChange={(next) => { if (!next) setViewing(null) }} />
       <CheckInDialog open={open} onOpenChange={setOpen} />
       <ConfirmDialog
         open={pendingDelete !== null}
@@ -310,6 +315,7 @@ function LogPanel({ canWrite }: { canWrite: boolean }): ReactNode {
 
 function MyVisitorsPanel(): ReactNode {
   const [page, setPage] = useState(1)
+  const [viewing, setViewing] = useState<Visitor | null>(null)
   const list = useMyVisitors(page - 1, PAGE_SIZE)
   const rows = list.data?.content ?? []
   const total = list.data?.totalElements ?? 0
@@ -340,24 +346,29 @@ function MyVisitorsPanel(): ReactNode {
   }
 
   return (
-    <DataTable
-      columns={columns}
-      rows={rows}
-      getRowId={(row) => row.id}
-      isLoading={list.isLoading}
-      page={page}
-      pageSize={PAGE_SIZE}
-      total={total}
-      onPageChange={setPage}
-      mobileCard={(row) => (
-        <div>
-          <p className="type-heading">{row.fullName}</p>
-          <p className="type-caption text-muted-foreground">
-            {[row.purposeName, row.status === 'OUT' ? row.stayDuration : 'IN'].filter(Boolean).join(' · ')}
-          </p>
-        </div>
-      )}
-    />
+    <>
+      <DataTable
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => row.id}
+        isLoading={list.isLoading}
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={total}
+        onPageChange={setPage}
+        onRowClick={setViewing}
+        rowAriaLabel={(row) => `View ${row.fullName}`}
+        mobileCard={(row) => (
+          <div>
+            <p className="type-heading">{row.fullName}</p>
+            <p className="type-caption text-muted-foreground">
+              {[row.purposeName, row.status === 'OUT' ? row.stayDuration : 'IN'].filter(Boolean).join(' · ')}
+            </p>
+          </div>
+        )}
+      />
+      <VisitorDetailDialog visitor={viewing} onOpenChange={(next) => { if (!next) setViewing(null) }} />
+    </>
   )
 }
 

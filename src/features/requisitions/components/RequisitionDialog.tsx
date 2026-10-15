@@ -437,6 +437,15 @@ export function RequisitionDialog({
                   </p>
                 </div>
               ))}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => setForm((current) => ({ ...current, lines: [...current.lines, newLine(current.type)] }))}
+              >
+                <Plus aria-hidden="true" />
+                Add another line
+              </Button>
               <p className="type-heading">Estimated total {formatKes(estimated)}</p>
             </div>
             {error ? <p className="type-caption text-destructive">{error}</p> : null}

@@ -59,7 +59,18 @@ export function RequisitionDetailDialog({
   const showReject = (canReview || canApprove) && (status === 'SUBMITTED' || status === 'REVIEWED')
 
   const columns: Array<DataColumn<RequisitionItem>> = [
-    { id: 'desc', header: 'Item', cell: (row) => displayValue(row.description) },
+    {
+      id: 'desc',
+      header: 'Item',
+      cell: (row) => (
+        <span>
+          <span className="block font-medium">{displayValue(row.description)}</span>
+          {row.storeItem?.name ? (
+            <span className="type-caption text-muted-foreground">Catalogue: {row.storeItem.name}</span>
+          ) : null}
+        </span>
+      ),
+    },
     { id: 'qty', header: 'Qty', cell: (row) => displayValue(row.quantity) },
     { id: 'unit', header: 'Unit', hideOnMobile: true, cell: (row) => displayValue(row.unit?.name) },
     { id: 'price', header: 'Unit price', hideOnMobile: true, cell: (row) => formatKes(row.unitPrice) },
@@ -86,7 +97,7 @@ export function RequisitionDetailDialog({
           </DialogTitle>
           <DialogDescription>
             {requisition
-              ? `${requisitionTypeLabel(requisition.type)} · ${formatDate(requisition.requisitionDate)}`
+              ? `${requisitionTypeLabel(requisition.type)} · ${formatDate(requisition.requisitionDate)} · ${items.length} line${items.length === 1 ? '' : 's'}`
               : 'Requisition detail'}
           </DialogDescription>
         </DialogHeader>
@@ -168,6 +179,9 @@ export function RequisitionDetailDialog({
                 mobileCard={(row) => (
                   <div className="flex flex-col gap-1">
                     <p className="type-heading">{displayValue(row.description)}</p>
+                    {row.storeItem?.name ? (
+                      <p className="type-caption text-muted-foreground">Catalogue: {row.storeItem.name}</p>
+                    ) : null}
                     <p className="type-caption text-muted-foreground">
                       Qty {displayValue(row.quantity)}
                       {row.unit?.name ? ` ${row.unit.name}` : ''} · {formatKes(row.totalPrice)}

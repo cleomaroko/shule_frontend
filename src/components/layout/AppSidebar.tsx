@@ -1,5 +1,5 @@
 import { CalendarDays } from 'lucide-react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
 import type { AuthenticatedUser } from '@/auth/auth.types'
@@ -10,7 +10,26 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useCurrentAcademicCalendar } from '@/features/academic/hooks/useAcademic'
 import { formatAcademicYearDisplay } from '@/features/academic/types/academic.types'
 import { env } from '@/lib/env'
+import { paths } from '@/routes/paths'
 import { cn } from '@/lib/utils'
+
+/** Vehicles and Transport share /transport. Match the tab so only one item is active. */
+function itemIsActive(to: string, pathname: string, search: string, end?: boolean): boolean {
+  const [path, query = ''] = to.split('?')
+  const pathMatches = end ? pathname === path : pathname === path || pathname.startsWith(`${path}/`)
+  if (!pathMatches) return false
+  const wanted = new URLSearchParams(query)
+  const current = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
+  if (path === paths.transport) {
+    const tab = current.get('tab')
+    if (wanted.get('tab') === 'fleet') return tab === 'fleet'
+    return tab !== 'fleet'
+  }
+  for (const [key, value] of wanted) {
+    if (current.get(key) !== value) return false
+  }
+  return true
+}
 
 export interface AppSidebarProps {
   user: AuthenticatedUser
@@ -18,6 +37,7 @@ export interface AppSidebarProps {
 }
 
 export function AppSidebar({ user, onNavigate }: AppSidebarProps): ReactNode {
+  const location = useLocation()
   const calendar = useCurrentAcademicCalendar()
   const yearLabel = calendar.isLoading
     ? 'Loading…'
@@ -54,10 +74,10 @@ export function AppSidebar({ user, onNavigate }: AppSidebarProps): ReactNode {
                       to={item.to}
                       {...(item.end ? { end: true } : {})}
                       {...(onNavigate ? { onClick: onNavigate } : {})}
-                      className={({ isActive }) =>
+                      className={() =>
                         cn(
                           'flex items-center gap-2.5 rounded-lg px-2.5 py-2 type-label transition-colors',
-                          isActive
+                          itemIsActive(item.to, location.pathname, location.search, item.end)
                             ? 'bg-sidebar-accent font-semibold text-sidebar-accent-foreground shadow-subtle'
                             : 'text-sidebar-foreground/80 hover:bg-white/10 hover:text-white',
                         )

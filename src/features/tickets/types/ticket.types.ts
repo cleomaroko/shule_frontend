@@ -58,14 +58,31 @@ export function ticketStatusLabel(status: string | null | undefined): string {
 export function ticketStatusBadge(status: string | null | undefined) {
   switch (status) {
     case 'RESOLVED':
-    case 'CLOSED':
       return 'success' as const
+    case 'CLOSED':
+      return 'neutral' as const
     case 'IN_PROGRESS':
       return 'warning' as const
     case 'OPEN':
       return 'primary' as const
     default:
       return 'neutral' as const
+  }
+}
+
+/** Distinct paint for each ticket status. Badge variants alone collapse Closed with Resolved. */
+export function ticketStatusClassName(status: string | null | undefined): string {
+  switch (status) {
+    case 'OPEN':
+      return 'border-sky-500/35 bg-sky-500/15 text-sky-800 dark:text-sky-200'
+    case 'IN_PROGRESS':
+      return 'border-amber-500/40 bg-amber-500/15 text-amber-900 dark:text-amber-200'
+    case 'RESOLVED':
+      return 'border-emerald-500/35 bg-emerald-500/15 text-emerald-900 dark:text-emerald-200'
+    case 'CLOSED':
+      return 'border-violet-500/35 bg-violet-500/15 text-violet-900 dark:text-violet-200'
+    default:
+      return ''
   }
 }
 

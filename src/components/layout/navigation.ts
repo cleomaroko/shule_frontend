@@ -70,7 +70,7 @@ export const navigation: NavSection[] = [
   {
     title: "Operations",
     items: [
-      { label: "Transport", to: paths.transport, icon: Truck },
+      { label: "Transport", to: `${paths.transport}?tab=register`, icon: Truck },
       { label: "Vehicles", to: `${paths.transport}?tab=fleet`, icon: CarFront },
       { label: "Logistics", to: paths.logistics, icon: Bus },
       { label: "Stores", to: paths.store, icon: Warehouse },

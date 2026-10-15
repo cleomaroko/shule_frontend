@@ -15,8 +15,12 @@ export interface Project {
   totalBudget?: number | null
 }
 
-/** POST `/api/projects` raw body. */
+/**
+ * POST `/api/projects` raw body.
+ * The controller saves the entity, so an existing `id` updates that row (including status).
+ */
 export interface ProjectWritePayload {
+  id?: number
   name: string
   description?: string
   department?: { id: number }

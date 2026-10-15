@@ -38,6 +38,21 @@ export function useProjectMutations() {
     },
   })
 
+  const update = useMutation({
+    mutationFn: (body: ProjectWritePayload) => projectsApi.create(body),
+    onSuccess: async (saved) => {
+      await invalidate()
+      if (saved?.id) {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.projects.finances(saved.id) })
+      }
+      toast.success('Project status updated.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Update project failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
   const addExpense = useMutation({
     mutationFn: (body: ProjectExpensePayload) => projectsApi.addExpense(body),
     onSuccess: async (_void, variables) => {
@@ -53,5 +68,5 @@ export function useProjectMutations() {
     },
   })
 
-  return { create, addExpense }
+  return { create, update, addExpense }
 }

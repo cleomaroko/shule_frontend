@@ -14,6 +14,7 @@ import { SelectField } from '@/components/forms/SelectField'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AssetDetailDialog } from '@/features/assets/components/AssetDetailDialog'
 import { AssetFormDialog } from '@/features/assets/components/AssetFormDialog'
 import {
   useAssetCategoryList,
@@ -81,6 +82,7 @@ function InventoryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Asset | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Asset | null>(null)
+  const [viewing, setViewing] = useState<Asset | null>(null)
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -273,6 +275,8 @@ function InventoryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
           pageSize={PAGE_SIZE}
           total={filtered.length}
           onPageChange={setPage}
+          onRowClick={setViewing}
+          rowAriaLabel={(row) => `View ${row.assetTagId ?? 'asset'}`}
           mobileCard={(row) => (
             <div className="flex flex-col gap-2">
               <div className="flex items-start justify-between gap-3">
@@ -305,6 +309,12 @@ function InventoryPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         />
       )}
 
+      <AssetDetailDialog
+        asset={viewing}
+        onOpenChange={(next) => {
+          if (!next) setViewing(null)
+        }}
+      />
       <AssetFormDialog
         open={open}
         onOpenChange={setOpen}

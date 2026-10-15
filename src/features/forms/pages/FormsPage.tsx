@@ -16,6 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { collectAnswers, DynamicFormFields } from '@/features/forms/components/DynamicFormFields'
+import { FormResponseDialog } from '@/features/forms/components/FormResponseDialog'
 import { useFormMutations, useFormResponses, useFormTemplates } from '@/features/forms/hooks/useForms'
 import {
   FORM_FIELD_TYPES,
@@ -345,6 +346,7 @@ function ResponsesPanel({
   const templates = useFormTemplates()
   const responses = useFormResponses(selectedId)
   const [page, setPage] = useState(1)
+  const [viewing, setViewing] = useState<FormResponse | null>(null)
   const selected = (templates.data ?? []).find((item) => item.id === selectedId) ?? null
   const fields = parseFieldDefinitions(selected?.fieldDefinitions)
 
@@ -369,7 +371,10 @@ function ResponsesPanel({
       <SelectField
         label="Template"
         value={selectedId ? String(selectedId) : ''}
-        onChange={(value) => onSelect(Number(value))}
+        onChange={(value) => {
+          setViewing(null)
+          onSelect(Number(value))
+        }}
         options={(templates.data ?? []).map((item) => ({
           value: String(item.id),
           label: item.name || `Form #${item.id}`,
@@ -399,6 +404,8 @@ function ResponsesPanel({
           pageSize={10}
           total={(responses.data ?? []).length}
           onPageChange={setPage}
+          onRowClick={setViewing}
+          rowAriaLabel={(row) => `View response from ${formatDateTime(row.submissionDate)}`}
           mobileCard={(row) => {
             const answers = parseAnswerData(row.answerData)
             return (
@@ -414,6 +421,14 @@ function ResponsesPanel({
           }}
         />
       )}
+      <FormResponseDialog
+        response={viewing}
+        templateName={selected?.name || (selected ? `Form #${selected.id}` : 'Response')}
+        fields={fields}
+        onOpenChange={(next) => {
+          if (!next) setViewing(null)
+        }}
+      />
     </div>
   )
 }

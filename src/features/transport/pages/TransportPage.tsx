@@ -70,7 +70,7 @@ const TABS = ['fleet', 'register', 'hires', 'logs', 'stops', 'service-types'] as
 type TransportTab = (typeof TABS)[number]
 
 function tabFromParam(value: string | null): TransportTab {
-  return TABS.includes(value as TransportTab) ? (value as TransportTab) : 'fleet'
+  return TABS.includes(value as TransportTab) ? (value as TransportTab) : 'register'
 }
 
 function logBadgeVariant(type: string | null | undefined) {

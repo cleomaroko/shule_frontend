@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useDepartments } from '@/features/lookups/useLookups'
+import { ProjectDetailDialog } from '@/features/projects/components/ProjectDetailDialog'
 import { useProjectFinances, useProjectList, useProjectMutations } from '@/features/projects/hooks/useProjects'
 import {
   PROJECT_STATUSES,
@@ -38,7 +39,7 @@ export function ProjectsPage(): ReactNode {
   const canExpense = can(user?.role, 'project:expense')
   const projects = useProjectList()
   const departments = useDepartments()
-  const { create, addExpense } = useProjectMutations()
+  const { create, update, addExpense } = useProjectMutations()
   const driveRef = useRef<GoogleDriveDocumentFieldHandle>(null)
 
   const [name, setName] = useState('')
@@ -49,6 +50,7 @@ export function ProjectsPage(): ReactNode {
   const [status, setStatus] = useState<ProjectStatus>('PLANNED')
   const [budget, setBudget] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [detail, setDetail] = useState<Project | null>(null)
   const [amount, setAmount] = useState('')
   const [expenseDescription, setExpenseDescription] = useState('')
   const [expenseDate, setExpenseDate] = useState(todayIso())
@@ -274,7 +276,10 @@ export function ProjectsPage(): ReactNode {
           pageSize={10}
           total={(projects.data ?? []).length}
           onPageChange={setPage}
-          onRowClick={(row) => setSelectedId(row.id)}
+          onRowClick={(row) => {
+            setSelectedId(row.id)
+            setDetail(row)
+          }}
           rowAriaLabel={(row) => `Select ${row.name || `project ${row.id}`}`}
           mobileCard={(row) => (
             <div>
@@ -286,6 +291,24 @@ export function ProjectsPage(): ReactNode {
           )}
         />
       )}
+      <ProjectDetailDialog
+        project={detail}
+        canUpdateStatus={canWrite}
+        isSaving={update.isPending}
+        onOpenChange={(next) => {
+          if (!next) setDetail(null)
+        }}
+        onStatusChange={(body) => {
+          update.mutate(body, {
+            onSuccess: (saved) => {
+              setDetail((current) =>
+                current && current.id === saved.id ? { ...current, ...saved, status: saved.status ?? body.status } : saved,
+              )
+              if (saved.id) setSelectedId(saved.id)
+            },
+          })
+        }}
+      />
     </div>
   )
 }

@@ -23,6 +23,7 @@ import {
   ticketPriorityBadge,
   ticketPriorityLabel,
   ticketStatusBadge,
+  ticketStatusClassName,
   ticketStatusLabel,
   type CreateTicketPayload,
   type Ticket,
@@ -99,7 +100,11 @@ export function TicketsPage(): ReactNode {
     {
       id: 'status',
       header: 'Status',
-      cell: (row) => <Badge variant={ticketStatusBadge(row.status)}>{ticketStatusLabel(row.status)}</Badge>,
+      cell: (row) => (
+        <Badge variant={ticketStatusBadge(row.status)} className={ticketStatusClassName(row.status)}>
+          {ticketStatusLabel(row.status)}
+        </Badge>
+      ),
     },
     { id: 'dept', header: 'Department', cell: (row) => displayValue(row.targetDepartment?.name), hideOnMobile: true },
     { id: 'who', header: 'Raised by', cell: (row) => displayValue(row.createdBy), hideOnMobile: true },
@@ -190,9 +195,12 @@ export function TicketsPage(): ReactNode {
               mobileCard={(row) => (
                 <div className="flex flex-col gap-2">
                   <p className="type-heading">{row.title || `Ticket #${row.id}`}</p>
-                  <p className="type-caption text-muted-foreground">
-                    {ticketPriorityLabel(row.priority)} · {ticketStatusLabel(row.status)}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={ticketPriorityBadge(row.priority)}>{ticketPriorityLabel(row.priority)}</Badge>
+                    <Badge variant={ticketStatusBadge(row.status)} className={ticketStatusClassName(row.status)}>
+                      {ticketStatusLabel(row.status)}
+                    </Badge>
+                  </div>
                   {canManage ? <StatusActions ticket={row} onUpdate={updateStatus.mutate} pending={updateStatus.isPending} /> : null}
                 </div>
               )}
@@ -233,7 +241,8 @@ function StatusActions({
           key={status}
           type="button"
           size="sm"
-          variant="secondary"
+          variant="outline"
+          className={ticketStatusClassName(status)}
           disabled={pending}
           onClick={() => onUpdate({ id: ticket.id, status })}
         >
