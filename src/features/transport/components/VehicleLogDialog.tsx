@@ -38,6 +38,7 @@ interface FormState {
   logType: string
   mileageBefore: string
   mileageAfter: string
+  mileageAtFueling: string
   fuelQuantityLitres: string
   fuelCost: string
   fuelLevelBefore: string
@@ -57,6 +58,7 @@ function emptyForm(vehicles: Vehicle[]): FormState {
     logType: 'REFUELING',
     mileageBefore: '',
     mileageAfter: '',
+    mileageAtFueling: '',
     fuelQuantityLitres: '',
     fuelCost: '',
     fuelLevelBefore: '',
@@ -125,6 +127,14 @@ export function VehicleLogDialog({
       if (mileageAtService !== undefined) body.mileageAtService = mileageAtService
       if (form.nextServiceDate.trim()) body.nextServiceDate = form.nextServiceDate.trim()
       if (form.serviceReport.trim()) body.serviceReport = form.serviceReport.trim()
+    } else if (isRefuel) {
+      const litres = optionalNumber(form.fuelQuantityLitres)
+      const cost = optionalNumber(form.fuelCost)
+      const mileageAtFueling = optionalNumber(form.mileageAtFueling)
+      if (litres === undefined || cost === undefined || mileageAtFueling === undefined) return
+      body.fuelQuantityLitres = litres
+      body.fuelCost = cost
+      body.mileageAtFueling = mileageAtFueling
     } else {
       const mileageBefore = optionalNumber(form.mileageBefore)
       if (mileageBefore !== undefined) body.mileageBefore = mileageBefore
@@ -132,14 +142,8 @@ export function VehicleLogDialog({
       if (mileageAfter !== undefined) body.mileageAfter = mileageAfter
       const litres = optionalNumber(form.fuelQuantityLitres)
       const cost = optionalNumber(form.fuelCost)
-      if (isRefuel) {
-        if (litres === undefined || cost === undefined) return
-        body.fuelQuantityLitres = litres
-        body.fuelCost = cost
-      } else {
-        if (litres !== undefined) body.fuelQuantityLitres = litres
-        if (cost !== undefined) body.fuelCost = cost
-      }
+      if (litres !== undefined) body.fuelQuantityLitres = litres
+      if (cost !== undefined) body.fuelCost = cost
       if (isTrip) {
         const before = percentToFraction(form.fuelLevelBefore)
         if (before !== undefined) body.fuelLevelBefore = before
@@ -160,7 +164,7 @@ export function VehicleLogDialog({
               {isService
                 ? 'Service records use service type, cost, dates, and a report. Serviced-by is snapshotted from the signed-in user.'
                 : isRefuel
-                  ? 'Refueling stores litres and cost. Efficiency is (mileage after − before) ÷ litres.'
+                  ? 'Refueling stores the odometer reading, litres, and cost.'
                   : 'Trips record mileage and tank level before and after. Levels are stored as a 0–1 fraction.'}
             </DialogDescription>
           </DialogHeader>
@@ -247,6 +251,39 @@ export function VehicleLogDialog({
                   rows={3}
                 />
               </>
+            ) : isRefuel ? (
+              <>
+                <TextField
+                  label="Mileage at fueling"
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.1"
+                  value={form.mileageAtFueling}
+                  onChange={(event) => setForm((current) => ({ ...current, mileageAtFueling: event.target.value }))}
+                  required
+                />
+                <TextField
+                  label="Fuel quantity (litres)"
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  value={form.fuelQuantityLitres}
+                  onChange={(event) => setForm((current) => ({ ...current, fuelQuantityLitres: event.target.value }))}
+                  required
+                />
+                <TextField
+                  label="Fuel cost"
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  value={form.fuelCost}
+                  onChange={(event) => setForm((current) => ({ ...current, fuelCost: event.target.value }))}
+                  required
+                />
+              </>
             ) : (
               <>
                 <TextField
@@ -304,12 +341,7 @@ export function VehicleLogDialog({
                   step="0.01"
                   value={form.fuelQuantityLitres}
                   onChange={(event) => setForm((current) => ({ ...current, fuelQuantityLitres: event.target.value }))}
-                  hint={
-                    isRefuel
-                      ? 'Required with cost. Used with mileage to compute km per litre.'
-                      : 'Optional. Needed if you want the backend to compute km/L.'
-                  }
-                  required={isRefuel}
+                  hint="Optional. Needed if you want the backend to compute km/L."
                 />
                 <TextField
                   label="Fuel cost"
@@ -319,7 +351,6 @@ export function VehicleLogDialog({
                   step="0.01"
                   value={form.fuelCost}
                   onChange={(event) => setForm((current) => ({ ...current, fuelCost: event.target.value }))}
-                  required={isRefuel}
                 />
               </>
             )}

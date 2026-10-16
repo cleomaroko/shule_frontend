@@ -34,7 +34,7 @@ export function AnalyticsPanel(): ReactNode {
     return (
       <EmptyState
         title="No usage data yet"
-        description="Module usage is calculated from system audit logs. It appears after learners, staff, assets, stores, academics, attendance, exams, finance, tickets, or projects are changed."
+        description="Module usage appears when the analytics payload includes activity counts."
       />
     )
   }
@@ -42,9 +42,8 @@ export function AnalyticsPanel(): ReactNode {
   return (
     <div className="flex flex-col gap-4">
       <p className="type-caption text-muted-foreground">
-        Share of audit-log actions for Learners, Staff, Assets, Stores, Academics, Attendance, Exams, Finance,
-        Ticketing, and Projects. Actions that match none of those modules are grouped as Other. Percentages are of
-        all logged actions.
+        Each row is a module from the analytics payload, with its count and share of those counts. A module added
+        there, such as Sports, shows up here on the next load.
       </p>
       <Card>
         <CardHeader>
@@ -80,14 +79,16 @@ export function AnalyticsPanel(): ReactNode {
 
 function UsageLegend({ slices }: { slices: AnalyticsSlice[] }): ReactNode {
   return (
-    <ul className="flex w-full flex-col gap-2 sm:max-w-xs">
+    <ul className="flex w-full flex-col gap-2 xl:max-w-xs">
       {slices.map((slice) => (
         <li key={slice.name} className="flex items-center justify-between gap-3">
           <span className="flex min-w-0 items-center gap-2">
             <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: slice.color }} />
             <span className="type-label truncate">{slice.name}</span>
           </span>
-          <span className="type-caption shrink-0 text-muted-foreground">{formatPercent(slice.percent)}</span>
+          <span className="type-caption shrink-0 text-muted-foreground">
+            {slice.count.toLocaleString()} · {formatPercent(slice.percent)}
+          </span>
         </li>
       ))}
     </ul>
@@ -109,7 +110,10 @@ function UsageBars({ slices }: { slices: AnalyticsSlice[] }): ReactNode {
           <div className="h-2.5 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full"
-              style={{ width: `${Math.max((slice.count / max) * 100, 4)}%`, backgroundColor: slice.color }}
+              style={{
+                width: slice.count <= 0 ? '0%' : `${Math.max((slice.count / max) * 100, 4)}%`,
+                backgroundColor: slice.color,
+              }}
             />
           </div>
         </li>
@@ -119,8 +123,11 @@ function UsageBars({ slices }: { slices: AnalyticsSlice[] }): ReactNode {
 }
 
 function UsagePie({ slices }: { slices: AnalyticsSlice[] }): ReactNode {
-  const total = slices.reduce((sum, slice) => sum + slice.count, 0)
-  if (total <= 0) return null
+  const drawn = slices.filter((slice) => slice.count > 0)
+  const total = drawn.reduce((sum, slice) => sum + slice.count, 0)
+  if (total <= 0) {
+    return <p className="type-caption text-muted-foreground">No module has a count yet.</p>
+  }
 
   const cx = 80
   const cy = 80
@@ -128,11 +135,11 @@ function UsagePie({ slices }: { slices: AnalyticsSlice[] }): ReactNode {
   let angle = 0
   const paths: ReactNode[] = []
 
-  if (slices.length === 1) {
-    const only = slices[0]
+  if (drawn.length === 1) {
+    const only = drawn[0]
     if (only) paths.push(<circle key={only.name} cx={cx} cy={cy} r={r} fill={only.color} />)
   } else {
-    for (const slice of slices) {
+    for (const slice of drawn) {
       const sweep = (slice.count / total) * 360
       const start = angle
       const end = angle + sweep

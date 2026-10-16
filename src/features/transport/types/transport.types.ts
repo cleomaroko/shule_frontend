@@ -40,7 +40,10 @@ export interface VehicleWritePayload {
   status?: string
 }
 
-export type LogDriver = Pick<Staff, 'id' | 'firstName' | 'secondName' | 'lastName' | 'staffNumber'>
+export type LogDriver = Pick<
+  Staff,
+  'id' | 'firstName' | 'secondName' | 'lastName' | 'staffNumber' | 'phone' | 'workEmail'
+>
 
 export interface VehicleLog {
   id: number
@@ -49,6 +52,8 @@ export interface VehicleLog {
   logType?: string | null
   mileageBefore?: number | null
   mileageAfter?: number | null
+  /** Odometer reading sent on REFUELING logs. */
+  mileageAtFueling?: number | null
   fuelQuantityLitres?: number | null
   fuelCost?: number | null
   serviceType?: VehicleServiceType | null
@@ -72,6 +77,7 @@ export interface VehicleLogWritePayload {
   logType: string
   mileageBefore?: number | null
   mileageAfter?: number | null
+  mileageAtFueling?: number
   fuelQuantityLitres?: number | null
   fuelCost?: number | null
   fuelLevelBefore?: number | null
@@ -135,6 +141,12 @@ export function vehicleLogTypeLabel(type: string | null | undefined): string {
 export function formatLitres(value: number | null | undefined): string {
   if (value === null || value === undefined || Number.isNaN(value)) return '—'
   return `${value.toLocaleString(undefined, { maximumFractionDigits: 2 })} L`
+}
+
+export function logMileage(row: VehicleLog): number | null | undefined {
+  if (row.logType === 'SERVICE') return row.mileageAtService
+  if (row.logType === 'REFUELING') return row.mileageAtFueling ?? row.mileageAfter ?? row.mileageBefore
+  return row.mileageAfter ?? row.mileageBefore
 }
 
 export function formatKm(value: number | null | undefined): string {

@@ -24,6 +24,7 @@ import { AssignmentDialog } from '@/features/transport/components/AssignmentDial
 import { BusStopDialog } from '@/features/transport/components/BusStopDialog'
 import { HireDialog } from '@/features/transport/components/HireDialog'
 import { VehicleDialog } from '@/features/transport/components/VehicleDialog'
+import { VehicleLogDetailDialog } from '@/features/transport/components/VehicleLogDetailDialog'
 import { VehicleLogDialog } from '@/features/transport/components/VehicleLogDialog'
 import {
   useBusStopList,
@@ -54,6 +55,7 @@ import {
   formatEfficiency,
   formatFuelLevel,
   formatKm,
+  logMileage,
   formatLitres,
   formatMoneyKes,
   transportTermKey,
@@ -768,6 +770,7 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<VehicleLog | null>(null)
+  const [viewing, setViewing] = useState<VehicleLog | null>(null)
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -819,8 +822,7 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
     {
       id: 'mileage',
       header: 'Mileage',
-      cell: (row) =>
-        formatKm(row.logType === 'SERVICE' ? row.mileageAtService : (row.mileageAfter ?? row.mileageBefore)),
+      cell: (row) => formatKm(logMileage(row)),
     },
     {
       id: 'detail',
@@ -946,6 +948,8 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
           pageSize={PAGE_SIZE}
           total={filtered.length}
           onPageChange={setPage}
+          onRowClick={setViewing}
+          rowAriaLabel={(row) => `View ${vehicleLogTypeLabel(row.logType)} log`}
           mobileCard={(row) => (
             <div className="flex flex-col gap-2">
               <div className="flex items-start justify-between gap-3">
@@ -964,9 +968,7 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
                 </div>
                 <div>
                   <dt>Mileage</dt>
-                  <dd className="font-medium text-foreground">
-                    {formatKm(row.logType === 'SERVICE' ? row.mileageAtService : (row.mileageAfter ?? row.mileageBefore))}
-                  </dd>
+                  <dd className="font-medium text-foreground">{formatKm(logMileage(row))}</dd>
                 </div>
                 <div>
                   <dt>{row.logType === 'TRIP' ? 'Tank' : row.logType === 'SERVICE' ? 'Service' : 'Fuel'}</dt>
@@ -996,6 +998,12 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         serviceTypes={serviceTypes.data ?? []}
         isSaving={createLog.isPending}
         onSubmit={handleSubmit}
+      />
+      <VehicleLogDetailDialog
+        log={viewing}
+        onOpenChange={(next) => {
+          if (!next) setViewing(null)
+        }}
       />
       <ConfirmDialog
         open={pendingDelete !== null}

@@ -12,25 +12,7 @@ export interface EmailUsage {
   remaining: number
 }
 
-/**
- * Keys of `activityCounts` from `GET /api/system/analytics`, in controller order.
- * `usageBreakdown` is no longer returned.
- */
-export const ANALYTICS_MODULES = [
-  'Learners',
-  'Staff',
-  'Assets',
-  'Stores',
-  'Academics',
-  'Attendance',
-  'Exams',
-  'Finance',
-  'Ticketing',
-  'Projects',
-] as const
-
-export type AnalyticsModule = (typeof ANALYTICS_MODULES)[number]
-
+/** `GET /api/system/analytics`. Module names are whatever keys `activityCounts` contains. */
 export interface SystemAnalytics {
   totalActions: number
   activityCounts: Record<string, number>
@@ -54,7 +36,19 @@ const MODULE_COLORS: Record<string, string> = {
   Finance: '#047857',
   Ticketing: '#c2410c',
   Projects: '#0369a1',
-  Other: '#94a3b8',
+}
+
+/** Stable colors for modules the controller adds later, such as Sports. */
+const EXTRA_COLORS = ['#db2777', '#0891b2', '#ca8a04', '#65a30d', '#9333ea', '#e11d48', '#0284c7', '#d97706']
+
+function colorForModule(name: string): string {
+  const known = MODULE_COLORS[name]
+  if (known) return known
+  let hash = 0
+  for (let index = 0; index < name.length; index += 1) {
+    hash = (hash * 31 + name.charCodeAt(index)) >>> 0
+  }
+  return EXTRA_COLORS[hash % EXTRA_COLORS.length] ?? '#64748b'
 }
 
 function asNumber(value: unknown): number {
@@ -62,34 +56,21 @@ function asNumber(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+/** One slice per `activityCounts` key, in payload order. New keys appear without a frontend change. */
 export function analyticsSlices(data: SystemAnalytics | null | undefined): AnalyticsSlice[] {
-  if (!data) return []
-  const total = asNumber(data.totalActions)
-  if (total <= 0) return []
-
-  const counts = data.activityCounts ?? {}
-  const rows: AnalyticsSlice[] = ANALYTICS_MODULES.map((name) => {
-    const count = asNumber(counts[name])
-    return {
-      name,
-      count,
-      percent: (count * 100) / total,
-      color: MODULE_COLORS[name] ?? '#94a3b8',
-    }
-  })
-
+  if (!data?.activityCounts) return []
+  const rows = Object.entries(data.activityCounts).map(([name, value]) => ({
+    name,
+    count: asNumber(value),
+  }))
+  if (rows.length === 0) return []
   const classified = rows.reduce((sum, row) => sum + row.count, 0)
-  const other = Math.max(0, total - classified)
-  if (other > 0) {
-    rows.push({
-      name: 'Other',
-      count: other,
-      percent: (other * 100) / total,
-      color: '#94a3b8',
-    })
-  }
-
-  return rows.filter((row) => row.count > 0)
+  return rows.map((row) => ({
+    name: row.name,
+    count: row.count,
+    percent: classified > 0 ? (row.count * 100) / classified : 0,
+    color: colorForModule(row.name),
+  }))
 }
 
 export function formatPercent(value: number): string {

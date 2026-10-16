@@ -51,6 +51,9 @@ export function SelectField({
   const visible = needle
     ? options.filter((option) => option.label.toLowerCase().includes(needle))
     : options
+  // Keep an empty choice controlled. Omitting `value` leaves the previous label
+  // on screen after the form state is cleared, so the next submit drops it.
+  const selectValue = value || (allowEmpty ? '__empty' : '')
 
   return (
     <div className={cn('flex flex-col gap-1.5', containerClassName)}>
@@ -60,7 +63,7 @@ export function SelectField({
           if (!open) setQuery('')
         }}
         onValueChange={(next) => onChange(fromSelectValue(next))}
-        {...(value ? { value } : {})}
+        {...(selectValue ? { value: selectValue } : {})}
         {...(disabled ? { disabled: true } : {})}
         {...(name ? { name } : {})}
       >
