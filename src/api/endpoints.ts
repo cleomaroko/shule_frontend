@@ -19,6 +19,8 @@ export const endpoints = {
     register: "/staff/register",
     /** PUT / DELETE — requires Authorization */
     byId: (id: number) => `/staff/${id}`,
+    /** PATCH `?reason=` — ADMIN or HEAD. Sets RESIGNED, stamps date left, deletes the login. */
+    resign: (id: number) => `/staff/${id}/resign`,
   },
   learners: {
     list: "/learners",

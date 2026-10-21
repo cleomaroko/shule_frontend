@@ -21,6 +21,7 @@ import {
   zoneLookupOptions,
 } from '@/features/lookups/lookup-options'
 import {
+  useCampuses,
   useCounties,
   useGenders,
   useHouses,
@@ -36,7 +37,7 @@ import {
   learnerToFormValues,
   type LearnerFormValues,
 } from '@/features/learners/schemas/learner.schema'
-import type { Learner } from '@/features/learners/types/learner.types'
+import type { Learner, LearnerWriteBody } from '@/features/learners/types/learner.types'
 import { COUNTRIES, KENYAN_ETHNICITIES, withExistingOption } from '@/lib/demographics'
 import { cn } from '@/lib/utils'
 import { paths } from '@/routes/paths'
@@ -53,7 +54,7 @@ const STEPS = [
 
 const STEP_FIELDS: Array<Array<keyof LearnerFormValues>> = [
   ['firstName', 'lastName', 'gender', 'dateOfBirth', 'admissionNumber', 'admissionClass'],
-  ['currentClass', 'stream', 'admissionTerm', 'admissionDate'],
+  ['currentClass', 'stream', 'campusId', 'admissionTerm', 'admissionDate'],
   ['fatherFirstName', 'fatherPhone', 'fatherEmail', 'motherEmail', 'guardianEmail'],
   [],
   [],
@@ -64,7 +65,7 @@ export interface LearnerFormProps {
   learner?: Learner | null
   isSubmitting: boolean
   submitLabel: string
-  onSubmit: (payload: Record<string, string | boolean>) => void
+  onSubmit: (payload: LearnerWriteBody) => void
 }
 
 export function LearnerForm({ learner, isSubmitting, submitLabel, onSubmit }: LearnerFormProps): ReactNode {
@@ -88,6 +89,15 @@ export function LearnerForm({ learner, isSubmitting, submitLabel, onSubmit }: Le
     [classesQuery.data, learner?.admissionClass, learner?.currentClass],
   )
   const streams = useMemo(() => streamLookupOptions(streamQuery.data, learner?.stream), [learner?.stream, streamQuery.data])
+  const campusesQuery = useCampuses()
+  const campusOptions = useMemo(
+    () =>
+      (campusesQuery.data ?? []).map((item) => ({
+        value: String(item.id),
+        label: item.location?.trim() ? `${item.name} · ${item.location}` : item.name,
+      })),
+    [campusesQuery.data],
+  )
   const termList = useAcademicTermList()
   const terms = useMemo(() => {
     const labels = (termList.data ?? []).map(academicTermLabel).filter(Boolean)
@@ -152,6 +162,8 @@ export function LearnerForm({ learner, isSubmitting, submitLabel, onSubmit }: Le
     classesLoading: classesQuery.isLoading,
     streams,
     streamsLoading: streamQuery.isLoading,
+    campuses: campusOptions,
+    campusesLoading: campusesQuery.isLoading,
     terms,
     termsLoading: termList.isLoading,
     counties,
@@ -238,6 +250,8 @@ interface StepProps {
   classesLoading: boolean
   streams: SelectOption[]
   streamsLoading: boolean
+  campuses: SelectOption[]
+  campusesLoading: boolean
   terms: string[]
   termsLoading: boolean
   counties: SelectOption[]
@@ -311,12 +325,26 @@ function AcademicStep({
   classesLoading,
   streams,
   streamsLoading,
+  campuses,
+  campusesLoading,
   terms,
   termsLoading,
 }: StepProps): ReactNode {
   return (
     <>
       <FormSection title="Placement">
+        <LookupSelect
+          control={control}
+          name="campusId"
+          label="Campus"
+          options={campuses}
+          isLoading={campusesLoading}
+          allowEmpty={false}
+          placeholder="Select campus"
+          emptyMessage="No campuses available"
+          error={errors.campusId?.message}
+          disabled={disabled}
+        />
         <LookupSelect
           control={control}
           name="currentClass"

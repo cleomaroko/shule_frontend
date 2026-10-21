@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react'
-import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 
 import { toUserMessage } from '@/api/errors'
 import { DataTable, type DataColumn } from '@/components/data/DataTable'
@@ -20,16 +20,22 @@ import {
 } from '@/components/ui/dialog'
 import {
   useAcademicMutations,
+  useAcademicTermList,
+  useAcademicYearList,
   useAssignmentList,
   useClassList,
   useLearningAreaList,
   useStreamList,
 } from '@/features/academic/hooks/useAcademic'
 import {
+  academicTermLabel,
   assignmentIsClassTeacher,
+  calendarIsCurrent,
+  resolveCurrentTerm,
   type AssignmentWritePayload,
   type TeacherAssignment,
 } from '@/features/academic/types/academic.types'
+import { useCampuses } from '@/features/lookups/useLookups'
 import { useTeacherList } from '@/features/staff/hooks/useStaff'
 import { formatClassLabel, formatPersonName } from '@/lib/format'
 
@@ -46,6 +52,9 @@ export function AssignmentsPanel({ canWrite }: { canWrite: boolean }): ReactNode
   const streams = useStreamList()
   const subjects = useLearningAreaList()
   const staff = useTeacherList()
+  const campuses = useCampuses()
+  const years = useAcademicYearList()
+  const terms = useAcademicTermList()
   const { createAssignment, deleteAssignment } = useAcademicMutations()
 
   const [query, setQuery] = useState('')
@@ -58,6 +67,9 @@ export function AssignmentsPanel({ canWrite }: { canWrite: boolean }): ReactNode
   const [streamId, setStreamId] = useState('')
   const [subjectId, setSubjectId] = useState('')
   const [isClassTeacher, setIsClassTeacher] = useState(false)
+  const [campusId, setCampusId] = useState('')
+  const [yearId, setYearId] = useState('')
+  const [termId, setTermId] = useState('')
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -70,6 +82,9 @@ export function AssignmentsPanel({ canWrite }: { canWrite: boolean }): ReactNode
         item.schoolClass ? formatClassLabel(item.schoolClass) : '',
         item.stream?.name,
         item.subject?.name,
+        item.campus?.name,
+        item.academicYear?.name,
+        item.term?.name,
         assignmentIsClassTeacher(item) ? 'class teacher' : '',
       ]
         .join(' ')
@@ -101,18 +116,39 @@ export function AssignmentsPanel({ canWrite }: { canWrite: boolean }): ReactNode
     setStreamId('')
     setSubjectId('')
     setIsClassTeacher(false)
+    setCampusId('')
+    setYearId('')
+    setTermId('')
   }
+
+  useEffect(() => {
+    if (!open) return
+    if (!yearId) {
+      const current = (years.data ?? []).find(calendarIsCurrent)
+      if (current) setYearId(String(current.id))
+    }
+    if (!termId) {
+      const current = resolveCurrentTerm(terms.data ?? [])
+      if (current) setTermId(String(current.id))
+    }
+  }, [open, termId, terms.data, yearId, years.data])
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
     const teacher = Number(teacherId)
     const schoolClass = Number(classId)
-    if (!teacher || !schoolClass) return
+    const campus = Number(campusId)
+    const academicYear = Number(yearId)
+    const term = Number(termId)
+    if (!teacher || !schoolClass || !campus || !academicYear || !term) return
     if (!isClassTeacher && !Number(subjectId)) return
 
     const body: AssignmentWritePayload = {
       teacher: { id: teacher },
       schoolClass: { id: schoolClass },
+      campus: { id: campus },
+      academicYear: { id: academicYear },
+      term: { id: term },
       classTeacher: isClassTeacher,
       isClassTeacher,
     }
@@ -134,6 +170,11 @@ export function AssignmentsPanel({ canWrite }: { canWrite: boolean }): ReactNode
       cell: (row) => (row.teacher ? formatPersonName(row.teacher) : '—'),
     },
     {
+      id: 'campus',
+      header: 'Campus',
+      cell: (row) => row.campus?.name || '—',
+    },
+    {
       id: 'class',
       header: 'Class',
       cell: (row) => (row.schoolClass ? formatClassLabel(row.schoolClass) : '—'),
@@ -147,6 +188,18 @@ export function AssignmentsPanel({ canWrite }: { canWrite: boolean }): ReactNode
       id: 'subject',
       header: 'Learning area',
       cell: (row) => row.subject?.name || (assignmentIsClassTeacher(row) ? 'Class teacher only' : '—'),
+    },
+    {
+      id: 'year',
+      header: 'Year',
+      hideOnMobile: true,
+      cell: (row) => row.academicYear?.name || '—',
+    },
+    {
+      id: 'term',
+      header: 'Term',
+      hideOnMobile: true,
+      cell: (row) => row.term?.name || '—',
     },
     {
       id: 'classTeacher',
@@ -248,9 +301,11 @@ export function AssignmentsPanel({ canWrite }: { canWrite: boolean }): ReactNode
                   </p>
                   <p className="type-caption text-muted-foreground">
                     {[
+                      row.campus?.name,
                       row.schoolClass ? formatClassLabel(row.schoolClass) : null,
                       row.stream?.name,
                       row.subject?.name,
+                      row.term?.name,
                     ]
                       .filter(Boolean)
                       .join(' · ') || 'Class teacher only'}
@@ -280,6 +335,54 @@ export function AssignmentsPanel({ canWrite }: { canWrite: boolean }): ReactNode
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 overflow-y-auto px-5 py-4 sm:px-6">
+              <SelectField
+                label="Campus"
+                value={campusId}
+                onChange={setCampusId}
+                allowEmpty={false}
+                placeholder="Select campus"
+                emptyMessage="No campuses available"
+                options={(campuses.data ?? []).map((item) => ({
+                  value: String(item.id),
+                  label: item.location?.trim() ? `${item.name} · ${item.location}` : item.name,
+                }))}
+              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SelectField
+                  label="Academic year"
+                  value={yearId}
+                  onChange={(value) => {
+                    setYearId(value)
+                    const stillValid = (terms.data ?? []).some(
+                      (item) =>
+                        String(item.id) === termId &&
+                        (!item.academicYear?.id || String(item.academicYear.id) === value),
+                    )
+                    if (!stillValid) setTermId('')
+                  }}
+                  allowEmpty={false}
+                  placeholder="Select year"
+                  emptyMessage="No academic years available"
+                  options={(years.data ?? []).map((item) => ({
+                    value: String(item.id),
+                    label: item.name,
+                  }))}
+                />
+                <SelectField
+                  label="Term"
+                  value={termId}
+                  onChange={setTermId}
+                  allowEmpty={false}
+                  placeholder="Select term"
+                  emptyMessage="No terms available"
+                  options={(terms.data ?? [])
+                    .filter((item) => !yearId || !item.academicYear?.id || String(item.academicYear.id) === yearId)
+                    .map((item) => ({
+                      value: String(item.id),
+                      label: academicTermLabel(item),
+                    }))}
+                />
+              </div>
               <SelectField
                 label="Teacher"
                 value={teacherId}

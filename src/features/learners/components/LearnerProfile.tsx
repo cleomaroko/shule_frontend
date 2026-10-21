@@ -30,8 +30,9 @@ export function LearnerProfile({ learner, canWrite }: { learner: Learner; canWri
           <div>
             <h1 className="type-page-title">{name}</h1>
             <p className="type-body mt-1 text-muted-foreground">
-              {[learner.admissionNumber, learner.currentClass || learner.admissionClass].filter(Boolean).join(' · ') ||
-                'No placement yet'}
+              {[learner.admissionNumber, learner.campus?.name, learner.currentClass || learner.admissionClass]
+                .filter(Boolean)
+                .join(' · ') || 'No placement yet'}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               <StatusBadge status={learner.status} />
@@ -60,6 +61,7 @@ export function LearnerProfile({ learner, canWrite }: { learner: Learner; canWri
       </ProfileSection>
 
       <ProfileSection title="Academic information">
+        <ProfileField label="Campus" value={displayValue(learner.campus?.name)} />
         <ProfileField label="Admission number" value={displayValue(learner.admissionNumber)} />
         <ProfileField label="Admission class" value={displayValue(learner.admissionClass)} />
         <ProfileField label="Admission date" value={formatDate(learner.admissionDate)} />

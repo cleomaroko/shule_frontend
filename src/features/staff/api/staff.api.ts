@@ -34,4 +34,8 @@ export const staffApi = {
   remove(id: number): Promise<void> {
     return api.delete(endpoints.staff.byId(id)).then(() => undefined)
   },
+
+  resign(id: number, reason: string): Promise<void> {
+    return api.patch<null>(endpoints.staff.resign(id), null, { params: { reason } }).then(() => undefined)
+  },
 }

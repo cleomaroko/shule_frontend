@@ -1,3 +1,4 @@
+import type { Campus } from '@/features/lookups/lookups.types'
 import type { Staff } from '@/features/staff/types/staff.types'
 
 export interface AcademicStream {
@@ -41,6 +42,9 @@ export interface TeacherAssignment {
   schoolClass: SchoolClass | null
   stream: AcademicStream | null
   subject: LearningArea | null
+  campus?: Pick<Campus, 'id' | 'name' | 'location'> | null
+  academicYear?: Pick<AcademicYear, 'id' | 'name'> | null
+  term?: Pick<AcademicTerm, 'id' | 'name'> | null
   /** Jackson may emit either name for Lombok `boolean isClassTeacher`. */
   classTeacher?: boolean
   isClassTeacher?: boolean
@@ -51,6 +55,9 @@ export interface AssignmentWritePayload {
   schoolClass: { id: number }
   stream?: { id: number }
   subject?: { id: number }
+  campus: { id: number }
+  academicYear: { id: number }
+  term: { id: number }
   classTeacher: boolean
   isClassTeacher: boolean
 }

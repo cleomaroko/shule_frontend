@@ -5,6 +5,10 @@
  * Primitive booleans serialize as JSON booleans. Dates are ISO `YYYY-MM-DD`.
  * `password` is present on responses and must never be displayed or posted.
  */
+
+/** Body for `POST /api/learners/register` and `PUT /api/learners/{id}`. */
+export type LearnerWriteBody = Record<string, string | boolean | { id: number }>
+
 export interface Learner {
   id: number
   firstName: string | null
@@ -19,6 +23,8 @@ export interface Learner {
   currentClass: string | null
   stream: string | null
   boarding: boolean
+  /** `POST /api/learners/register` accepts `campus: { id }`. */
+  campus?: { id: number; name?: string | null; location?: string | null } | null
   upiNemisNumber: string | null
   knecExamNumber: string | null
   birthCertificateNumber: string | null

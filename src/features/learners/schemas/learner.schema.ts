@@ -1,6 +1,11 @@
 import { z } from 'zod'
 
-import { LEARNER_BOOLEAN_KEYS, type Learner, type LearnerBooleanKey } from '@/features/learners/types/learner.types'
+import {
+  LEARNER_BOOLEAN_KEYS,
+  type Learner,
+  type LearnerBooleanKey,
+  type LearnerWriteBody,
+} from '@/features/learners/types/learner.types'
 
 const text = z.string()
 const optionalEmail = z
@@ -20,6 +25,7 @@ export const learnerFormSchema = z.object({
   admissionDate: text,
   currentClass: text,
   stream: text,
+  campusId: z.string().min(1, 'Select a campus'),
   boarding: z.boolean(),
   upiNemisNumber: text,
   knecExamNumber: text,
@@ -135,6 +141,7 @@ export function emptyLearnerForm(): LearnerFormValues {
     admissionDate: '',
     currentClass: '',
     stream: '',
+    campusId: '',
     upiNemisNumber: '',
     knecExamNumber: '',
     birthCertificateNumber: '',
@@ -221,6 +228,7 @@ export function learnerToFormValues(learner: Learner): LearnerFormValues {
     }
   }
 
+  next.campusId = learner.campus?.id != null ? String(learner.campus.id) : ''
   return next
 }
 
@@ -232,10 +240,11 @@ function isBooleanKey(key: string): key is LearnerBooleanKey {
  * Create payload: omit empty strings and omit admissionNumber when blank so the
  * backend generates ADM-YYYY-NNNN. Never send password/id/dateAdded.
  */
-export function learnerFormToCreatePayload(values: LearnerFormValues): Record<string, string | boolean> {
-  const payload: Record<string, string | boolean> = {}
+export function learnerFormToCreatePayload(values: LearnerFormValues): LearnerWriteBody {
+  const payload: LearnerWriteBody = {}
 
   for (const [key, value] of Object.entries(values)) {
+    if (key === 'campusId') continue
     if (key === 'admissionNumber' && typeof value === 'string' && value.trim() === '') continue
     if (isBooleanKey(key)) {
       payload[key] = Boolean(value)
@@ -247,6 +256,8 @@ export function learnerFormToCreatePayload(values: LearnerFormValues): Record<st
     }
   }
 
+  const campusId = Number(values.campusId)
+  if (campusId) payload.campus = { id: campusId }
   return payload
 }
 
@@ -257,12 +268,9 @@ export function learnerFormToCreatePayload(values: LearnerFormValues): Record<st
  * password, admissionNumber and dateAdded. Empty strings *do* overwrite, so a
  * cleared field is sent as "" rather than omitted.
  */
-export function learnerFormToPatchPayload(
-  values: LearnerFormValues,
-  original: Learner,
-): Record<string, string | boolean> {
+export function learnerFormToPatchPayload(values: LearnerFormValues, original: Learner): LearnerWriteBody {
   const originalForm = learnerToFormValues(original)
-  const payload: Record<string, string | boolean> = {}
+  const payload: LearnerWriteBody = {}
 
   for (const key of Object.keys(values) as Array<keyof LearnerFormValues>) {
     if (key === 'admissionNumber') continue
@@ -270,6 +278,10 @@ export function learnerFormToPatchPayload(
     const prev = originalForm[key]
     if (next === prev) continue
 
+    if (key === 'campusId' && typeof next === 'string' && Number(next)) {
+      payload.campus = { id: Number(next) }
+      continue
+    }
     if (isBooleanKey(key)) {
       payload[key] = Boolean(next)
     } else if (typeof next === 'string') {

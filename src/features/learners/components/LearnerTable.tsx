@@ -40,6 +40,7 @@ export function LearnerTable({
   const columns: Array<DataColumn<Learner>> = [
     { id: 'learner', header: 'Learner', cell: (row) => <LearnerIdentity learner={row} /> },
     { id: 'admission', header: 'Admission no.', cell: (row) => row.admissionNumber || '—' },
+    { id: 'campus', header: 'Campus', cell: (row) => row.campus?.name || '—' },
     { id: 'class', header: 'Class', cell: (row) => row.currentClass || row.admissionClass || '—' },
     { id: 'stream', header: 'Stream', cell: (row) => row.stream || '—' },
     { id: 'gender', header: 'Gender', cell: (row) => row.gender || '—' },
@@ -76,6 +77,10 @@ export function LearnerTable({
             <div>
               <dt>Admission</dt>
               <dd className="font-medium text-foreground">{row.admissionNumber || '—'}</dd>
+            </div>
+            <div>
+              <dt>Campus</dt>
+              <dd className="font-medium text-foreground">{row.campus?.name || '—'}</dd>
             </div>
             <div>
               <dt>Class</dt>

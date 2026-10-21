@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { toUserMessage } from '@/api/errors'
 import { queryKeys } from '@/api/endpoints'
 import { learnersApi } from '@/features/learners/api/learners.api'
+import type { LearnerWriteBody } from '@/features/learners/types/learner.types'
 import { logger } from '@/lib/logger'
 
 export function useLearnerList() {
@@ -29,7 +30,7 @@ export function useLearnerMutations() {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: queryKeys.learners.all })
 
   const create = useMutation({
-    mutationFn: (body: Record<string, string | boolean>) => learnersApi.register(body),
+    mutationFn: (body: LearnerWriteBody) => learnersApi.register(body),
     onSuccess: async () => {
       await invalidate()
       toast.success('Learner enrolled successfully.')
@@ -41,8 +42,7 @@ export function useLearnerMutations() {
   })
 
   const update = useMutation({
-    mutationFn: ({ id, body }: { id: number; body: Record<string, string | boolean> }) =>
-      learnersApi.update(id, body),
+    mutationFn: ({ id, body }: { id: number; body: LearnerWriteBody }) => learnersApi.update(id, body),
     onSuccess: async () => {
       await invalidate()
       toast.success('Learner updated successfully.')

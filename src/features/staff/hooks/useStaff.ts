@@ -66,6 +66,18 @@ export function useStaffMutations() {
     },
   })
 
+  const resign = useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) => staffApi.resign(id, reason),
+    onSuccess: async () => {
+      await invalidate()
+      toast.success('Resignation recorded. Their login has been removed.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Staff resignation failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
   const remove = useMutation({
     mutationFn: (id: number) => staffApi.remove(id),
     onSuccess: async () => {
@@ -78,7 +90,7 @@ export function useStaffMutations() {
     },
   })
 
-  return { create, update, remove }
+  return { create, update, remove, resign }
 }
 
 export function findStaff(list: Staff[] | undefined, id: number): Staff | undefined {
