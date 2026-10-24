@@ -6,6 +6,7 @@ import type {
   InventoryCategoryWritePayload,
   ItemBatch,
   ItemUnit,
+  RunoutForecast,
   ItemUnitWritePayload,
   StockLog,
   StockLogCreatePayload,
@@ -62,6 +63,11 @@ export const storeApi = {
 
   itemMovements: (itemId: number) =>
     api.get<StockLog[]>(endpoints.store.itemMovements(itemId)).then((r) => r.data ?? []),
+
+  predictRunout: (itemId: number, storeId: number) =>
+    api
+      .get<RunoutForecast>(endpoints.store.predictRunout(itemId), { params: { storeId } })
+      .then((r) => r.data as RunoutForecast),
 
   expiringSoon: () => api.get<ItemBatch[]>(endpoints.store.expiringSoon).then((r) => r.data ?? []),
   expiryReport: (params: ExpiryReportQuery = {}) =>

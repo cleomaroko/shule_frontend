@@ -1,4 +1,4 @@
-import { Check, History, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Check, History, Pencil, Plus, TrendingDown, Trash2 } from 'lucide-react'
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
@@ -20,6 +20,7 @@ import { StoreLogDialog } from '@/features/store/components/StoreLogDialog'
 import { ExpiryPanel } from '@/features/store/components/ExpiryPanel'
 import { GrnPanel } from '@/features/store/components/GrnPanel'
 import { ItemMovementsDialog } from '@/features/store/components/ItemMovementsDialog'
+import { RunoutForecastDialog } from '@/features/store/components/RunoutForecastDialog'
 import { WeeklyStockReportPanel } from '@/features/store/components/WeeklyStockReportPanel'
 import { useAcademicTermList } from '@/features/academic/hooks/useAcademic'
 import { useLearnerList } from '@/features/learners/hooks/useLearners'
@@ -59,6 +60,7 @@ import {
   transferStatusLabel,
 } from '@/features/store/types/store.types'
 import { useSupplierList } from '@/features/suppliers/hooks/useSuppliers'
+import { useRequisitionList } from '@/features/requisitions/hooks/useRequisitions'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { displayValue, formatDate } from '@/lib/format'
 
@@ -499,12 +501,14 @@ function ItemsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const list = useStoreItems()
   const categories = useStoreCategories()
   const units = useStoreUnits()
+  const stores = useStoreLocations()
   const { createItem, updateItem, deleteItem } = useStoreMutations()
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<StoreItem | null>(null)
   const [historyItem, setHistoryItem] = useState<StoreItem | null>(null)
+  const [forecastItem, setForecastItem] = useState<StoreItem | null>(null)
   const [pendingDelete, setPendingDelete] = useState<StoreItem | null>(null)
 
   const filtered = useMemo(() => {
@@ -547,9 +551,12 @@ function ItemsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
     {
       id: 'actions',
       header: '',
-      className: 'w-32 text-right',
+      className: 'w-40 text-right',
       cell: (row) => (
         <span className="flex justify-end gap-1">
+          <Button variant="ghost" size="icon" aria-label={`Forecast stock runout for ${row.name}`} onClick={() => setForecastItem(row)}>
+            <TrendingDown aria-hidden="true" />
+          </Button>
           <Button variant="ghost" size="icon" aria-label={`History for ${row.name}`} onClick={() => setHistoryItem(row)}>
             <History aria-hidden="true" />
           </Button>
@@ -653,6 +660,7 @@ function ItemsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         onSubmit={handleSubmit}
       />
       <ItemMovementsDialog item={historyItem} onOpenChange={(next) => !next && setHistoryItem(null)} />
+      <RunoutForecastDialog item={forecastItem} stores={stores.data ?? []} onOpenChange={(next) => !next && setForecastItem(null)} />
       <ConfirmDialog
         open={pendingDelete !== null}
         onOpenChange={(next) => {
@@ -681,6 +689,7 @@ function TransactionsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const staff = useStaffList()
   const learners = useLearnerList()
   const departments = useDepartments()
+  const requisitions = useRequisitionList({ status: 'APPROVED' })
   const { createLog, updateLog, deleteLog, receiveLog } = useStoreMutations()
   const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<'all' | TransactionType | 'pending'>('all')
@@ -924,6 +933,7 @@ function TransactionsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         staff={staff.data ?? []}
         learners={learners.data ?? []}
         departments={departments.data ?? []}
+        requisitions={requisitions.data ?? []}
         isSaving={createLog.isPending || updateLog.isPending}
         onCreate={(body: StockLogCreatePayload) => createLog.mutate(body, { onSuccess: () => setOpen(false) })}
         onUpdate={(body: StockLogUpdatePayload) => {

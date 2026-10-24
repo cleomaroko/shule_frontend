@@ -143,12 +143,37 @@ export interface StockLogCreatePayload {
   type: TransactionType
   logDate: string
   supplier?: { id: number }
+  requisition?: { id: number }
   issuedToStaff?: { id: number }
   issuedToLearner?: { id: number }
   issuedToDept?: { id: number }
   receiptLink?: string
   /** ADDITION only. Read by `StoreController.recordTransaction`. */
   expiryBatches?: ExpiryBatchInput[]
+}
+
+export interface RunoutScenario {
+  assumed_daily_burn: number
+  projected_days_left: number
+  projected_runout_date: string
+}
+
+export interface RunoutForecast {
+  item_id?: number
+  item_name?: string
+  status?: string
+  current_stock?: number
+  unit?: string
+  days_left?: number
+  depletion_date?: string
+  urgency?: string
+  has_historical_data?: boolean
+  data_points_analyzed?: number
+  burn_rate_per_day?: number
+  simulated_scenarios?: Record<string, RunoutScenario>
+  notice?: string
+  advice?: string
+  engine?: string
 }
 
 /** `PUT /api/store/logs/{id}` copies quantity only. */

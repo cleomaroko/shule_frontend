@@ -22,6 +22,7 @@ import type { Department } from '@/features/lookups/lookups.types'
 import type { Learner } from '@/features/learners/types/learner.types'
 import type { Staff } from '@/features/staff/types/staff.types'
 import type { Supplier } from '@/features/suppliers/types/supplier.types'
+import type { Requisition } from '@/features/requisitions/types/requisition.types'
 import {
   TRANSACTION_TYPES,
   defaultTermId,
@@ -50,6 +51,7 @@ export interface StoreLogDialogProps {
   staff: Staff[]
   learners: Learner[]
   departments: Department[]
+  requisitions: Requisition[]
   isSaving: boolean
   onCreate: (body: StockLogCreatePayload) => void
   onUpdate: (body: StockLogUpdatePayload) => void
@@ -67,6 +69,7 @@ interface LogFormState {
   supplierId: string
   issuedToKind: 'none' | 'staff' | 'learner' | 'department'
   issuedToId: string
+  requisitionId: string
 }
 
 function todayIso(): string {
@@ -90,6 +93,7 @@ function emptyForm(items: StoreItem[], stores: StoreLocation[], terms: TermRef[]
     supplierId: '',
     issuedToKind: 'none',
     issuedToId: '',
+    requisitionId: '',
   }
 }
 
@@ -118,6 +122,7 @@ function formFromLog(log: StockLog): LogFormState {
     supplierId: log.supplier?.id ? String(log.supplier.id) : '',
     issuedToKind,
     issuedToId,
+    requisitionId: log.requisition?.id ? String(log.requisition.id) : '',
   }
 }
 
@@ -146,6 +151,7 @@ export function StoreLogDialog({
   staff,
   learners,
   departments,
+  requisitions,
   isSaving,
   onCreate,
   onUpdate,
@@ -209,6 +215,8 @@ export function StoreLogDialog({
         type: form.type,
         logDate: form.logDate,
       }
+      const requisitionId = Number(form.requisitionId)
+      if (requisitionId) body.requisition = { id: requisitionId }
       const destinationId = Number(form.destinationStoreId)
       if (form.type === 'TRANSFER' && destinationId) body.destinationStore = { id: destinationId }
       const supplierId = Number(form.supplierId)
@@ -401,6 +409,18 @@ export function StoreLogDialog({
                     ) : null}
                   </>
                 ) : null}
+                <SelectField
+                  label="Approved requisition (optional)"
+                  value={form.requisitionId}
+                  onChange={(value) => setField('requisitionId', value)}
+                  options={requisitions.map((requisition) => ({
+                    value: String(requisition.id),
+                    label: requisition.requisitionNumber || `Requisition #${requisition.id}`,
+                  }))}
+                  emptyLabel="No requisition"
+                  placeholder={requisitions.length ? 'Link a requisition' : 'No approved requisitions'}
+                  emptyMessage="No approved requisitions available."
+                />
                 {terms.length > 0 || termsLoading ? (
                   <SelectField
                     label="Term"

@@ -93,6 +93,14 @@ export function useItemMovements(itemId: number | null) {
   })
 }
 
+export function useRunoutForecast(itemId: number | null, storeId: number | null) {
+  return useQuery({
+    queryKey: queryKeys.store.runout(itemId ?? 0, storeId ?? 0),
+    queryFn: () => storeApi.predictRunout(itemId as number, storeId as number),
+    enabled: itemId != null && storeId != null,
+  })
+}
+
 export function useStoreMutations() {
   const queryClient = useQueryClient()
   const invalidateItems = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.items })

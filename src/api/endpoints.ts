@@ -99,6 +99,8 @@ export const endpoints = {
     /** GET wrapped. POST/PUT/DELETE wrapped. */
     items: "/store/items",
     itemById: (id: number) => `/store/items/${id}`,
+    /** GET wrapped. Required query: storeId. Returns actual forecast or explicitly hypothetical scenarios. */
+    predictRunout: (id: number) => `/store/items/${id}/predict-runout`,
     /** GET wrapped `StockLog[]` ordered by date desc. */
     itemMovements: (id: number) => `/store/items/${id}/movements`,
     /**
@@ -394,6 +396,8 @@ export const queryKeys = {
     }) => ["store", "stock-take", params] as const,
     itemMovements: (itemId: number) =>
       ["store", "items", itemId, "movements"] as const,
+    runout: (itemId: number, storeId: number) =>
+      ["store", "items", itemId, "runout", storeId] as const,
     expiringSoon: ["store", "alerts", "expiring-soon"] as const,
     expiryReport: (params: {
       itemId?: number;
