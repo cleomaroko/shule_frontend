@@ -140,15 +140,11 @@ export function resolveCurrentAcademicYear(
   return null
 }
 
-/** Display-only: `2027` → `2027/2028`. Names already containing a range are left as-is. */
+/** Display only the starting/current year from labels such as `2027/2028`. */
 export function formatAcademicYearDisplay(name: string | null | undefined): string | null {
   const trimmed = name?.trim()
   if (!trimmed) return null
-  if (/^\d{4}$/.test(trimmed)) {
-    const year = Number(trimmed)
-    return `${year}/${year + 1}`
-  }
-  return trimmed
+  return trimmed.match(/\d{4}/)?.[0] ?? trimmed
 }
 
 export function academicTermLabel(term: AcademicTerm): string {

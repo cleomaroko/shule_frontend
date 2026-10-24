@@ -409,18 +409,26 @@ export function StoreLogDialog({
                     ) : null}
                   </>
                 ) : null}
-                <SelectField
-                  label="Approved requisition (optional)"
-                  value={form.requisitionId}
-                  onChange={(value) => setField('requisitionId', value)}
-                  options={requisitions.map((requisition) => ({
-                    value: String(requisition.id),
-                    label: requisition.requisitionNumber || `Requisition #${requisition.id}`,
-                  }))}
-                  emptyLabel="No requisition"
-                  placeholder={requisitions.length ? 'Link a requisition' : 'No approved requisitions'}
-                  emptyMessage="No approved requisitions available."
-                />
+                {form.type !== 'BALANCE_BF' ? (
+                  <SelectField
+                    label="Approved requisition (optional)"
+                    value={form.requisitionId}
+                    onChange={(value) => setField('requisitionId', value)}
+                    options={requisitions.map((requisition) => {
+                      const requester = requisition.createdBy
+                        ? formatPersonName(requisition.createdBy)
+                        : 'Requester unavailable'
+                      const status = requisition.status?.replaceAll('_', ' ') || 'Status unavailable'
+                      return {
+                        value: String(requisition.id),
+                        label: `${requisition.requisitionNumber || `Requisition #${requisition.id}`} · ${requester} · ${status}`,
+                      }
+                    })}
+                    emptyLabel="No requisition"
+                    placeholder={requisitions.length ? 'Link a requisition' : 'No approved requisitions'}
+                    emptyMessage="No approved requisitions available."
+                  />
+                ) : null}
                 {terms.length > 0 || termsLoading ? (
                   <SelectField
                     label="Term"
