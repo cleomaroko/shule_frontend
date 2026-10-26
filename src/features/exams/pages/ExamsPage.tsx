@@ -55,6 +55,7 @@ import {
   type GradingScaleWritePayload,
 } from '@/features/exams/types/exam.types'
 import { useLearnerList } from '@/features/learners/hooks/useLearners'
+import { useCampuses } from '@/features/lookups/useLookups'
 import { BreakdownCard, StatGrid } from '@/features/reports/components/ReportPrimitives'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { displayValue, formatClassLabel, formatDate, formatPersonName } from '@/lib/format'
@@ -131,7 +132,7 @@ export function ExamsPage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Exams"
-        description="Enter marks, configure exam types and grading, and view pathway, track, and school-tier analysis. Analysis needs a learner and term; distribution needs a class and term."
+        description="Enter marks, configure exam types and grading, and view pathway, track, and school-tier analysis. Analysis needs a learner and term; pathway distribution needs a class and term, with optional campus and stream filters."
       />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
         <TabsList>
@@ -158,6 +159,7 @@ export function ExamsPage(): ReactNode {
 }
 
 function MarksPanel({ canWrite }: { canWrite: boolean }): ReactNode {
+  const campuses = useCampuses()
   const classes = useClassList()
   const streams = useStreamList()
   const types = useExamTypeList()
@@ -167,6 +169,7 @@ function MarksPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const scales = useGradingScaleList()
   const { addMarksBatch } = useExamMutations()
 
+  const [campusId, setCampusId] = useState('all')
   const [classId, setClassId] = useState('')
   const [streamId, setStreamId] = useState('')
   const [examTypeId, setExamTypeId] = useState('')
@@ -195,16 +198,18 @@ function MarksPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const roster = useMemo(() => {
     const all = learners.data ?? []
     if (!selectedClass) return []
-    const matched = selectedStream
-      ? all.filter((learner) => learnerMatchesClassStream(learner, selectedClass, selectedStream))
-      : all.filter((learner) => learnerMatchesClass(learner, selectedClass))
-    const source = matched.length > 0 ? matched : all
+    const source = all.filter((learner) => {
+      if (campusId !== 'all' && String(learner.campus?.id ?? '') !== campusId) return false
+      return selectedStream
+        ? learnerMatchesClassStream(learner, selectedClass, selectedStream)
+        : learnerMatchesClass(learner, selectedClass)
+    })
     const needle = query.trim().toLowerCase()
     return source.filter((learner) => {
       if (!needle) return true
       return [formatPersonName(learner), learner.admissionNumber].join(' ').toLowerCase().includes(needle)
     })
-  }, [learners.data, query, selectedClass, selectedStream])
+  }, [learners.data, query, selectedClass, selectedStream, campusId])
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -318,6 +323,15 @@ function MarksPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <SelectField
+          label="Campus"
+          value={campusId}
+          onChange={(value) => setCampusId(value || 'all')}
+          options={(campuses.data ?? []).map((campus) => ({ value: String(campus.id), label: campus.name }))}
+          allowEmpty={false}
+          emptyLabel="All campuses"
+          emptyMessage="No campuses available."
+        />
         <SelectField
           label="Class"
           value={classId}
@@ -619,11 +633,22 @@ function AnalysisPanel(): ReactNode {
 }
 
 function PathwaysPanel(): ReactNode {
+  const campuses = useCampuses()
   const classes = useClassList()
+  const streams = useStreamList()
   const terms = useAcademicTermList()
+  const [campusId, setCampusId] = useState('all')
   const [classId, setClassId] = useState('')
+  const [streamId, setStreamId] = useState('all')
   const [termId, setTermId] = useState('')
-  const distribution = usePathwayDistribution(classId ? Number(classId) : null, termId ? Number(termId) : null)
+  const selectedClass = (classes.data ?? []).find((item) => String(item.id) === classId)
+  const streamOptions = (selectedClass?.streams?.length ? selectedClass.streams : streams.data) ?? []
+  const distribution = usePathwayDistribution(
+    classId ? Number(classId) : null,
+    termId ? Number(termId) : null,
+    campusId !== 'all' ? Number(campusId) : null,
+    streamId !== 'all' ? Number(streamId) : null,
+  )
   const entries = pathwayDistributionRows(distribution.data)
 
   if (distribution.isError) {
@@ -632,14 +657,32 @@ function PathwaysPanel(): ReactNode {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <SelectField
+          label="Campus"
+          value={campusId}
+          onChange={setCampusId}
+          options={(campuses.data ?? []).map((campus) => ({ value: String(campus.id), label: campus.name }))}
+          allowEmpty={false}
+          emptyLabel="All campuses"
+          emptyMessage="No campuses available."
+        />
         <SelectField
           label="Class"
           value={classId}
-          onChange={setClassId}
+          onChange={(value) => { setClassId(value); setStreamId('all') }}
           options={(classes.data ?? []).map((item) => ({ value: String(item.id), label: formatClassLabel(item) }))}
           allowEmpty={false}
           placeholder="Select class"
+        />
+        <SelectField
+          label="Stream"
+          value={streamId}
+          onChange={setStreamId}
+          options={streamOptions.map((stream) => ({ value: String(stream.id), label: stream.name }))}
+          allowEmpty={false}
+          emptyLabel="All streams"
+          emptyMessage="No streams available for this class."
         />
         <SelectField
           label="Term"
@@ -653,7 +696,7 @@ function PathwaysPanel(): ReactNode {
       {!classId || !termId ? (
         <EmptyState
           title="Select class and term"
-          description="GET /api/exams/report/pathway-distribution requires classId and termId. Counts are STEM, Arts, and Social Sciences."
+          description="GET /api/exams/report/pathway-distribution requires classId and termId. Campus and stream are optional filters. Counts are STEM, Arts, and Social Sciences."
         />
       ) : (
         <BreakdownCard

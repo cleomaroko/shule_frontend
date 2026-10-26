@@ -42,10 +42,15 @@ export function useExamAnalysis(learnerId: number | null, termId: number | null)
   })
 }
 
-export function usePathwayDistribution(classId: number | null, termId: number | null) {
+export function usePathwayDistribution(
+  classId: number | null,
+  termId: number | null,
+  campusId: number | null = null,
+  streamId: number | null = null,
+) {
   return useQuery({
-    queryKey: queryKeys.exams.pathwayDistribution(classId ?? 0, termId ?? 0),
-    queryFn: () => examsApi.pathwayDistribution(classId as number, termId as number),
+    queryKey: queryKeys.exams.pathwayDistribution(classId ?? 0, termId ?? 0, campusId ?? undefined, streamId ?? undefined),
+    queryFn: () => examsApi.pathwayDistribution(classId as number, termId as number, campusId ?? undefined, streamId ?? undefined),
     enabled: Boolean(classId) && Boolean(termId),
   })
 }

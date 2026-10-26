@@ -12,11 +12,19 @@ import { TextField } from '@/components/forms/TextField'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { useRequisitionList } from '@/features/requisitions/hooks/useRequisitions'
 import { useStaffList } from '@/features/staff/hooks/useStaff'
 import { useGrnList, useStoreLocations, useStoreMutations } from '@/features/store/hooks/useStore'
 import { grnHasShortage, type CreateGrnPayload, type Grn } from '@/features/store/types/grn.types'
-import { formatPersonName, todayIso } from '@/lib/format'
+import { displayValue, formatDate, formatPersonName, todayIso } from '@/lib/format'
+import { formatStoreQty } from '@/features/store/types/store.types'
 
 type LineDraft = {
   description: string
@@ -35,6 +43,7 @@ export function GrnPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const requisitions = useRequisitionList()
   const { createGrn } = useStoreMutations()
   const [page, setPage] = useState(1)
+  const [selectedGrn, setSelectedGrn] = useState<Grn | null>(null)
   const [poId, setPoId] = useState('')
   const [storeId, setStoreId] = useState('')
   const [dateReceived, setDateReceived] = useState(todayIso())
@@ -281,16 +290,96 @@ export function GrnPanel({ canWrite }: { canWrite: boolean }): ReactNode {
           pageSize={10}
           total={(list.data ?? []).length}
           onPageChange={setPage}
+          onRowClick={setSelectedGrn}
+          rowAriaLabel={(row) => `View details for ${row.grnNumber || `GRN ${row.id}`}`}
           mobileCard={(row) => (
             <div>
               <p className="type-heading">{row.grnNumber || `GRN #${row.id}`}</p>
               <p className="type-caption text-muted-foreground">
                 {row.dateReceived || 'No date'} · {row.destinationStore?.name || 'No store'}
               </p>
+              <p className="type-caption mt-1 text-primary">View receipt details</p>
             </div>
           )}
         />
       )}
+      <GrnDetailDialog grn={selectedGrn} onOpenChange={(open) => { if (!open) setSelectedGrn(null) }} />
+    </div>
+  )
+}
+
+function GrnDetailDialog({ grn, onOpenChange }: { grn: Grn | null; onOpenChange: (open: boolean) => void }): ReactNode {
+  const items = grn?.items ?? []
+  const shortageCount = items.filter(grnHasShortage).length
+
+  return (
+    <Dialog open={grn !== null} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[92dvh] w-[calc(100%-1rem)] max-w-2xl overflow-y-auto">
+        {grn ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>{grn.grnNumber || `Goods received note #${grn.id}`}</DialogTitle>
+              <DialogDescription>Receipt details · {formatDate(grn.dateReceived)}</DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-5 space-y-5">
+              <dl className="grid grid-cols-2 gap-x-5 gap-y-4 rounded-lg border border-border p-4 sm:grid-cols-3">
+                <GrnDetailField label="Purchase order" value={grn.purchaseOrder?.poNumber || (grn.purchaseOrder?.id ? `PO #${grn.purchaseOrder.id}` : '—')} />
+                <GrnDetailField label="Destination store" value={displayValue(grn.destinationStore?.name)} />
+                <GrnDetailField label="Received by" value={grn.receivedBy ? formatPersonName(grn.receivedBy) : '—'} />
+                <GrnDetailField label="Delivered by" value={displayValue(grn.deliveredBy)} />
+                <GrnDetailField label="Released by" value={displayValue(grn.releasedBy)} />
+                <GrnDetailField label="Recorded by" value={displayValue(grn.recordedBy)} />
+              </dl>
+
+              <section>
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="type-label">Received items ({items.length})</h3>
+                  {shortageCount > 0 ? (
+                    <Badge variant="warning">{shortageCount} shortage{shortageCount === 1 ? '' : 's'}</Badge>
+                  ) : (
+                    <Badge variant="success">All quantities received</Badge>
+                  )}
+                </div>
+                {items.length === 0 ? (
+                  <p className="type-body text-muted-foreground">No line items on this receipt.</p>
+                ) : (
+                  <div className="divide-y divide-border rounded-lg border border-border px-4">
+                    {items.map((item, index) => (
+                      <div key={`${item.description || 'line'}-${index}`} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="type-label break-words">{displayValue(item.description)}</p>
+                          {grnHasShortage(item) ? <p className="type-caption text-warning">Short by {formatStoreQty((item.quantityOrdered ?? 0) - (item.quantityReceived ?? 0))}</p> : null}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-4 type-caption">
+                          <span><span className="text-muted-foreground">Ordered </span>{formatStoreQty(item.quantityOrdered)}</span>
+                          <span><span className="text-muted-foreground">Received </span>{formatStoreQty(item.quantityReceived)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              {grn.remarks ? (
+                <section>
+                  <h3 className="type-label mb-1">Remarks</h3>
+                  <p className="type-body whitespace-pre-wrap text-muted-foreground">{grn.remarks}</p>
+                </section>
+              ) : null}
+            </div>
+          </>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function GrnDetailField({ label, value }: { label: string; value: string }): ReactNode {
+  return (
+    <div className="min-w-0">
+      <dt className="type-caption text-muted-foreground">{label}</dt>
+      <dd className="type-body break-words font-medium">{value}</dd>
     </div>
   )
 }

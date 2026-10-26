@@ -234,7 +234,7 @@ export const endpoints = {
     config: "/exams/config",
     /** GET wrapped. Required query: learnerId, termId. Empty records → success with null data. */
     analysis: "/exams/report/analysis",
-    /** GET wrapped map STEM / Arts / Social Sciences. Required query: classId, termId. */
+    /** GET wrapped map STEM / Arts / Social Sciences. Required classId/termId; optional campusId/streamId. */
     pathwayDistribution: "/exams/report/pathway-distribution",
     /** GET wrapped. POST/PUT/DELETE wrapped. Auth on writes for audit. */
     types: "/exams/types",
@@ -456,8 +456,8 @@ export const queryKeys = {
     config: (classId: number) => ["exams", "config", classId] as const,
     analysis: (learnerId: number, termId: number) =>
       ["exams", "analysis", learnerId, termId] as const,
-    pathwayDistribution: (classId: number, termId: number) =>
-      ["exams", "pathway-distribution", classId, termId] as const,
+    pathwayDistribution: (classId: number, termId: number, campusId?: number, streamId?: number) =>
+      ["exams", "pathway-distribution", classId, termId, campusId ?? 0, streamId ?? 0] as const,
   },
   visitors: {
     all: ["visitors"] as const,

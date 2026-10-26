@@ -43,8 +43,12 @@ export const examsApi = {
       .get<ExamAnalysis | null>(endpoints.exams.analysis, { params: { learnerId, termId } })
       .then((r) => r.data ?? null),
 
-  pathwayDistribution: (classId: number, termId: number) =>
-    api
-      .get<PathwayDistribution>(endpoints.exams.pathwayDistribution, { params: { classId, termId } })
-      .then((r) => r.data ?? {}),
+  pathwayDistribution: (classId: number, termId: number, campusId?: number, streamId?: number) => {
+    const params: Record<string, number> = { classId, termId }
+    if (campusId != null) params.campusId = campusId
+    if (streamId != null) params.streamId = streamId
+    return api
+      .get<PathwayDistribution>(endpoints.exams.pathwayDistribution, { params })
+      .then((r) => r.data ?? {})
+  },
 }
