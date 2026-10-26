@@ -1,5 +1,5 @@
-import { api } from '@/api/client'
-import { endpoints } from '@/api/endpoints'
+import { api } from "@/api/client";
+import { endpoints } from "@/api/endpoints";
 import type {
   ExpiryReportQuery,
   InventoryCategory,
@@ -16,63 +16,110 @@ import type {
   StoreItemWritePayload,
   StoreLocation,
   StoreLocationWritePayload,
-} from '@/features/store/types/store.types'
-import type { CreateGrnPayload, Grn } from '@/features/store/types/grn.types'
+} from "@/features/store/types/store.types";
+import type { CreateGrnPayload, Grn } from "@/features/store/types/grn.types";
 
-function compactExpiryParams(params: ExpiryReportQuery): Record<string, string | number> {
-  const out: Record<string, string | number> = {}
-  if (params.itemId) out.itemId = params.itemId
-  if (params.storeId) out.storeId = params.storeId
-  if (params.status) out.status = params.status
-  return out
+function compactExpiryParams(
+  params: ExpiryReportQuery
+): Record<string, string | number> {
+  const out: Record<string, string | number> = {};
+  if (params.itemId) out.itemId = params.itemId;
+  if (params.storeId) out.storeId = params.storeId;
+  if (params.status) out.status = params.status;
+  return out;
 }
 
 export const storeApi = {
-  listLocations: () => api.get<StoreLocation[]>(endpoints.store.locations).then((r) => r.data ?? []),
+  listLocations: () =>
+    api
+      .get<StoreLocation[]>(endpoints.store.locations)
+      .then((r) => r.data ?? []),
   createLocation: (body: StoreLocationWritePayload) =>
-    api.post<StoreLocation>(endpoints.store.locations, body).then((r) => r.data as StoreLocation),
-  deleteLocation: (id: number) => api.delete(endpoints.store.locationById(id)).then(() => undefined),
+    api
+      .post<StoreLocation>(endpoints.store.locations, body)
+      .then((r) => r.data as StoreLocation),
+  deleteLocation: (id: number) =>
+    api.delete(endpoints.store.locationById(id)).then(() => undefined),
 
-  listCategories: () => api.get<InventoryCategory[]>(endpoints.store.categories).then((r) => r.data ?? []),
+  listCategories: () =>
+    api
+      .get<InventoryCategory[]>(endpoints.store.categories)
+      .then((r) => r.data ?? []),
   createCategory: (body: InventoryCategoryWritePayload) =>
-    api.post<InventoryCategory>(endpoints.store.categories, body).then((r) => r.data as InventoryCategory),
-  deleteCategory: (id: number) => api.delete(endpoints.store.categoryById(id)).then(() => undefined),
+    api
+      .post<InventoryCategory>(endpoints.store.categories, body)
+      .then((r) => r.data as InventoryCategory),
+  deleteCategory: (id: number) =>
+    api.delete(endpoints.store.categoryById(id)).then(() => undefined),
 
-  listUnits: () => api.get<ItemUnit[]>(endpoints.store.units).then((r) => r.data ?? []),
+  listUnits: () =>
+    api.get<ItemUnit[]>(endpoints.store.units).then((r) => r.data ?? []),
   createUnit: (body: ItemUnitWritePayload) =>
-    api.post<ItemUnit>(endpoints.store.units, body).then((r) => r.data as ItemUnit),
-  deleteUnit: (id: number) => api.delete(endpoints.store.unitById(id)).then(() => undefined),
+    api
+      .post<ItemUnit>(endpoints.store.units, body)
+      .then((r) => r.data as ItemUnit),
+  deleteUnit: (id: number) =>
+    api.delete(endpoints.store.unitById(id)).then(() => undefined),
 
-  listItems: () => api.get<StoreItem[]>(endpoints.store.items).then((r) => r.data ?? []),
+  listItems: () =>
+    api.get<StoreItem[]>(endpoints.store.items).then((r) => r.data ?? []),
   createItem: (body: StoreItemWritePayload) =>
-    api.post<StoreItem>(endpoints.store.items, body).then((r) => r.data as StoreItem),
+    api
+      .post<StoreItem>(endpoints.store.items, body)
+      .then((r) => r.data as StoreItem),
   updateItem: (id: number, body: StoreItemWritePayload) =>
-    api.put<StoreItem>(endpoints.store.itemById(id), body).then((r) => r.data as StoreItem),
-  deleteItem: (id: number) => api.delete(endpoints.store.itemById(id)).then(() => undefined),
+    api
+      .put<StoreItem>(endpoints.store.itemById(id), body)
+      .then((r) => r.data as StoreItem),
+  deleteItem: (id: number) =>
+    api.delete(endpoints.store.itemById(id)).then(() => undefined),
 
-  listLogs: () => api.get<StockLog[]>(endpoints.store.logs).then((r) => r.data ?? []),
+  listLogs: () =>
+    api.get<StockLog[]>(endpoints.store.logs).then((r) => r.data ?? []),
   createLog: (body: StockLogCreatePayload) =>
-    api.post<StockLog>(endpoints.store.logs, body).then((r) => r.data as StockLog),
+    api
+      .post<StockLog>(endpoints.store.logs, body)
+      .then((r) => r.data as StockLog),
   updateLog: (id: number, body: StockLogUpdatePayload) =>
-    api.put<StockLog>(endpoints.store.logById(id), body).then((r) => r.data as StockLog),
-  receiveLog: (id: number) => api.patch(endpoints.store.receiveLog(id)).then(() => undefined),
-  removeLog: (id: number) => api.delete(endpoints.store.logById(id)).then(() => undefined),
+    api
+      .put<StockLog>(endpoints.store.logById(id), body)
+      .then((r) => r.data as StockLog),
+  receiveLog: (id: number) =>
+    api.patch(endpoints.store.receiveLog(id)).then(() => undefined),
+  removeLog: (id: number) =>
+    api.delete(endpoints.store.logById(id)).then(() => undefined),
 
-  stockTake: (params: { storeId: number; termId: number; startDate: string; endDate: string }) =>
-    api.get<StockTakePayload[]>(endpoints.store.stockTake, { params }).then((r) => r.data ?? []),
+  stockTake: (params: {
+    storeId: number;
+    termId: number;
+    startDate: string;
+    endDate: string;
+  }) =>
+    api
+      .get<StockTakePayload[]>(endpoints.store.stockTake, { params })
+      .then((r) => r.data ?? []),
 
   itemMovements: (itemId: number) =>
-    api.get<StockLog[]>(endpoints.store.itemMovements(itemId)).then((r) => r.data ?? []),
+    api
+      .get<StockLog[]>(endpoints.store.itemMovements(itemId))
+      .then((r) => r.data ?? []),
 
   predictRunout: (itemId: number, storeId: number) =>
     api
-      .get<RunoutForecast>(endpoints.store.predictRunout(itemId), { params: { storeId } })
+      .get<RunoutForecast>(endpoints.store.predictRunout(itemId), {
+        params: { storeId },
+      })
       .then((r) => r.data as RunoutForecast),
 
-  expiringSoon: () => api.get<ItemBatch[]>(endpoints.store.expiringSoon).then((r) => r.data ?? []),
+  expiringSoon: () =>
+    api
+      .get<ItemBatch[]>(endpoints.store.expiringSoon)
+      .then((r) => r.data ?? []),
   expiryReport: (params: ExpiryReportQuery = {}) =>
     api
-      .get<ItemBatch[]>(endpoints.store.expiryReport, { params: compactExpiryParams(params) })
+      .get<ItemBatch[]>(endpoints.store.expiryReport, {
+        params: compactExpiryParams(params),
+      })
       .then((r) => r.data ?? []),
   correctExpiry: (id: number, expiryDate: string) =>
     api
@@ -82,4 +129,4 @@ export const storeApi = {
   listGrn: () => api.getList<Grn>(endpoints.store.grn),
   createGrn: (body: CreateGrnPayload) =>
     api.post<Grn>(endpoints.store.grn, body).then((r) => r.data as Grn),
-}
+};

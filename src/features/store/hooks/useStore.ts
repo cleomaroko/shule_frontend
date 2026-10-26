@@ -1,9 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
-import { toUserMessage } from '@/api/errors'
-import { queryKeys } from '@/api/endpoints'
-import { storeApi } from '@/features/store/api/store.api'
+import { toUserMessage } from "@/api/errors";
+import { queryKeys } from "@/api/endpoints";
+import { storeApi } from "@/features/store/api/store.api";
 import type {
   ExpiryReportQuery,
   InventoryCategoryWritePayload,
@@ -12,77 +12,89 @@ import type {
   StockLogUpdatePayload,
   StoreItemWritePayload,
   StoreLocationWritePayload,
-} from '@/features/store/types/store.types'
-import type { CreateGrnPayload } from '@/features/store/types/grn.types'
-import { logger } from '@/lib/logger'
+} from "@/features/store/types/store.types";
+import type { CreateGrnPayload } from "@/features/store/types/grn.types";
+import { logger } from "@/lib/logger";
 
 export function useStoreLocations() {
   return useQuery({
     queryKey: queryKeys.store.locations,
     queryFn: storeApi.listLocations,
-  })
+  });
 }
 
 export function useStoreCategories() {
   return useQuery({
     queryKey: queryKeys.store.categories,
     queryFn: storeApi.listCategories,
-  })
+  });
 }
 
 export function useStoreItems() {
   return useQuery({
     queryKey: queryKeys.store.items,
     queryFn: storeApi.listItems,
-  })
+  });
 }
 
 export function useStoreUnits() {
   return useQuery({
     queryKey: queryKeys.store.units,
     queryFn: storeApi.listUnits,
-  })
+  });
 }
 
 export function useGrnList() {
   return useQuery({
     queryKey: queryKeys.store.grn,
     queryFn: storeApi.listGrn,
-  })
+  });
 }
 
 export function useExpiringSoon() {
   return useQuery({
     queryKey: queryKeys.store.expiringSoon,
     queryFn: storeApi.expiringSoon,
-  })
+  });
 }
 
 export function useExpiryReport(params: ExpiryReportQuery) {
   return useQuery({
     queryKey: queryKeys.store.expiryReport(params),
     queryFn: () => storeApi.expiryReport(params),
-  })
+  });
 }
 
 export function useStoreLogs() {
   return useQuery({
     queryKey: queryKeys.store.logs,
     queryFn: storeApi.listLogs,
-  })
+  });
 }
 
-export function useStoreStockTake(params: {
-  storeId: number
-  termId: number
-  startDate: string
-  endDate: string
-} | null) {
+export function useStoreStockTake(
+  params: {
+    storeId: number;
+    termId: number;
+    startDate: string;
+    endDate: string;
+  } | null
+) {
   return useQuery({
-    queryKey: queryKeys.store.stockTake(params ?? { storeId: 0, termId: 0, startDate: '', endDate: '' }),
-    queryFn: () => storeApi.stockTake(params as { storeId: number; termId: number; startDate: string; endDate: string }),
+    queryKey: queryKeys.store.stockTake(
+      params ?? { storeId: 0, termId: 0, startDate: "", endDate: "" }
+    ),
+    queryFn: () =>
+      storeApi.stockTake(
+        params as {
+          storeId: number;
+          termId: number;
+          startDate: string;
+          endDate: string;
+        }
+      ),
     enabled: params != null,
-  })
+  });
 }
 
 export function useItemMovements(itemId: number | null) {
@@ -90,178 +102,195 @@ export function useItemMovements(itemId: number | null) {
     queryKey: queryKeys.store.itemMovements(itemId ?? 0),
     queryFn: () => storeApi.itemMovements(itemId as number),
     enabled: itemId != null,
-  })
+  });
 }
 
-export function useRunoutForecast(itemId: number | null, storeId: number | null) {
+export function useRunoutForecast(
+  itemId: number | null,
+  storeId: number | null
+) {
   return useQuery({
     queryKey: queryKeys.store.runout(itemId ?? 0, storeId ?? 0),
     queryFn: () => storeApi.predictRunout(itemId as number, storeId as number),
     enabled: itemId != null && storeId != null,
-  })
+  });
 }
 
 export function useStoreMutations() {
-  const queryClient = useQueryClient()
-  const invalidateItems = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.items })
+  const queryClient = useQueryClient();
+  const invalidateItems = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.store.items });
   const invalidateLogs = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.store.logs }),
-      queryClient.invalidateQueries({ queryKey: ['store', 'stock-take'] }),
-      queryClient.invalidateQueries({ queryKey: ['store', 'items'] }),
-    ])
-  const invalidateLocations = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.locations })
-  const invalidateCategories = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.categories })
-  const invalidateUnits = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.units })
-  const invalidateGrn = () => queryClient.invalidateQueries({ queryKey: queryKeys.store.grn })
+      queryClient.invalidateQueries({ queryKey: ["store", "stock-take"] }),
+      queryClient.invalidateQueries({ queryKey: ["store", "items"] }),
+    ]);
+  const invalidateLocations = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.store.locations });
+  const invalidateCategories = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.store.categories });
+  const invalidateUnits = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.store.units });
+  const invalidateGrn = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.store.grn });
   const invalidateBatches = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.store.expiringSoon }),
-      queryClient.invalidateQueries({ queryKey: ['store', 'reports', 'expiries'] }),
-    ])
+      queryClient.invalidateQueries({
+        queryKey: ["store", "reports", "expiries"],
+      }),
+    ]);
 
   const createLocation = useMutation({
-    mutationFn: (body: StoreLocationWritePayload) => storeApi.createLocation(body),
+    mutationFn: (body: StoreLocationWritePayload) =>
+      storeApi.createLocation(body),
     onSuccess: async () => {
-      await invalidateLocations()
-      toast.success('Store location added.')
+      await invalidateLocations();
+      toast.success("Store location added.");
     },
     onError: (error: unknown) => toast.error(toUserMessage(error)),
-  })
+  });
   const deleteLocation = useMutation({
     mutationFn: (id: number) => storeApi.deleteLocation(id),
     onSuccess: async () => {
-      await invalidateLocations()
-      toast.success('Store location removed.')
+      await invalidateLocations();
+      toast.success("Store location removed.");
     },
     onError: (error: unknown) => toast.error(toUserMessage(error)),
-  })
+  });
 
   const createCategory = useMutation({
-    mutationFn: (body: InventoryCategoryWritePayload) => storeApi.createCategory(body),
+    mutationFn: (body: InventoryCategoryWritePayload) =>
+      storeApi.createCategory(body),
     onSuccess: async () => {
-      await invalidateCategories()
-      toast.success('Category added.')
+      await invalidateCategories();
+      toast.success("Category added.");
     },
     onError: (error: unknown) => toast.error(toUserMessage(error)),
-  })
+  });
   const deleteCategory = useMutation({
     mutationFn: (id: number) => storeApi.deleteCategory(id),
     onSuccess: async () => {
-      await invalidateCategories()
-      toast.success('Category removed.')
+      await invalidateCategories();
+      toast.success("Category removed.");
     },
     onError: (error: unknown) => toast.error(toUserMessage(error)),
-  })
+  });
 
   const createUnit = useMutation({
     mutationFn: (body: ItemUnitWritePayload) => storeApi.createUnit(body),
     onSuccess: async () => {
-      await invalidateUnits()
-      toast.success('Item unit added.')
+      await invalidateUnits();
+      toast.success("Item unit added.");
     },
     onError: (error: unknown) => toast.error(toUserMessage(error)),
-  })
+  });
   const deleteUnit = useMutation({
     mutationFn: (id: number) => storeApi.deleteUnit(id),
     onSuccess: async () => {
-      await invalidateUnits()
-      toast.success('Item unit removed.')
+      await invalidateUnits();
+      toast.success("Item unit removed.");
     },
     onError: (error: unknown) => toast.error(toUserMessage(error)),
-  })
+  });
 
   const createItem = useMutation({
     mutationFn: (body: StoreItemWritePayload) => storeApi.createItem(body),
     onSuccess: async () => {
-      await invalidateItems()
-      toast.success('Store item created.')
+      await invalidateItems();
+      toast.success("Store item created.");
     },
     onError: (error: unknown) => {
-      logger.error('Create store item failed', error)
-      toast.error(toUserMessage(error))
+      logger.error("Create store item failed", error);
+      toast.error(toUserMessage(error));
     },
-  })
+  });
   const updateItem = useMutation({
-    mutationFn: ({ id, body }: { id: number; body: StoreItemWritePayload }) => storeApi.updateItem(id, body),
+    mutationFn: ({ id, body }: { id: number; body: StoreItemWritePayload }) =>
+      storeApi.updateItem(id, body),
     onSuccess: async () => {
-      await invalidateItems()
-      toast.success('Store item updated.')
+      await invalidateItems();
+      toast.success("Store item updated.");
     },
     onError: (error: unknown) => toast.error(toUserMessage(error)),
-  })
+  });
   const deleteItem = useMutation({
     mutationFn: (id: number) => storeApi.deleteItem(id),
     onSuccess: async () => {
-      await invalidateItems()
-      toast.success('Store item removed.')
+      await invalidateItems();
+      toast.success("Store item removed.");
     },
     onError: (error: unknown) => toast.error(toUserMessage(error)),
-  })
+  });
 
   const createLog = useMutation({
     mutationFn: (body: StockLogCreatePayload) => storeApi.createLog(body),
     onSuccess: async () => {
-      await Promise.all([invalidateLogs(), invalidateBatches()])
-      toast.success('Stock transaction recorded.')
+      await Promise.all([invalidateLogs(), invalidateBatches()]);
+      toast.success("Stock transaction recorded.");
     },
     onError: (error: unknown) => {
-      logger.error('Create stock log failed', error)
-      toast.error(toUserMessage(error))
+      logger.error("Create stock log failed", error);
+      toast.error(toUserMessage(error));
     },
-  })
+  });
   const updateLog = useMutation({
-    mutationFn: ({ id, body }: { id: number; body: StockLogUpdatePayload }) => storeApi.updateLog(id, body),
+    mutationFn: ({ id, body }: { id: number; body: StockLogUpdatePayload }) =>
+      storeApi.updateLog(id, body),
     onSuccess: async () => {
-      await invalidateLogs()
-      toast.success('Stock record corrected.')
+      await invalidateLogs();
+      toast.success("Stock record corrected.");
     },
     onError: (error: unknown) => {
-      logger.error('Update stock log failed', error)
-      toast.error(toUserMessage(error))
+      logger.error("Update stock log failed", error);
+      toast.error(toUserMessage(error));
     },
-  })
+  });
   const deleteLog = useMutation({
     mutationFn: (id: number) => storeApi.removeLog(id),
     onSuccess: async () => {
-      await invalidateLogs()
-      toast.success('Stock log removed.')
+      await invalidateLogs();
+      toast.success("Stock log removed.");
     },
     onError: (error: unknown) => {
-      logger.error('Delete stock log failed', error)
-      toast.error(toUserMessage(error))
+      logger.error("Delete stock log failed", error);
+      toast.error(toUserMessage(error));
     },
-  })
+  });
   const receiveLog = useMutation({
     mutationFn: (id: number) => storeApi.receiveLog(id),
     onSuccess: async () => {
-      await invalidateLogs()
-      toast.success('Transfer received at the destination store.')
+      await invalidateLogs();
+      toast.success("Transfer received at the destination store.");
     },
     onError: (error: unknown) => {
-      logger.error('Receive transfer failed', error)
-      toast.error(toUserMessage(error))
+      logger.error("Receive transfer failed", error);
+      toast.error(toUserMessage(error));
     },
-  })
+  });
   const correctExpiry = useMutation({
-    mutationFn: ({ id, expiryDate }: { id: number; expiryDate: string }) => storeApi.correctExpiry(id, expiryDate),
+    mutationFn: ({ id, expiryDate }: { id: number; expiryDate: string }) =>
+      storeApi.correctExpiry(id, expiryDate),
     onSuccess: async () => {
-      await invalidateBatches()
-      toast.success('Expiry date corrected.')
+      await invalidateBatches();
+      toast.success("Expiry date corrected.");
     },
     onError: (error: unknown) => toast.error(toUserMessage(error)),
-  })
+  });
   const createGrn = useMutation({
     mutationFn: (body: CreateGrnPayload) => storeApi.createGrn(body),
     onSuccess: async (saved) => {
-      await invalidateGrn()
-      toast.success(saved.grnNumber ? `${saved.grnNumber} recorded.` : 'GRN recorded.')
+      await invalidateGrn();
+      toast.success(
+        saved.grnNumber ? `${saved.grnNumber} recorded.` : "GRN recorded."
+      );
     },
     onError: (error: unknown) => {
-      logger.error('Create GRN failed', error)
-      toast.error(toUserMessage(error))
+      logger.error("Create GRN failed", error);
+      toast.error(toUserMessage(error));
     },
-  })
+  });
 
   return {
     createLocation,
@@ -279,5 +308,5 @@ export function useStoreMutations() {
     receiveLog,
     correctExpiry,
     createGrn,
-  }
+  };
 }

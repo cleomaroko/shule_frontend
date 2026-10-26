@@ -10,6 +10,8 @@ import { FilterChip, SearchField } from '@/components/data/FilterBar'
 import { ConfirmDialog } from '@/components/feedback/ConfirmDialog'
 import { EmptyState, ErrorState, PageHeader } from '@/components/feedback/PageStates'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ClassListsPanel } from '@/features/learners/components/ClassListsPanel'
 import { LearnerTable } from '@/features/learners/components/LearnerTable'
 import { useLearnerList, useLearnerMutations } from '@/features/learners/hooks/useLearners'
 import type { Learner } from '@/features/learners/types/learner.types'
@@ -90,85 +92,96 @@ export function LearnersPage(): ReactNode {
         }
       />
 
-      <SearchField
-        value={query}
-        onChange={(value) => {
-          setQuery(value)
-          setPage(1)
-        }}
-        placeholder="Search learners…"
-      />
-
-      <div className="flex flex-col gap-2">
-        <FilterRow
-          label="Class"
-          values={['all', ...classes]}
-          current={klass}
-          onChange={(value) => {
-            setKlass(value)
-            setPage(1)
-          }}
-        />
-        <FilterRow
-          label="Gender"
-          values={['all', ...genders]}
-          current={gender}
-          onChange={(value) => {
-            setGender(value)
-            setPage(1)
-          }}
-        />
-        <FilterRow
-          label="Boarding"
-          values={['all', 'boarding', 'day']}
-          current={boarding}
-          onChange={(value) => {
-            setBoarding(value)
-            setPage(1)
-          }}
-          formatLabel={(value) => (value === 'all' ? 'All' : value === 'boarding' ? 'Boarding' : 'Day scholar')}
-        />
-        <FilterRow
-          label="Status"
-          values={['all', ...statuses]}
-          current={status}
-          onChange={(value) => {
-            setStatus(value)
-            setPage(1)
-          }}
-        />
-        <FilterRow
-          label="Year"
-          values={['all', ...years]}
-          current={year}
-          onChange={(value) => {
-            setYear(value)
-            setPage(1)
-          }}
-        />
-      </div>
-
-      {isEmpty ? (
-        <EmptyState
-          title="No learners found"
-          description="Enrol your first learner to get started."
-          actionLabel={canWrite ? 'Add learner' : undefined}
-          actionTo={canWrite ? paths.learnerNew : undefined}
-        />
-      ) : noMatches ? (
-        <EmptyState title="No matching learners" description="Try a different search or filter." />
-      ) : (
-        <LearnerTable
-          rows={paged}
-          isLoading={list.isLoading}
-          page={page}
-          pageSize={PAGE_SIZE}
-          total={filtered.length}
-          onPageChange={setPage}
-          canWrite={canWrite}
-          onDelete={setPendingDelete}
-        />
-      )}
+      <Tabs defaultValue="directory">
+        <TabsList>
+          <TabsTrigger value="directory">Directory</TabsTrigger>
+          <TabsTrigger value="classes">Class lists</TabsTrigger>
+        </TabsList>
+        <TabsContent value="directory">
+          <div className="flex flex-col gap-4">
+            <SearchField
+              value={query}
+              onChange={(value) => {
+                setQuery(value)
+                setPage(1)
+              }}
+              placeholder="Search learners…"
+            />
+            <div className="flex flex-col gap-2">
+              <FilterRow
+                label="Class"
+                values={['all', ...classes]}
+                current={klass}
+                onChange={(value) => {
+                  setKlass(value)
+                  setPage(1)
+                }}
+              />
+              <FilterRow
+                label="Gender"
+                values={['all', ...genders]}
+                current={gender}
+                onChange={(value) => {
+                  setGender(value)
+                  setPage(1)
+                }}
+              />
+              <FilterRow
+                label="Boarding"
+                values={['all', 'boarding', 'day']}
+                current={boarding}
+                onChange={(value) => {
+                  setBoarding(value)
+                  setPage(1)
+                }}
+                formatLabel={(value) => (value === 'all' ? 'All' : value === 'boarding' ? 'Boarding' : 'Day scholar')}
+              />
+              <FilterRow
+                label="Status"
+                values={['all', ...statuses]}
+                current={status}
+                onChange={(value) => {
+                  setStatus(value)
+                  setPage(1)
+                }}
+              />
+              <FilterRow
+                label="Year"
+                values={['all', ...years]}
+                current={year}
+                onChange={(value) => {
+                  setYear(value)
+                  setPage(1)
+                }}
+              />
+            </div>
+            {isEmpty ? (
+              <EmptyState
+                title="No learners found"
+                description="Enrol your first learner to get started."
+                actionLabel={canWrite ? 'Add learner' : undefined}
+                actionTo={canWrite ? paths.learnerNew : undefined}
+              />
+            ) : noMatches ? (
+              <EmptyState title="No matching learners" description="Try a different search or filter." />
+            ) : (
+              <LearnerTable
+                rows={paged}
+                isLoading={list.isLoading}
+                page={page}
+                pageSize={PAGE_SIZE}
+                total={filtered.length}
+                onPageChange={setPage}
+                canWrite={canWrite}
+                onDelete={setPendingDelete}
+              />
+            )}
+          </div>
+        </TabsContent>
+        <TabsContent value="classes">
+          <ClassListsPanel learners={list.data ?? []} isLoading={list.isLoading} />
+        </TabsContent>
+      </Tabs>
 
       <ConfirmDialog
         open={pendingDelete !== null}

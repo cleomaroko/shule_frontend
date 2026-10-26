@@ -443,7 +443,8 @@ export const queryKeys = {
   },
   biometric: {
     summary: (date: string) => ["biometric", "summary", date] as const,
-    filter: (params: Record<string, string | number>) => ["biometric", "filter", params] as const,
+    filter: (params: Record<string, string | number>) =>
+      ["biometric", "filter", params] as const,
   },
   sow: {
     report: (params: Record<string, string | number>) =>
@@ -460,9 +461,12 @@ export const queryKeys = {
   },
   visitors: {
     all: ["visitors"] as const,
-    analytics: (params: Record<string, string | number>) => ["visitors", "analytics", params] as const,
-    myVisitors: (page: number, size: number) => ["visitors", "mine", page, size] as const,
-    notifications: (page: number, size: number) => ["visitors", "notifications", page, size] as const,
+    analytics: (params: Record<string, string | number>) =>
+      ["visitors", "analytics", params] as const,
+    myVisitors: (page: number, size: number) =>
+      ["visitors", "mine", page, size] as const,
+    notifications: (page: number, size: number) =>
+      ["visitors", "notifications", page, size] as const,
     categories: ["visitors", "categories"] as const,
     purposes: ["visitors", "purposes"] as const,
   },
