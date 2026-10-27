@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import {
   formatMoneyKes,
+  type ExternalHire,
   type ExternalHireWritePayload,
   type Vehicle,
 } from '@/features/transport/types/transport.types'
@@ -22,6 +23,7 @@ export interface HireDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   vehicles: Vehicle[]
+  hire?: ExternalHire | null
   isSaving: boolean
   onSubmit: (body: ExternalHireWritePayload) => void
 }
@@ -57,6 +59,20 @@ function emptyForm(vehicles: Vehicle[]): FormState {
   }
 }
 
+function formFromHire(hire: ExternalHire, vehicles: Vehicle[]): FormState {
+  const base = emptyForm(vehicles)
+  return {
+    vehicleId: hire.vehicleBeingReplaced?.id ? String(hire.vehicleBeingReplaced.id) : base.vehicleId,
+    hiredVehiclePlate: hire.hiredVehiclePlate ?? '',
+    numberOfTrips: hire.numberOfTrips == null ? '' : String(hire.numberOfTrips),
+    distanceCovered: hire.distanceCovered == null ? '' : String(hire.distanceCovered),
+    fuelCosts: hire.fuelCosts == null ? '' : String(hire.fuelCosts),
+    chargesWages: hire.chargesWages == null ? '' : String(hire.chargesWages),
+    hireDate: hire.hireDate?.slice(0, 10) || todayIso(),
+    comment: hire.comment ?? '',
+  }
+}
+
 function optionalNumber(value: string): number | undefined {
   const trimmed = value.trim()
   if (!trimmed) return undefined
@@ -68,6 +84,7 @@ export function HireDialog({
   open,
   onOpenChange,
   vehicles,
+  hire = null,
   isSaving,
   onSubmit,
 }: HireDialogProps): ReactNode {
@@ -79,8 +96,8 @@ export function HireDialog({
 
   useEffect(() => {
     if (!open) return
-    setForm(emptyForm(vehicles))
-  }, [open, vehicles])
+    setForm(hire ? formFromHire(hire, vehicles) : emptyForm(vehicles))
+  }, [open, vehicles, hire])
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -109,7 +126,7 @@ export function HireDialog({
       <DialogContent className="flex max-h-[92dvh] w-[calc(100%-1rem)] max-w-lg flex-col overflow-hidden p-0">
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
           <DialogHeader className="px-5 pt-6 sm:px-6">
-            <DialogTitle>Record external hire</DialogTitle>
+            <DialogTitle>{hire ? 'Update external hire' : 'Record external hire'}</DialogTitle>
             <DialogDescription>
               Used when an outside bus or van covers a school vehicle. Total cost is fuel plus wages.
             </DialogDescription>
@@ -206,7 +223,7 @@ export function HireDialog({
               Cancel
             </Button>
             <Button type="submit" isLoading={isSaving} loadingLabel="Saving">
-              Record hire
+              {hire ? 'Save changes' : 'Record hire'}
             </Button>
           </DialogFooter>
         </form>

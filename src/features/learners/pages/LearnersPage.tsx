@@ -12,6 +12,7 @@ import { EmptyState, ErrorState, PageHeader } from '@/components/feedback/PageSt
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ClassListsPanel } from '@/features/learners/components/ClassListsPanel'
+import { ProgressionPanel } from '@/features/learners/components/ProgressionPanel'
 import { LearnerTable } from '@/features/learners/components/LearnerTable'
 import { useLearnerList, useLearnerMutations } from '@/features/learners/hooks/useLearners'
 import type { Learner } from '@/features/learners/types/learner.types'
@@ -79,7 +80,7 @@ export function LearnersPage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Learners"
-        description="Manage enrolled learners."
+        description="Enrol learners, review class lists, and move a class up or out."
         actions={
           canWrite ? (
             <Button asChild>
@@ -96,6 +97,7 @@ export function LearnersPage(): ReactNode {
         <TabsList>
           <TabsTrigger value="directory">Directory</TabsTrigger>
           <TabsTrigger value="classes">Class lists</TabsTrigger>
+          <TabsTrigger value="progression">Promotion</TabsTrigger>
         </TabsList>
         <TabsContent value="directory">
           <div className="flex flex-col gap-4">
@@ -180,6 +182,9 @@ export function LearnersPage(): ReactNode {
         </TabsContent>
         <TabsContent value="classes">
           <ClassListsPanel learners={list.data ?? []} isLoading={list.isLoading} />
+        </TabsContent>
+        <TabsContent value="progression">
+          <ProgressionPanel canWrite={canWrite} />
         </TabsContent>
       </Tabs>
 

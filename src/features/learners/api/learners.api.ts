@@ -1,7 +1,12 @@
 import { api } from '@/api/client'
 import { ApiError } from '@/api/errors'
 import { endpoints } from '@/api/endpoints'
-import type { Learner, LearnerWriteBody } from '@/features/learners/types/learner.types'
+import type {
+  BulkPromotionBody,
+  Learner,
+  LearnerHistoryEntry,
+  LearnerWriteBody,
+} from '@/features/learners/types/learner.types'
 
 function requireData<T>(data: T | null | undefined, message: string): T {
   if (data === null || data === undefined) {
@@ -29,5 +34,25 @@ export const learnersApi = {
 
   remove(id: number): Promise<void> {
     return api.delete(endpoints.learners.byId(id)).then(() => undefined)
+  },
+
+  history(id: number): Promise<LearnerHistoryEntry[]> {
+    return api.get<LearnerHistoryEntry[]>(endpoints.learners.history(id)).then((result) => result.data ?? [])
+  },
+
+  promoteClass(body: BulkPromotionBody): Promise<void> {
+    return api.post(endpoints.learners.promotions, body).then(() => undefined)
+  },
+
+  transferCampus(body: { learnerId: number; targetCampusId: number; reason: string }): Promise<void> {
+    return api.post(endpoints.learners.transferCampus, body).then(() => undefined)
+  },
+
+  transferExternal(body: { learnerId: number; newSchoolName: string; reason: string }): Promise<void> {
+    return api.post(endpoints.learners.transferExternal, body).then(() => undefined)
+  },
+
+  graduateClass(body: { campusId: number; className: string }): Promise<void> {
+    return api.post(endpoints.learners.graduate, body).then(() => undefined)
   },
 }

@@ -6,6 +6,7 @@ import { queryKeys } from '@/api/endpoints'
 import { transportApi } from '@/features/transport/api/transport.api'
 import type {
   BusStopWritePayload,
+  ConsumptionQuery,
   ExternalHireWritePayload,
   TransportAssignmentQuery,
   TransportAssignmentWritePayload,
@@ -50,6 +51,13 @@ export function useHireList() {
   })
 }
 
+export function useConsumptionReport(params: ConsumptionQuery) {
+  return useQuery({
+    queryKey: queryKeys.transport.consumption(params),
+    queryFn: () => transportApi.consumption(params),
+  })
+}
+
 export function useTransportAssignmentList(params: TransportAssignmentQuery | undefined) {
   return useQuery({
     queryKey: params
@@ -64,7 +72,12 @@ export function useTransportMutations() {
   const queryClient = useQueryClient()
 
   const invalidateVehicles = () => queryClient.invalidateQueries({ queryKey: queryKeys.transport.vehicles })
-  const invalidateLogs = () => queryClient.invalidateQueries({ queryKey: queryKeys.transport.logs })
+  const invalidateLogs = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.transport.logs }),
+      queryClient.invalidateQueries({ queryKey: ['transport', 'consumption'] }),
+    ])
+  }
   const invalidateStops = () => queryClient.invalidateQueries({ queryKey: queryKeys.transport.stops })
   const invalidateServiceTypes = () =>
     queryClient.invalidateQueries({ queryKey: queryKeys.transport.serviceTypes })
@@ -80,6 +93,19 @@ export function useTransportMutations() {
     },
     onError: (error: unknown) => {
       logger.error('Create vehicle failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
+  const updateVehicle = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: VehicleWritePayload }) =>
+      transportApi.updateVehicle(id, body),
+    onSuccess: async () => {
+      await invalidateVehicles()
+      toast.success('Vehicle updated.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Update vehicle failed', error)
       toast.error(toUserMessage(error))
     },
   })
@@ -108,6 +134,19 @@ export function useTransportMutations() {
     },
   })
 
+  const updateLog = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: VehicleLogWritePayload }) =>
+      transportApi.updateLog(id, body),
+    onSuccess: async () => {
+      await invalidateLogs()
+      toast.success('Vehicle log updated.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Update vehicle log failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
   const deleteLog = useMutation({
     mutationFn: (id: number) => transportApi.deleteLog(id),
     onSuccess: async () => {
@@ -132,6 +171,18 @@ export function useTransportMutations() {
     },
   })
 
+  const deleteStop = useMutation({
+    mutationFn: (id: number) => transportApi.deleteStop(id),
+    onSuccess: async () => {
+      await invalidateStops()
+      toast.success('Bus stop removed.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Delete bus stop failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
   const createServiceType = useMutation({
     mutationFn: (body: { name: string }) => transportApi.createServiceType(body),
     onSuccess: async () => {
@@ -139,6 +190,18 @@ export function useTransportMutations() {
       toast.success('Service type added.')
     },
     onError: (error: unknown) => toast.error(toUserMessage(error)),
+  })
+
+  const deleteServiceType = useMutation({
+    mutationFn: (id: number) => transportApi.deleteServiceType(id),
+    onSuccess: async () => {
+      await invalidateServiceTypes()
+      toast.success('Service type removed.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Delete service type failed', error)
+      toast.error(toUserMessage(error))
+    },
   })
 
   const createHire = useMutation({
@@ -149,6 +212,31 @@ export function useTransportMutations() {
     },
     onError: (error: unknown) => {
       logger.error('Create external hire failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
+  const updateHire = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: ExternalHireWritePayload }) =>
+      transportApi.updateHire(id, body),
+    onSuccess: async () => {
+      await invalidateHires()
+      toast.success('External hire updated.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Update external hire failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
+  const deleteHire = useMutation({
+    mutationFn: (id: number) => transportApi.deleteHire(id),
+    onSuccess: async () => {
+      await invalidateHires()
+      toast.success('External hire removed.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Delete external hire failed', error)
       toast.error(toUserMessage(error))
     },
   })
@@ -179,12 +267,18 @@ export function useTransportMutations() {
 
   return {
     createVehicle,
+    updateVehicle,
     deleteVehicle,
     createLog,
+    updateLog,
     deleteLog,
     createStop,
+    deleteStop,
     createServiceType,
+    deleteServiceType,
     createHire,
+    updateHire,
+    deleteHire,
     createAssignment,
     deleteAssignment,
   }

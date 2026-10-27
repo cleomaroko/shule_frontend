@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
@@ -21,6 +21,7 @@ import { useLearnerList } from '@/features/learners/hooks/useLearners'
 import { useZoneList } from '@/features/logistics/hooks/useLogistics'
 import { useStaffList } from '@/features/staff/hooks/useStaff'
 import { AssignmentDialog } from '@/features/transport/components/AssignmentDialog'
+import { ConsumptionPanel } from '@/features/transport/components/ConsumptionPanel'
 import { BusStopDialog } from '@/features/transport/components/BusStopDialog'
 import { HireDialog } from '@/features/transport/components/HireDialog'
 import { VehicleDialog } from '@/features/transport/components/VehicleDialog'
@@ -64,11 +65,11 @@ import {
   vehicleTypeLabel,
 } from '@/features/transport/types/transport.types'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { displayValue, formatDate, formatDateTime, formatPersonName } from '@/lib/format'
+import { displayValue, formatCalendarDate, formatDate, formatPersonName } from '@/lib/format'
 
 const PAGE_SIZE = 10
 
-const TABS = ['fleet', 'register', 'hires', 'logs', 'stops', 'service-types'] as const
+const TABS = ['fleet', 'register', 'hires', 'logs', 'consumption', 'stops', 'service-types'] as const
 type TransportTab = (typeof TABS)[number]
 
 function tabFromParam(value: string | null): TransportTab {
@@ -105,7 +106,7 @@ export function TransportPage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Transport"
-        description="Fleet, learner register, external hires, fuel and service logs, and bus stops used on school routes."
+        description="Fleet, learner register, external hires, fuel and service logs, consumption, and bus stops used on school routes."
       />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
         <TabsList>
@@ -113,6 +114,7 @@ export function TransportPage(): ReactNode {
           <TabsTrigger value="register">Register</TabsTrigger>
           <TabsTrigger value="hires">External hires</TabsTrigger>
           <TabsTrigger value="logs">Logs</TabsTrigger>
+          <TabsTrigger value="consumption">Consumption</TabsTrigger>
           <TabsTrigger value="stops">Bus stops</TabsTrigger>
           <TabsTrigger value="service-types">Service types</TabsTrigger>
         </TabsList>
@@ -128,6 +130,9 @@ export function TransportPage(): ReactNode {
         <TabsContent value="logs">
           <LogsPanel canWrite={canWrite} />
         </TabsContent>
+        <TabsContent value="consumption">
+          <ConsumptionPanel />
+        </TabsContent>
         <TabsContent value="stops">
           <StopsPanel canWrite={canWrite} />
         </TabsContent>
@@ -141,11 +146,12 @@ export function TransportPage(): ReactNode {
 
 function FleetPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const list = useVehicleList()
-  const { createVehicle, deleteVehicle } = useTransportMutations()
+  const { createVehicle, updateVehicle, deleteVehicle } = useTransportMutations()
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('all')
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<Vehicle | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Vehicle | null>(null)
 
   const filtered = useMemo(() => {
@@ -163,10 +169,18 @@ function FleetPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const openCreate = () => {
+    setEditing(null)
     setOpen(true)
   }
 
   const handleSubmit = (body: VehicleWritePayload) => {
+    if (editing) {
+      updateVehicle.mutate(
+        { id: editing.id, body },
+        { onSuccess: () => setOpen(false) },
+      )
+      return
+    }
     createVehicle.mutate(body, { onSuccess: () => setOpen(false) })
   }
 
@@ -189,17 +203,30 @@ function FleetPanel({ canWrite }: { canWrite: boolean }): ReactNode {
     {
       id: 'actions',
       header: '',
-      className: 'w-16 text-right',
+      className: 'w-24 text-right',
       cell: (row) =>
         canWrite ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={`Delete ${row.numberPlate}`}
-            onClick={() => setPendingDelete(row)}
-          >
-            <Trash2 aria-hidden="true" />
-          </Button>
+          <div className="flex justify-end gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Edit ${row.numberPlate}`}
+              onClick={() => {
+                setEditing(row)
+                setOpen(true)
+              }}
+            >
+              <Pencil aria-hidden="true" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Delete ${row.numberPlate}`}
+              onClick={() => setPendingDelete(row)}
+            >
+              <Trash2 aria-hidden="true" />
+            </Button>
+          </div>
         ) : null,
     },
   ]
@@ -306,8 +333,12 @@ function FleetPanel({ canWrite }: { canWrite: boolean }): ReactNode {
 
       <VehicleDialog
         open={open}
-        onOpenChange={setOpen}
-        isSaving={createVehicle.isPending}
+        onOpenChange={(next) => {
+          setOpen(next)
+          if (!next) setEditing(null)
+        }}
+        vehicle={editing}
+        isSaving={createVehicle.isPending || updateVehicle.isPending}
         onSubmit={handleSubmit}
       />
       <ConfirmDialog
@@ -609,10 +640,12 @@ function RegisterPanel({ canWrite }: { canWrite: boolean }): ReactNode {
 function HiresPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const list = useHireList()
   const vehicles = useVehicleList()
-  const { createHire } = useTransportMutations()
+  const { createHire, updateHire, deleteHire } = useTransportMutations()
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<ExternalHire | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<ExternalHire | null>(null)
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -633,6 +666,10 @@ function HiresPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const canCreate = canWrite && (vehicles.data?.length ?? 0) > 0
 
   const handleSubmit = (body: ExternalHireWritePayload) => {
+    if (editing) {
+      updateHire.mutate({ id: editing.id, body }, { onSuccess: () => setOpen(false) })
+      return
+    }
     createHire.mutate(body, { onSuccess: () => setOpen(false) })
   }
 
@@ -649,6 +686,35 @@ function HiresPanel({ canWrite }: { canWrite: boolean }): ReactNode {
     { id: 'fuel', header: 'Fuel', cell: (row) => formatMoneyKes(row.fuelCosts) },
     { id: 'wages', header: 'Wages', cell: (row) => formatMoneyKes(row.chargesWages) },
     { id: 'total', header: 'Total', cell: (row) => formatMoneyKes(row.totalCost) },
+    {
+      id: 'actions',
+      header: '',
+      className: 'w-24 text-right',
+      cell: (row) =>
+        canWrite ? (
+          <div className="flex justify-end gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Edit hire ${row.hiredVehiclePlate ?? row.id}`}
+              onClick={() => {
+                setEditing(row)
+                setOpen(true)
+              }}
+            >
+              <Pencil aria-hidden="true" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Delete hire ${row.hiredVehiclePlate ?? row.id}`}
+              onClick={() => setPendingDelete(row)}
+            >
+              <Trash2 aria-hidden="true" />
+            </Button>
+          </div>
+        ) : null,
+    },
   ]
 
   if (list.isError) {
@@ -661,8 +727,8 @@ function HiresPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   return (
     <div className="flex flex-col gap-4">
       <p className="type-caption text-muted-foreground">
-        Outside buses or vans hired when a school vehicle is down or busy. Total cost is set by the
-        backend as fuel plus wages. Records cannot be edited or deleted.
+        Outside buses or vans hired when a school vehicle is down or busy. Total cost is fuel plus wages.
+        A hire can be updated or removed.
       </p>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SearchField
@@ -674,7 +740,14 @@ function HiresPanel({ canWrite }: { canWrite: boolean }): ReactNode {
           placeholder="Search hires…"
         />
         {canWrite ? (
-          <Button className="w-full sm:w-auto" onClick={() => setOpen(true)} disabled={!canCreate}>
+          <Button
+            className="w-full sm:w-auto"
+            onClick={() => {
+              setEditing(null)
+              setOpen(true)
+            }}
+            disabled={!canCreate}
+          >
             <Plus aria-hidden="true" />
             Record hire
           </Button>
@@ -688,7 +761,15 @@ function HiresPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         <EmptyState
           title="No external hires yet"
           description="Record a hired plate against the school vehicle it replaced."
-          {...(canCreate ? { actionLabel: 'Record hire', onAction: () => setOpen(true) } : {})}
+          {...(canCreate
+            ? {
+                actionLabel: 'Record hire',
+                onAction: () => {
+                  setEditing(null)
+                  setOpen(true)
+                },
+              }
+            : {})}
         />
       ) : noMatches ? (
         <EmptyState title="No matching hires" description="Try a different search." />
@@ -745,10 +826,33 @@ function HiresPanel({ canWrite }: { canWrite: boolean }): ReactNode {
 
       <HireDialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(next) => {
+          setOpen(next)
+          if (!next) setEditing(null)
+        }}
         vehicles={vehicles.data ?? []}
-        isSaving={createHire.isPending}
+        hire={editing}
+        isSaving={createHire.isPending || updateHire.isPending}
         onSubmit={handleSubmit}
+      />
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(next) => {
+          if (!next) setPendingDelete(null)
+        }}
+        title="Delete external hire?"
+        description={
+          pendingDelete
+            ? `This will remove the hire for ${pendingDelete.hiredVehiclePlate ?? 'this plate'}.`
+            : ''
+        }
+        confirmLabel="Delete"
+        loadingLabel="Deleting"
+        isConfirming={deleteHire.isPending}
+        onConfirm={() => {
+          if (!pendingDelete) return
+          deleteHire.mutate(pendingDelete.id, { onSuccess: () => setPendingDelete(null) })
+        }}
       />
     </div>
   )
@@ -760,15 +864,17 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const [end, setEnd] = useState('')
   const logs = useVehicleLogList({
     ...(typeFilter !== 'all' ? { logType: typeFilter } : {}),
-    ...(start && end ? { start, end } : {}),
+    ...(start ? { start } : {}),
+    ...(end ? { end } : {}),
   })
   const vehicles = useVehicleList()
   const staff = useStaffList()
   const serviceTypes = useVehicleServiceTypeList()
-  const { createLog, deleteLog } = useTransportMutations()
+  const { createLog, updateLog, deleteLog } = useTransportMutations()
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<VehicleLog | null>(null)
   const [pendingDelete, setPendingDelete] = useState<VehicleLog | null>(null)
   const [viewing, setViewing] = useState<VehicleLog | null>(null)
 
@@ -795,15 +901,30 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const canCreate = canWrite && (vehicles.data?.length ?? 0) > 0
 
   const openCreate = () => {
+    setEditing(null)
+    setOpen(true)
+  }
+
+  const openEdit = (row: VehicleLog) => {
+    setViewing(null)
+    setEditing(row)
     setOpen(true)
   }
 
   const handleSubmit = (body: VehicleLogWritePayload) => {
+    if (editing) {
+      updateLog.mutate({ id: editing.id, body }, { onSuccess: () => setOpen(false) })
+      return
+    }
     createLog.mutate(body, { onSuccess: () => setOpen(false) })
   }
 
   const columns: Array<DataColumn<VehicleLog>> = [
-    { id: 'when', header: 'Recorded', cell: (row) => formatDateTime(row.createdAt) },
+    {
+      id: 'when',
+      header: 'Log date',
+      cell: (row) => formatCalendarDate(row.logDate || row.createdAt?.slice(0, 10)),
+    },
     {
       id: 'type',
       header: 'Type',
@@ -838,17 +959,22 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
     {
       id: 'actions',
       header: '',
-      className: 'w-16 text-right',
+      className: 'w-24 text-right',
       cell: (row) =>
         canWrite ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={`Delete log ${row.id}`}
-            onClick={() => setPendingDelete(row)}
-          >
-            <Trash2 aria-hidden="true" />
-          </Button>
+          <div className="flex justify-end gap-1">
+            <Button variant="ghost" size="icon" aria-label={`Edit log ${row.id}`} onClick={() => openEdit(row)}>
+              <Pencil aria-hidden="true" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Delete log ${row.id}`}
+              onClick={() => setPendingDelete(row)}
+            >
+              <Trash2 aria-hidden="true" />
+            </Button>
+          </div>
         ) : null,
     },
   ]
@@ -863,7 +989,7 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   return (
     <div className="flex flex-col gap-4">
       <p className="type-caption text-muted-foreground">
-        Refueling, trips, and service. Efficiency comes from the backend: (mileage after − before) ÷ litres. Trip logs also store tank level before and after.
+        Refueling, trips, and service. The log date is the day of the event. Efficiency is distance divided by litres.
       </p>
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -921,7 +1047,7 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
               setEnd(event.target.value)
               setPage(1)
             }}
-            hint="Both dates are sent together to GET /api/transport/logs."
+            hint="Filters the log date. Either date can be sent on its own."
           />
         </div>
       </div>
@@ -955,7 +1081,9 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="type-heading truncate">{displayValue(row.vehicle?.numberPlate)}</p>
-                  <p className="type-caption text-muted-foreground">{formatDateTime(row.createdAt)}</p>
+                  <p className="type-caption text-muted-foreground">
+                    {formatCalendarDate(row.logDate || row.createdAt?.slice(0, 10))}
+                  </p>
                 </div>
                 <Badge variant={logBadgeVariant(row.logType)}>{vehicleLogTypeLabel(row.logType)}</Badge>
               </div>
@@ -992,11 +1120,15 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
 
       <VehicleLogDialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(next) => {
+          setOpen(next)
+          if (!next) setEditing(null)
+        }}
         vehicles={vehicles.data ?? []}
         drivers={staff.data ?? []}
         serviceTypes={serviceTypes.data ?? []}
-        isSaving={createLog.isPending}
+        editing={editing}
+        isSaving={createLog.isPending || updateLog.isPending}
         onSubmit={handleSubmit}
       />
       <VehicleLogDetailDialog
@@ -1004,6 +1136,7 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         onOpenChange={(next) => {
           if (!next) setViewing(null)
         }}
+        {...(canWrite ? { onEdit: openEdit } : {})}
       />
       <ConfirmDialog
         open={pendingDelete !== null}
@@ -1031,10 +1164,11 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
 function StopsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const list = useBusStopList()
   const zones = useZoneList()
-  const { createStop } = useTransportMutations()
+  const { createStop, deleteStop } = useTransportMutations()
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<BusStop | null>(null)
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -1062,6 +1196,22 @@ function StopsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
     },
     { id: 'code', header: 'Code', cell: (row) => displayValue(row.stopCode) },
     { id: 'zone', header: 'Zone', cell: (row) => displayValue(row.zone?.zoneName) },
+    {
+      id: 'actions',
+      header: '',
+      className: 'w-16 text-right',
+      cell: (row) =>
+        canWrite ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Delete ${row.stopName ?? 'stop'}`}
+            onClick={() => setPendingDelete(row)}
+          >
+            <Trash2 aria-hidden="true" />
+          </Button>
+        ) : null,
+    },
   ]
 
   if (list.isError) {
@@ -1074,7 +1224,7 @@ function StopsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   return (
     <div className="flex flex-col gap-4">
       <p className="type-caption text-muted-foreground">
-        Stops are linked to a transport zone. They can be added; the backend has no update or delete for stops.
+        Stops are linked to a transport zone. A stop can be added or removed. There is no update route, so a rename means deleting it and adding it again.
       </p>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SearchField
@@ -1129,18 +1279,37 @@ function StopsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
         isSaving={createStop.isPending}
         onSubmit={handleSubmit}
       />
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(next) => {
+          if (!next) setPendingDelete(null)
+        }}
+        title="Delete bus stop?"
+        description={
+          pendingDelete
+            ? `This will remove ${pendingDelete.stopName ?? 'this stop'}. Assignments that use it may fail until they are updated.`
+            : ''
+        }
+        confirmLabel="Delete"
+        loadingLabel="Deleting"
+        isConfirming={deleteStop.isPending}
+        onConfirm={() => {
+          if (!pendingDelete) return
+          deleteStop.mutate(pendingDelete.id, { onSuccess: () => setPendingDelete(null) })
+        }}
+      />
     </div>
   )
 }
 
 function ServiceTypesPanel({ canWrite }: { canWrite: boolean }): ReactNode {
   const list = useVehicleServiceTypeList()
-  const { createServiceType } = useTransportMutations()
+  const { createServiceType, deleteServiceType } = useTransportMutations()
 
   return (
     <NamedLookupManager
       title="Service type"
-      description="Used on SERVICE vehicle logs, for example Oil change or Brake pads."
+      description="Used on SERVICE vehicle logs, for example Oil change or Brake pads. Types can be removed. There is no rename route."
       emptyTitle="No service types yet"
       emptyDescription="Add types before recording a service log."
       items={list.data}
@@ -1149,8 +1318,11 @@ function ServiceTypesPanel({ canWrite }: { canWrite: boolean }): ReactNode {
       errorMessage={toUserMessage(list.error)}
       onRetry={() => void list.refetch()}
       canWrite={canWrite}
+      canDelete={canWrite}
       isSaving={createServiceType.isPending}
+      isDeleting={deleteServiceType.isPending}
       onCreate={(name) => createServiceType.mutate({ name })}
+      onDelete={(id) => deleteServiceType.mutate(id)}
     />
   )
 }

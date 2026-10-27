@@ -20,19 +20,23 @@ import {
   vehicleTypeLabel,
   type VehicleLog,
 } from '@/features/transport/types/transport.types'
-import { displayValue, formatDate, formatDateTime, formatPersonName } from '@/lib/format'
+import { displayValue, formatCalendarDate, formatDate, formatDateTime, formatPersonName } from '@/lib/format'
 
 export interface VehicleLogDetailDialogProps {
   log: VehicleLog | null
   onOpenChange: (open: boolean) => void
+  onEdit?: (log: VehicleLog) => void
 }
 
-export function VehicleLogDetailDialog({ log, onOpenChange }: VehicleLogDetailDialogProps): ReactNode {
+export function VehicleLogDetailDialog({
+  log,
+  onOpenChange,
+  onEdit,
+}: VehicleLogDetailDialogProps): ReactNode {
   const type = log?.logType
   const isService = type === 'SERVICE'
   const isRefuel = type === 'REFUELING'
   const isTrip = type === 'TRIP'
-  const showLegacyMileage = isRefuel && (log?.mileageBefore != null || log?.mileageAfter != null)
 
   return (
     <Dialog open={log !== null} onOpenChange={onOpenChange}>
@@ -42,7 +46,11 @@ export function VehicleLogDetailDialog({ log, onOpenChange }: VehicleLogDetailDi
             {displayValue(log?.vehicle?.numberPlate)}
             {log ? <Badge variant={logBadge(type)}>{vehicleLogTypeLabel(type)}</Badge> : null}
           </DialogTitle>
-          <DialogDescription>{log ? formatDateTime(log.createdAt) : 'Vehicle log'}</DialogDescription>
+          <DialogDescription>
+            {log
+              ? `${formatCalendarDate(log.logDate)} · saved ${formatDateTime(log.createdAt)}`
+              : 'Vehicle log'}
+          </DialogDescription>
         </DialogHeader>
         {log ? (
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4 sm:px-6">
@@ -75,15 +83,13 @@ export function VehicleLogDetailDialog({ log, onOpenChange }: VehicleLogDetailDi
                 {isService ? 'Service' : isTrip ? 'Trip' : 'Refueling'}
               </h3>
               <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 type-caption text-muted-foreground">
+                <Detail label="Log date" value={formatCalendarDate(log.logDate)} />
+                <Detail label="Recorded by" value={displayValue(log.recordedBy)} />
                 {isRefuel ? (
                   <>
-                    <Detail label="Mileage at fueling" value={formatKm(log.mileageAtFueling)} />
-                    {showLegacyMileage ? (
-                      <>
-                        <Detail label="Mileage before" value={formatKm(log.mileageBefore)} />
-                        <Detail label="Mileage after" value={formatKm(log.mileageAfter)} />
-                      </>
-                    ) : null}
+                    <Detail label="Mileage before" value={formatKm(log.mileageBefore)} />
+                    <Detail label="Mileage after" value={formatKm(log.mileageAfter ?? log.mileageAtFueling)} />
+                    <Detail label="Distance" value={formatKm(log.distanceCovered)} />
                     <Detail label="Quantity" value={formatLitres(log.fuelQuantityLitres)} />
                     <Detail label="Cost" value={formatMoneyKes(log.fuelCost)} />
                     <Detail label="Efficiency" value={formatEfficiency(log.efficiency)} />
@@ -93,6 +99,7 @@ export function VehicleLogDetailDialog({ log, onOpenChange }: VehicleLogDetailDi
                   <>
                     <Detail label="Mileage before" value={formatKm(log.mileageBefore)} />
                     <Detail label="Mileage after" value={formatKm(log.mileageAfter)} />
+                    <Detail label="Distance" value={formatKm(log.distanceCovered)} />
                     <Detail label="Tank before" value={formatFuelLevel(log.fuelLevelBefore)} />
                     <Detail label="Tank after" value={formatFuelLevel(log.fuelLevelAfter)} />
                     <Detail label="Quantity" value={formatLitres(log.fuelQuantityLitres)} />
@@ -121,6 +128,11 @@ export function VehicleLogDetailDialog({ log, onOpenChange }: VehicleLogDetailDi
           </div>
         ) : null}
         <DialogFooter className="border-t border-border px-5 py-4 sm:px-6">
+          {log && onEdit ? (
+            <Button type="button" variant="secondary" onClick={() => onEdit(log)}>
+              Edit
+            </Button>
+          ) : null}
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>

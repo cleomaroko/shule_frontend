@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@/components/feedback/ConfirmDialog'
 import { ErrorState } from '@/components/feedback/PageStates'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { LearnerMovementCard } from '@/features/learners/components/LearnerMovementCard'
 import { LearnerProfile } from '@/features/learners/components/LearnerProfile'
 import { useLearner, useLearnerMutations } from '@/features/learners/hooks/useLearners'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
@@ -49,6 +50,7 @@ export function LearnerDetailsPage(): ReactNode {
         ) : null}
       </div>
       <LearnerProfile learner={learner} canWrite={canWrite} />
+      <LearnerMovementCard learner={learner} canWrite={canWrite} />
       <ConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}

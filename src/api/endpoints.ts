@@ -26,6 +26,14 @@ export const endpoints = {
     list: "/learners",
     register: "/learners/register",
     byId: (id: number) => `/learners/${id}`,
+    /** GET wrapped page. Required query: campusId. Optional: className, stream, page, size. */
+    search: "/learners/search",
+    /** POST wrapped. ADMIN or HEAD. */
+    promotions: "/learners/promotions/bulk",
+    transferCampus: "/learners/transfers/campus",
+    transferExternal: "/learners/transfers/external",
+    graduate: "/learners/graduate",
+    history: (id: number) => `/learners/${id}/history`,
   },
   admissions: {
     /** POST public — website lead capture. */
@@ -129,17 +137,28 @@ export const endpoints = {
   transport: {
     vehicles: "/transport/vehicles",
     vehicleById: (id: number) => `/transport/vehicles/${id}`,
-    /** GET wrapped. Optional query: logType, vehicleId, driverId, serviceTypeId, start, end. */
+    /**
+     * GET wrapped. Optional query: logType, vehicleId, driverId, serviceTypeId, start, end.
+     * `start` and `end` filter `logDate`, not `createdAt`. POST and PUT wrapped.
+     */
     logs: "/transport/logs",
     logById: (id: number) => `/transport/logs/${id}`,
-    /** GET wrapped. POST wrapped. No PUT/DELETE. */
-    stops: "/transport/stops",
-    /** GET raw. POST wrapped. No PUT/DELETE. */
-    serviceTypes: "/transport/service-types",
-    /** GET raw `ExternalHire[]`. POST wrapped. No PUT/DELETE. */
-    hires: "/transport/hires",
     /**
-     * GET raw. Required query: vehicleId, tripType, term.
+     * GET wrapped. Optional query: start, end, vehicleId, periodLabel.
+     * Empty dates default to the current Monday–Saturday week.
+     */
+    consumption: "/transport/report/consumption",
+    /** GET/POST wrapped. DELETE wrapped. No PUT. */
+    stops: "/transport/stops",
+    stopById: (id: number) => `/transport/stops/${id}`,
+    /** GET/POST wrapped. DELETE wrapped. No PUT. */
+    serviceTypes: "/transport/service-types",
+    serviceTypeById: (id: number) => `/transport/service-types/${id}`,
+    /** GET/POST/PUT/DELETE wrapped. */
+    hires: "/transport/hires",
+    hireById: (id: number) => `/transport/hires/${id}`,
+    /**
+     * GET raw or wrapped. Required query: vehicleId, tripType, term.
      * POST wrapped. DELETE wrapped. No PUT.
      */
     assignments: "/transport/assignments",
@@ -361,6 +380,7 @@ export const queryKeys = {
   },
   learners: {
     all: ["learners"] as const,
+    history: (id: number) => ["learners", "history", id] as const,
   },
   admissions: {
     pending: ["admissions", "pending"] as const,
@@ -408,6 +428,12 @@ export const queryKeys = {
   transport: {
     vehicles: ["transport", "vehicles"] as const,
     logs: ["transport", "logs"] as const,
+    consumption: (params: {
+      start?: string
+      end?: string
+      vehicleId?: number
+      periodLabel?: string
+    }) => ["transport", "consumption", params] as const,
     stops: ["transport", "stops"] as const,
     serviceTypes: ["transport", "service-types"] as const,
     hires: ["transport", "hires"] as const,
@@ -456,8 +482,20 @@ export const queryKeys = {
     config: (classId: number) => ["exams", "config", classId] as const,
     analysis: (learnerId: number, termId: number) =>
       ["exams", "analysis", learnerId, termId] as const,
-    pathwayDistribution: (classId: number, termId: number, campusId?: number, streamId?: number) =>
-      ["exams", "pathway-distribution", classId, termId, campusId ?? 0, streamId ?? 0] as const,
+    pathwayDistribution: (
+      classId: number,
+      termId: number,
+      campusId?: number,
+      streamId?: number
+    ) =>
+      [
+        "exams",
+        "pathway-distribution",
+        classId,
+        termId,
+        campusId ?? 0,
+        streamId ?? 0,
+      ] as const,
   },
   visitors: {
     all: ["visitors"] as const,

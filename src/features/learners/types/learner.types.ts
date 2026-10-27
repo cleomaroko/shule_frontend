@@ -127,3 +127,29 @@ export const LEARNER_BOOLEAN_KEYS = [
 ] as const
 
 export type LearnerBooleanKey = (typeof LEARNER_BOOLEAN_KEYS)[number]
+
+/** `GET /api/learners/{id}/history`. */
+export interface LearnerHistoryEntry {
+  id: number
+  academicYear: string | null
+  term: string | null
+  campus: string | null
+  className: string | null
+  stream: string | null
+  status: string | null
+  promotionDate: string | null
+  actionBy: string | null
+}
+
+/** `POST /api/learners/promotions/bulk`. */
+export interface BulkPromotionBody {
+  campusId: number
+  currentYearId: number
+  nextYearId: number
+  nextTermId: number
+  fromClass: string
+  targetClass: string
+  fromStream?: string
+  targetStream?: string
+  excludedLearnerIds?: number[]
+}

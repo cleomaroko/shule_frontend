@@ -28,6 +28,15 @@ export function todayIso(date = new Date()): string {
   return `${year}-${month}-${day}`
 }
 
+/** Format a `YYYY-MM-DD` value as a calendar date, without a UTC day shift. */
+export function formatCalendarDate(value: string | null | undefined): string {
+  if (!value) return '—'
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
+  if (!match) return value
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date)
+}
+
 export function formatDate(value: string | null | undefined): string {
   if (!value) return '—'
   const date = new Date(value)

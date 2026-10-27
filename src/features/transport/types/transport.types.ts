@@ -50,10 +50,13 @@ export interface VehicleLog {
   vehicle?: Vehicle | null
   driver?: LogDriver | null
   logType?: string | null
+  /** Operational date (`YYYY-MM-DD`). Distinct from `createdAt`. */
+  logDate?: string | null
   mileageBefore?: number | null
   mileageAfter?: number | null
-  /** Odometer reading sent on REFUELING logs. */
+  /** Pump odometer. The server can derive distance from the previous reading. */
   mileageAtFueling?: number | null
+  distanceCovered?: number | null
   fuelQuantityLitres?: number | null
   fuelCost?: number | null
   serviceType?: VehicleServiceType | null
@@ -63,6 +66,7 @@ export interface VehicleLog {
   nextServiceDate?: string | null
   servicedByName?: string | null
   serviceReport?: string | null
+  recordedBy?: string | null
   createdAt?: string | null
   /** Trip tank readings. Backend stores a 0–1 fraction. */
   fuelLevelBefore?: number | null
@@ -75,14 +79,16 @@ export interface VehicleLogWritePayload {
   vehicle: { id: number }
   driver?: { id: number }
   logType: string
+  logDate?: string | null
   mileageBefore?: number | null
   mileageAfter?: number | null
-  mileageAtFueling?: number
+  mileageAtFueling?: number | null
+  distanceCovered?: number | null
   fuelQuantityLitres?: number | null
   fuelCost?: number | null
   fuelLevelBefore?: number | null
   fuelLevelAfter?: number | null
-  serviceType?: { id: number }
+  serviceType?: { id: number } | null
   serviceCost?: number | null
   serviceDate?: string | null
   mileageAtService?: number | null
@@ -145,7 +151,7 @@ export function formatLitres(value: number | null | undefined): string {
 
 export function logMileage(row: VehicleLog): number | null | undefined {
   if (row.logType === 'SERVICE') return row.mileageAtService
-  if (row.logType === 'REFUELING') return row.mileageAtFueling ?? row.mileageAfter ?? row.mileageBefore
+  if (row.logType === 'REFUELING') return row.mileageAfter ?? row.mileageAtFueling ?? row.mileageBefore
   return row.mileageAfter ?? row.mileageBefore
 }
 
@@ -245,4 +251,49 @@ export function formatFuelLevel(value: number | null | undefined): string {
 export function formatMoneyKes(value: number | null | undefined): string {
   if (value === null || value === undefined || Number.isNaN(value)) return '—'
   return `KES ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+}
+
+export interface ConsumptionQuery {
+  start?: string
+  end?: string
+  vehicleId?: number
+  periodLabel?: string
+}
+
+export interface VehicleConsumptionRow {
+  vehicleId: number
+  numberPlate: string
+  makeModel?: string | null
+  fuelCost: number
+  repairsCost: number
+  previousFuelCost: number
+  costDifference: number
+  totalKmsCovered: number
+  totalLitres: number
+  efficiencyKmPerLitre: number
+  previousTotalKm: number
+  previousKmPerLitre: number
+}
+
+export interface ConsumptionTotals {
+  totalFuelCost: number
+  totalRepairsCost: number
+  totalPreviousFuelCost: number
+  totalCostDifference: number
+  totalKmsCovered: number
+  totalLitres: number
+  averageEfficiencyKmPerLitre: number
+  totalPreviousKmsCovered: number
+  previousAverageEfficiencyKmPerLitre: number
+}
+
+/** `GET /api/transport/report/consumption`. */
+export interface PeriodicConsumptionReport {
+  periodTitle: string
+  startDate: string
+  endDate: string
+  previousStartDate: string
+  previousEndDate: string
+  vehicles: VehicleConsumptionRow[]
+  totals: ConsumptionTotals
 }
