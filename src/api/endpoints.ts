@@ -11,10 +11,18 @@ export const endpoints = {
     resetPassword: "/auth/reset-password",
   },
   staff: {
-    /** GET — `ApiResponse<Staff[]>` */
+    /** GET paginated `StaffDto` page. Query: page, size. No passwords or bank fields. */
     list: "/staff",
-    /** GET — `ApiResponse<Staff[]>` teachers/heads/deans (StaffRepository.findAllTeachers). */
+    /** GET paginated teachers. Query: page, size. */
     teachers: "/staff/teachers",
+    /** GET paginated drivers. Query: page, size. */
+    drivers: "/staff/drivers",
+    /** GET paginated security staff. Query: page, size. */
+    security: "/staff/security",
+    /** GET .xlsx. Requires Authorization. */
+    bulkTemplate: "/staff/bulk/template",
+    /** POST multipart field `file`. Requires Authorization. */
+    bulkUpload: "/staff/bulk/upload",
     /** POST — requires Authorization; creates Staff and a User login. */
     register: "/staff/register",
     /** PUT / DELETE — requires Authorization */
@@ -34,6 +42,13 @@ export const endpoints = {
     transferExternal: "/learners/transfers/external",
     graduate: "/learners/graduate",
     history: (id: number) => `/learners/${id}/history`,
+    /** GET .xlsx. Query: campusId, classId, optional streamId. Requires Authorization. */
+    bulkTemplate: "/learners/bulk/template",
+    /** POST multipart: file, campusId, classId, optional streamId, academicYearId. */
+    bulkUpload: "/learners/bulk/upload",
+    rollbackSingle: (id: number) => `/learners/promotions/rollback/single/${id}`,
+    rollbackBulk: "/learners/promotions/rollback/bulk",
+    demote: "/learners/demote",
   },
   admissions: {
     /** POST public — website lead capture. */
@@ -319,12 +334,16 @@ export const endpoints = {
     status: (id: number) => `/tickets/${id}/status`,
   },
   projects: {
-    /** GET raw `Project[]`. POST raw `Project`. */
+    /** GET raw `Project[]`. POST wrapped. Requires Authorization on POST. */
     list: "/projects",
-    /** POST wrapped. Data is null. */
+    /** PATCH wrapped body `{ status }`. Requires Authorization. */
+    status: (id: number) => `/projects/${id}/status`,
+    /** POST wrapped. Body uses `projectId`. Requires Authorization. */
     expense: "/projects/expense",
-    /** GET wrapped map: projectName, budget, spent, remaining. */
+    /** GET wrapped map including `expenses`. */
     finances: (id: number) => `/projects/${id}/finances`,
+    /** GET wrapped CapEx variance audit. */
+    audit: (id: number) => `/projects/${id}/audit`,
   },
   visitors: {
     /** POST wrapped check-in. There is no GET list — use analytics or my-visitors. */
@@ -377,6 +396,10 @@ export const queryKeys = {
   staff: {
     all: ["staff"] as const,
     teachers: ["staff", "teachers"] as const,
+    drivers: ["staff", "drivers"] as const,
+    security: ["staff", "security"] as const,
+    page: (kind: string, page: number, size: number) =>
+      ["staff", "page", kind, page, size] as const,
   },
   learners: {
     all: ["learners"] as const,
@@ -550,6 +573,7 @@ export const queryKeys = {
   projects: {
     all: ["projects"] as const,
     finances: (id: number) => ["projects", "finances", id] as const,
+    audit: (id: number) => ["projects", "audit", id] as const,
   },
   lookups: {
     campuses: ["lookups", "campuses"] as const,

@@ -12,6 +12,7 @@ import { EmptyState, ErrorState, PageHeader } from '@/components/feedback/PageSt
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ClassListsPanel } from '@/features/learners/components/ClassListsPanel'
+import { LearnerEnrollmentCard } from '@/features/learners/components/LearnerEnrollmentCard'
 import { ProgressionPanel } from '@/features/learners/components/ProgressionPanel'
 import { LearnerTable } from '@/features/learners/components/LearnerTable'
 import { useLearnerList, useLearnerMutations } from '@/features/learners/hooks/useLearners'
@@ -41,7 +42,9 @@ export function LearnersPage(): ReactNode {
   const classes = unique(list.data?.map((item) => item.currentClass || item.admissionClass))
   const genders = unique(list.data?.map((item) => item.gender))
   const statuses = unique(list.data?.map((item) => item.status))
-  const years = unique(list.data?.map((item) => formatYear(item.admissionDate)))
+  const years = unique(
+    list.data?.map((item) => item.academicYear?.name?.trim() || formatYear(item.admissionDate)),
+  )
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -51,7 +54,7 @@ export function LearnersPage(): ReactNode {
       if (boarding === 'boarding' && !item.boarding) return false
       if (boarding === 'day' && item.boarding) return false
       if (status !== 'all' && item.status !== status) return false
-      if (year !== 'all' && formatYear(item.admissionDate) !== year) return false
+      if (year !== 'all' && (item.academicYear?.name?.trim() || formatYear(item.admissionDate)) !== year) return false
       if (!needle) return true
       const haystack = [
         item.firstName,
@@ -80,7 +83,7 @@ export function LearnersPage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Learners"
-        description="Enrol learners, review class lists, and move a class up or out."
+        description="Enrol learners one by one or from a sheet, review class lists, and move a class up or out."
         actions={
           canWrite ? (
             <Button asChild>
@@ -98,6 +101,7 @@ export function LearnersPage(): ReactNode {
           <TabsTrigger value="directory">Directory</TabsTrigger>
           <TabsTrigger value="classes">Class lists</TabsTrigger>
           <TabsTrigger value="progression">Promotion</TabsTrigger>
+          <TabsTrigger value="enrolment">Bulk enrolment</TabsTrigger>
         </TabsList>
         <TabsContent value="directory">
           <div className="flex flex-col gap-4">
@@ -185,6 +189,9 @@ export function LearnersPage(): ReactNode {
         </TabsContent>
         <TabsContent value="progression">
           <ProgressionPanel canWrite={canWrite} />
+        </TabsContent>
+        <TabsContent value="enrolment">
+          <LearnerEnrollmentCard canWrite={canWrite} />
         </TabsContent>
       </Tabs>
 

@@ -107,6 +107,8 @@ export interface Learner {
   kjseaEntry: string | null
   kjseaGrade: string | null
   currentIndexNumber: string | null
+  academicYear?: { id: number; name?: string | null } | null
+  promotionStatus?: string | null
 }
 
 export const LEARNER_BOOLEAN_KEYS = [
@@ -152,4 +154,27 @@ export interface BulkPromotionBody {
   fromStream?: string
   targetStream?: string
   excludedLearnerIds?: number[]
+}
+
+export interface LearnerBulkResult {
+  totalImported?: number
+  failedRows?: number
+  errors?: string[]
+}
+
+export interface BulkRollbackBody {
+  campusId: number
+  accidentalTargetClass: string
+  academicYearId: number
+  reason: string
+}
+
+export interface DemotionBody {
+  learnerId: number
+  campusId: number
+  academicYearId: number
+  termId?: number
+  targetClass: string
+  targetStream?: string
+  reason: string
 }

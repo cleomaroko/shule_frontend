@@ -19,7 +19,7 @@ import { useAcademicTermList } from '@/features/academic/hooks/useAcademic'
 import { academicTermLabel, resolveCurrentTerm } from '@/features/academic/types/academic.types'
 import { useLearnerList } from '@/features/learners/hooks/useLearners'
 import { useZoneList } from '@/features/logistics/hooks/useLogistics'
-import { useStaffList } from '@/features/staff/hooks/useStaff'
+import { useDriverList } from '@/features/staff/hooks/useStaff'
 import { AssignmentDialog } from '@/features/transport/components/AssignmentDialog'
 import { ConsumptionPanel } from '@/features/transport/components/ConsumptionPanel'
 import { BusStopDialog } from '@/features/transport/components/BusStopDialog'
@@ -868,7 +868,7 @@ function LogsPanel({ canWrite }: { canWrite: boolean }): ReactNode {
     ...(end ? { end } : {}),
   })
   const vehicles = useVehicleList()
-  const staff = useStaffList()
+  const staff = useDriverList()
   const serviceTypes = useVehicleServiceTypeList()
   const { createLog, updateLog, deleteLog } = useTransportMutations()
   const [query, setQuery] = useState('')

@@ -68,6 +68,8 @@ export function LearnerProfile({ learner, canWrite }: { learner: Learner; canWri
         <ProfileField label="Admission term" value={displayValue(learner.admissionTerm)} />
         <ProfileField label="Current class" value={displayValue(learner.currentClass)} />
         <ProfileField label="Stream" value={displayValue(learner.stream)} />
+        <ProfileField label="Academic year" value={displayValue(learner.academicYear?.name)} />
+        <ProfileField label="Promotion status" value={displayValue(learner.promotionStatus)} />
         <ProfileField label="Specialisation" value={displayValue(learner.areaOfSpecialization)} />
         <ProfileField label="KCPE score" value={displayValue(learner.kcpeScore)} />
         <ProfileField label="KCSE grade" value={displayValue(learner.ksceGrade)} />

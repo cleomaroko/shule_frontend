@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useDepartments } from '@/features/lookups/useLookups'
+import { useRequisitionList } from '@/features/requisitions/hooks/useRequisitions'
 import { ProjectDetailDialog } from '@/features/projects/components/ProjectDetailDialog'
 import { useProjectFinances, useProjectList, useProjectMutations } from '@/features/projects/hooks/useProjects'
 import {
@@ -39,7 +40,8 @@ export function ProjectsPage(): ReactNode {
   const canExpense = can(user?.role, 'project:expense')
   const projects = useProjectList()
   const departments = useDepartments()
-  const { create, update, addExpense } = useProjectMutations()
+  const approved = useRequisitionList({ status: 'APPROVED' })
+  const { create, updateStatus, addExpense } = useProjectMutations()
   const driveRef = useRef<GoogleDriveDocumentFieldHandle>(null)
 
   const [name, setName] = useState('')
@@ -49,6 +51,7 @@ export function ProjectsPage(): ReactNode {
   const [deadline, setDeadline] = useState('')
   const [status, setStatus] = useState<ProjectStatus>('PLANNED')
   const [budget, setBudget] = useState('')
+  const [requisitionId, setRequisitionId] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [detail, setDetail] = useState<Project | null>(null)
   const [amount, setAmount] = useState('')
@@ -78,12 +81,15 @@ export function ProjectsPage(): ReactNode {
     if (dept) body.department = { id: dept }
     if (startDate) body.startDate = startDate
     if (deadline) body.deadline = deadline
+    const linked = Number(requisitionId)
+    if (linked) body.requisitionId = linked
     create.mutate(body, {
       onSuccess: (saved) => {
         setName('')
         setDescription('')
         setBudget('')
-        if (saved.id) setSelectedId(saved.id)
+        setRequisitionId('')
+        if (saved?.id) setSelectedId(saved.id)
       },
     })
   }
@@ -103,7 +109,7 @@ export function ProjectsPage(): ReactNode {
       return
     }
     const body: ProjectExpensePayload = {
-      project: { id: selectedId },
+      projectId: selectedId,
       amount: parsedAmount,
       description: expenseDescription.trim(),
     }
@@ -134,13 +140,13 @@ export function ProjectsPage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Projects"
-        description="GET /api/projects returns a raw list. Create is also unwrapped. Expenses and the finance summary use the ApiResponse envelope."
+        description="Create a project, record expenses, and open a row to change status or read the budget audit."
       />
 
       <div className="grid gap-6 xl:grid-cols-2">
         {canWrite ? (
           <form onSubmit={handleCreate}>
-            <FormSection title="New project" description="POST /api/projects with name, budget, status, and optional dates.">
+            <FormSection title="New project" description="Name, budget, and status. Link an approved requisition when this project spends that request.">
               <TextField label="Name" value={name} onChange={(event) => setName(event.target.value)} required />
               <SelectField
                 label="Status"
@@ -155,6 +161,16 @@ export function ProjectsPage(): ReactNode {
                 onChange={setDepartmentId}
                 options={(departments.data ?? []).map((item) => ({ value: String(item.id), label: item.name }))}
                 emptyLabel="Not set"
+              />
+              <SelectField
+                label="Approved requisition"
+                value={requisitionId}
+                onChange={setRequisitionId}
+                options={(approved.data ?? []).map((item) => ({
+                  value: String(item.id),
+                  label: item.requisitionNumber || `Requisition #${item.id}`,
+                }))}
+                emptyLabel="None"
               />
               <TextField
                 label="Total budget (KES)"
@@ -187,7 +203,7 @@ export function ProjectsPage(): ReactNode {
         <form onSubmit={(event) => void handleExpense(event)}>
           <FormSection
             title="Record expense"
-            description="POST /api/projects/expense. There is no expense list — the finance summary is the remaining view."
+            description="Amount, date, and description. Open the project to see each expense and the budget audit."
           >
             <SelectField
               label="Project"
@@ -294,19 +310,24 @@ export function ProjectsPage(): ReactNode {
       <ProjectDetailDialog
         project={detail}
         canUpdateStatus={canWrite}
-        isSaving={update.isPending}
+        isSaving={updateStatus.isPending}
         onOpenChange={(next) => {
           if (!next) setDetail(null)
         }}
-        onStatusChange={(body) => {
-          update.mutate(body, {
-            onSuccess: (saved) => {
-              setDetail((current) =>
-                current && current.id === saved.id ? { ...current, ...saved, status: saved.status ?? body.status } : saved,
-              )
-              if (saved.id) setSelectedId(saved.id)
+        onStatusChange={(status) => {
+          if (!detail) return
+          updateStatus.mutate(
+            { id: detail.id, status },
+            {
+              onSuccess: (saved) => {
+                setDetail((current) =>
+                  current && saved && current.id === saved.id
+                    ? { ...current, ...saved, status: saved.status ?? status }
+                    : current,
+                )
+              },
             },
-          })
+          )
         }}
       />
     </div>

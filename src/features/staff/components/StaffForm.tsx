@@ -100,6 +100,11 @@ export function StaffForm({ staff, isSubmitting, submitLabel, onSubmit }: StaffF
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+      {staff ? (
+        <p className="type-caption text-muted-foreground">
+          The staff list no longer includes identity, bank, or photo details. Fill those fields again before saving, or they will be cleared.
+        </p>
+      ) : null}
       <FormSection title="Personal information">
         <TextField label="First name" autoComplete="given-name" error={form.formState.errors.firstName?.message} disabled={busy} {...form.register('firstName')} />
         <TextField label="Second name" error={form.formState.errors.secondName?.message} disabled={busy} {...form.register('secondName')} />

@@ -5,10 +5,12 @@ import { ErrorState } from '@/components/feedback/PageStates'
 import { SelectField } from '@/components/forms/SelectField'
 import { TextField } from '@/components/forms/TextField'
 import { Button } from '@/components/ui/button'
+import { useAcademicTermList, useAcademicYearList } from '@/features/academic/hooks/useAcademic'
+import { academicTermLabel } from '@/features/academic/types/academic.types'
 import { useLearnerHistory, useLearnerMutations } from '@/features/learners/hooks/useLearners'
-import type { Learner } from '@/features/learners/types/learner.types'
-import { useCampuses } from '@/features/lookups/useLookups'
-import { displayValue, formatCalendarDate, formatPersonName } from '@/lib/format'
+import type { DemotionBody, Learner } from '@/features/learners/types/learner.types'
+import { useCampuses, useSchoolClasses } from '@/features/lookups/useLookups'
+import { displayValue, formatCalendarDate, formatClassLabel, formatPersonName } from '@/lib/format'
 
 export function LearnerMovementCard({
   learner,
@@ -19,11 +21,21 @@ export function LearnerMovementCard({
 }): ReactNode {
   const history = useLearnerHistory(learner.id, canWrite)
   const campuses = useCampuses()
-  const { transferCampus, transferExternal } = useLearnerMutations()
+  const classes = useSchoolClasses()
+  const years = useAcademicYearList()
+  const terms = useAcademicTermList()
+  const { transferCampus, transferExternal, rollbackSingle, demote } = useLearnerMutations()
   const [targetCampusId, setTargetCampusId] = useState('')
   const [transferReason, setTransferReason] = useState('')
   const [schoolName, setSchoolName] = useState('')
   const [exitReason, setExitReason] = useState('')
+  const [rollbackReason, setRollbackReason] = useState('')
+  const [demoteCampusId, setDemoteCampusId] = useState(learner.campus?.id ? String(learner.campus.id) : '')
+  const [demoteYearId, setDemoteYearId] = useState(learner.academicYear?.id ? String(learner.academicYear.id) : '')
+  const [demoteTermId, setDemoteTermId] = useState('')
+  const [demoteClass, setDemoteClass] = useState('')
+  const [demoteStream, setDemoteStream] = useState('')
+  const [demoteReason, setDemoteReason] = useState('')
 
   if (!canWrite) return null
 
@@ -57,6 +69,34 @@ export function LearnerMovementCard({
         },
       },
     )
+  }
+
+  const demoteTerms = (terms.data ?? []).filter((term) => !demoteYearId || term.academicYear?.id === Number(demoteYearId))
+
+  const handleRollback = (event: FormEvent) => {
+    event.preventDefault()
+    if (!rollbackReason.trim()) return
+    rollbackSingle.mutate(
+      { learnerId: learner.id, reason: rollbackReason.trim() },
+      { onSuccess: () => setRollbackReason('') },
+    )
+  }
+
+  const handleDemote = (event: FormEvent) => {
+    event.preventDefault()
+    const campusId = Number(demoteCampusId)
+    const academicYearId = Number(demoteYearId)
+    if (!campusId || !academicYearId || !demoteClass || !demoteReason.trim()) return
+    const body: DemotionBody = {
+      learnerId: learner.id,
+      campusId,
+      academicYearId,
+      targetClass: demoteClass,
+      reason: demoteReason.trim(),
+    }
+    if (demoteTermId) body.termId = Number(demoteTermId)
+    if (demoteStream.trim()) body.targetStream = demoteStream.trim()
+    demote.mutate(body, { onSuccess: () => setDemoteReason('') })
   }
 
   return (
@@ -141,6 +181,73 @@ export function LearnerMovementCard({
           />
           <Button type="submit" variant="secondary" className="w-full sm:w-auto" isLoading={transferExternal.isPending} loadingLabel="Saving">
             Record exit
+          </Button>
+        </form>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <form onSubmit={handleRollback} className="flex flex-col gap-4">
+          <h3 className="type-label">Undo the last promotion</h3>
+          <TextField
+            label="Reason"
+            value={rollbackReason}
+            onChange={(event) => setRollbackReason(event.target.value)}
+            required
+          />
+          <Button type="submit" variant="secondary" className="w-full sm:w-auto" isLoading={rollbackSingle.isPending} loadingLabel="Reversing">
+            Reverse last move
+          </Button>
+        </form>
+
+        <form onSubmit={handleDemote} className="flex flex-col gap-4">
+          <h3 className="type-label">Repeat or move down</h3>
+          <SelectField
+            label="Campus"
+            value={demoteCampusId}
+            onChange={setDemoteCampusId}
+            options={(campuses.data ?? []).map((campus) => ({ value: String(campus.id), label: campus.name }))}
+            emptyLabel="Select campus"
+          />
+          <SelectField
+            label="Academic year"
+            value={demoteYearId}
+            onChange={(value) => {
+              setDemoteYearId(value)
+              setDemoteTermId('')
+            }}
+            options={(years.data ?? []).map((year) => ({ value: String(year.id), label: year.name }))}
+            emptyLabel="Select year"
+          />
+          <SelectField
+            label="Term"
+            value={demoteTermId}
+            onChange={setDemoteTermId}
+            options={demoteTerms.map((term) => ({ value: String(term.id), label: academicTermLabel(term) }))}
+            emptyLabel="Not set"
+          />
+          <SelectField
+            label="Target class"
+            value={demoteClass}
+            onChange={setDemoteClass}
+            options={(classes.data ?? []).map((item) => ({
+              value: item.className?.trim() || formatClassLabel(item),
+              label: formatClassLabel(item),
+            }))}
+            emptyLabel="Select class"
+          />
+          <TextField
+            label="Target stream"
+            value={demoteStream}
+            onChange={(event) => setDemoteStream(event.target.value)}
+          />
+          <TextField
+            label="Reason"
+            value={demoteReason}
+            onChange={(event) => setDemoteReason(event.target.value)}
+            required
+          />
+          <Button type="submit" className="w-full sm:w-auto" isLoading={demote.isPending} loadingLabel="Saving">
+            Update placement
           </Button>
         </form>
       </div>

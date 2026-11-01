@@ -2,14 +2,16 @@
  * Staff entity as returned by `StaffController`.
  * Source: `com.lyrt.shule.staff.Staff`.
  *
- * Dates serialize as ISO `YYYY-MM-DD`. `password` is present on responses and
- * must never be displayed or posted back.
+ * List endpoints return `StaffDto.Response` pages. Passwords, banking, and
+ * identity documents are not included. Register and update still accept the
+ * full profile.
  */
 export interface Staff {
   id: number
   firstName: string | null
   secondName: string | null
   lastName: string | null
+  fullName?: string | null
   title: string | null
   gender: string | null
   dateOfBirth: string | null

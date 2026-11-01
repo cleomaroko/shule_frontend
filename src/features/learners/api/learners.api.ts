@@ -3,7 +3,10 @@ import { ApiError } from '@/api/errors'
 import { endpoints } from '@/api/endpoints'
 import type {
   BulkPromotionBody,
+  BulkRollbackBody,
+  DemotionBody,
   Learner,
+  LearnerBulkResult,
   LearnerHistoryEntry,
   LearnerWriteBody,
 } from '@/features/learners/types/learner.types'
@@ -54,5 +57,33 @@ export const learnersApi = {
 
   graduateClass(body: { campusId: number; className: string }): Promise<void> {
     return api.post(endpoints.learners.graduate, body).then(() => undefined)
+  },
+
+  downloadTemplate(params: { campusId: number; classId: number; streamId?: number }): Promise<Blob> {
+    return api.getBlob(endpoints.learners.bulkTemplate, { params })
+  },
+
+  upload(file: File, params: { campusId: number; classId: number; streamId?: number; academicYearId?: number }): Promise<LearnerBulkResult> {
+    const body = new FormData()
+    body.append('file', file)
+    body.append('campusId', String(params.campusId))
+    body.append('classId', String(params.classId))
+    if (params.streamId) body.append('streamId', String(params.streamId))
+    if (params.academicYearId) body.append('academicYearId', String(params.academicYearId))
+    return api.postMultipart<LearnerBulkResult>(endpoints.learners.bulkUpload, body).then((result) => result.data ?? {})
+  },
+
+  rollbackSingle(learnerId: number, reason: string): Promise<void> {
+    return api.post(endpoints.learners.rollbackSingle(learnerId), { reason }).then(() => undefined)
+  },
+
+  rollbackBulk(body: BulkRollbackBody): Promise<{ revertedLearnersCount?: number; revertedFromClass?: string }> {
+    return api
+      .post<{ revertedLearnersCount?: number; revertedFromClass?: string }>(endpoints.learners.rollbackBulk, body)
+      .then((result) => result.data ?? {})
+  },
+
+  demote(body: DemotionBody): Promise<void> {
+    return api.post(endpoints.learners.demote, body).then(() => undefined)
   },
 }

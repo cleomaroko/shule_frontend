@@ -217,6 +217,51 @@ export const api = {
   getList<T>(url: string, config?: AxiosRequestConfig): Promise<T[]> {
     return apiGetList<T>(url, config)
   },
+  /**
+   * GET a file. The auth interceptor still attaches `Authorization`.
+   * JSON error bodies are turned into ApiError.
+   */
+  async getBlob(url: string, config?: AxiosRequestConfig): Promise<Blob> {
+    try {
+      const response = await httpClient.request<Blob>({
+        ...config,
+        url,
+        method: 'GET',
+        responseType: 'blob',
+      })
+      const blob = response.data
+      if (blob.type.includes('json')) {
+        const text = await blob.text()
+        let message = 'Download failed'
+        try {
+          const parsed = JSON.parse(text) as { message?: string }
+          if (parsed.message) message = parsed.message
+        } catch {
+          if (text.trim()) message = text
+        }
+        throw new ApiError({ kind: 'business', message, status: response.status, detail: text })
+      }
+      return blob
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.data instanceof Blob) {
+        const text = await error.response.data.text()
+        let message = 'Download failed'
+        try {
+          const parsed = JSON.parse(text) as { message?: string }
+          if (parsed.message) message = parsed.message
+        } catch {
+          if (text.trim()) message = text
+        }
+        throw new ApiError({
+          kind: 'business',
+          message,
+          status: error.response.status,
+          detail: text,
+        })
+      }
+      throw error
+    }
+  },
   /** GET that returns a plain string (not an `ApiResponse` envelope). */
   async getText(url: string, config?: AxiosRequestConfig): Promise<string> {
     const response = await httpClient.request<unknown>({

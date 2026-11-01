@@ -10,75 +10,63 @@ import { FilterChip, SearchField } from '@/components/data/FilterBar'
 import { ConfirmDialog } from '@/components/feedback/ConfirmDialog'
 import { EmptyState, ErrorState, PageHeader } from '@/components/feedback/PageStates'
 import { Button } from '@/components/ui/button'
+import { StaffBulkCard } from '@/features/staff/components/StaffBulkCard'
 import { StaffTable } from '@/features/staff/components/StaffTable'
-import { useStaffList, useStaffMutations } from '@/features/staff/hooks/useStaff'
+import { useStaffMutations, useStaffPage } from '@/features/staff/hooks/useStaff'
 import type { Staff } from '@/features/staff/types/staff.types'
+import type { StaffListKind } from '@/features/staff/api/staff.api'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { formatPersonName } from '@/lib/format'
 import { paths } from '@/routes/paths'
 
 const PAGE_SIZE = 10
 
+const GROUPS: Array<{ id: StaffListKind; label: string }> = [
+  { id: 'all', label: 'All staff' },
+  { id: 'teachers', label: 'Teachers' },
+  { id: 'drivers', label: 'Drivers' },
+  { id: 'security', label: 'Security' },
+]
+
 export function StaffPage(): ReactNode {
   useDocumentTitle('Staff')
   const { user } = useAuth()
   const canWrite = can(user?.role, 'staff:write')
-  const list = useStaffList()
-  const { remove } = useStaffMutations()
-
+  const [kind, setKind] = useState<StaffListKind>('all')
   const [query, setQuery] = useState('')
-  const [status, setStatus] = useState('all')
   const [page, setPage] = useState(1)
+  const list = useStaffPage(kind, page, PAGE_SIZE)
+  const { remove } = useStaffMutations()
   const [pendingDelete, setPendingDelete] = useState<Staff | null>(null)
 
-  const statuses = useMemo(() => {
-    const values = new Set<string>()
-    for (const item of list.data ?? []) {
-      if (item.status?.trim()) values.add(item.status.trim())
-    }
-    return ['all', ...Array.from(values).sort()]
-  }, [list.data])
-
-  const filtered = useMemo(() => {
+  const rows = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    return (list.data ?? []).filter((item) => {
-      if (status !== 'all' && (item.status ?? '').trim() !== status) return false
-      if (!needle) return true
-      const haystack = [
-        item.firstName,
-        item.secondName,
-        item.lastName,
-        item.staffNumber,
-        item.workEmail,
-        item.phone,
-        item.department,
-        item.systemRole,
-      ]
+    const content = list.data?.content ?? []
+    if (!needle) return content
+    return content.filter((item) =>
+      [item.firstName, item.secondName, item.lastName, item.fullName, item.staffNumber, item.workEmail, item.phone, item.department, item.systemRole]
         .join(' ')
         .toLowerCase()
-      return haystack.includes(needle)
-    })
-  }, [list.data, query, status])
-
-  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+        .includes(needle),
+    )
+  }, [list.data, query])
 
   const handleSearch = (value: string) => {
     setQuery(value)
-    setPage(1)
   }
 
   if (list.isError) {
     return <ErrorState message={toUserMessage(list.error)} onRetry={() => void list.refetch()} />
   }
 
-  const isEmpty = !list.isLoading && (list.data?.length ?? 0) === 0
-  const noMatches = !list.isLoading && !isEmpty && filtered.length === 0
+  const total = list.data?.totalElements ?? 0
+  const isEmpty = !list.isLoading && total === 0
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Staff"
-        description="Manage teachers and school employees."
+        description="Teachers, drivers, security, and other employees. The list is paged on the server and does not include passwords."
         actions={
           canWrite ? (
             <Button asChild>
@@ -91,39 +79,45 @@ export function StaffPage(): ReactNode {
         }
       />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <SearchField value={query} onChange={handleSearch} placeholder="Search staff…" />
+      <StaffBulkCard canWrite={canWrite} />
+
+      <div className="flex flex-col gap-3">
+        <SearchField value={query} onChange={handleSearch} placeholder="Search this page…" />
         <div className="flex flex-wrap gap-2">
-          {statuses.map((value) => (
+          {GROUPS.map((group) => (
             <FilterChip
-              key={value}
-              label={value === 'all' ? 'All staff' : value}
-              active={status === value}
+              key={group.id}
+              label={group.label}
+              active={kind === group.id}
               onClick={() => {
-                setStatus(value)
+                setKind(group.id)
                 setPage(1)
+                setQuery('')
               }}
             />
           ))}
         </div>
+        <p className="type-caption text-muted-foreground">
+          Search looks at the people on this page. Change page to look further.
+        </p>
       </div>
 
       {isEmpty ? (
         <EmptyState
           title="No staff members yet"
-          description="Add your first staff member to get started."
+          description="Add a person or upload the Excel template."
           actionLabel={canWrite ? 'Add staff' : undefined}
           actionTo={canWrite ? paths.staffNew : undefined}
         />
-      ) : noMatches ? (
-        <EmptyState title="No matching staff" description="Try a different search or status filter." />
+      ) : query.trim() && rows.length === 0 ? (
+        <EmptyState title="No matches on this page" description="Try another page or clear the search." />
       ) : (
         <StaffTable
-          rows={paged}
+          rows={rows}
           isLoading={list.isLoading}
-          page={page}
-          pageSize={PAGE_SIZE}
-          total={filtered.length}
+          page={query.trim() ? 1 : page}
+          pageSize={query.trim() ? Math.max(rows.length, 1) : PAGE_SIZE}
+          total={query.trim() ? rows.length : total}
           onPageChange={setPage}
           canWrite={canWrite}
           onDelete={setPendingDelete}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 
 import { SelectField } from '@/components/forms/SelectField'
+import { TextField } from '@/components/forms/TextField'
 import { Button } from '@/components/ui/button'
 import { useAcademicTermList, useAcademicYearList } from '@/features/academic/hooks/useAcademic'
 import { academicTermLabel, calendarIsCurrent } from '@/features/academic/types/academic.types'
@@ -21,7 +22,7 @@ export function ProgressionPanel({ canWrite }: { canWrite: boolean }): ReactNode
   const classes = useSchoolClasses()
   const years = useAcademicYearList()
   const terms = useAcademicTermList()
-  const { promoteClass, graduateClass } = useLearnerMutations()
+  const { promoteClass, graduateClass, rollbackBulk } = useLearnerMutations()
 
   const [campusId, setCampusId] = useState('')
   const [currentYearId, setCurrentYearId] = useState('')
@@ -35,6 +36,10 @@ export function ProgressionPanel({ canWrite }: { canWrite: boolean }): ReactNode
 
   const [graduateCampusId, setGraduateCampusId] = useState('')
   const [graduateClassName, setGraduateClassName] = useState('')
+  const [rollbackCampusId, setRollbackCampusId] = useState('')
+  const [rollbackClass, setRollbackClass] = useState('')
+  const [rollbackYearId, setRollbackYearId] = useState('')
+  const [rollbackReason, setRollbackReason] = useState('')
 
   useEffect(() => {
     const currentYear = (years.data ?? []).find((year) => calendarIsCurrent(year))
@@ -50,8 +55,13 @@ export function ProgressionPanel({ canWrite }: { canWrite: boolean }): ReactNode
   }, [terms.data])
 
   const campusLearners = useMemo(
-    () => (learners.data ?? []).filter((learner) => String(learner.campus?.id ?? '') === campusId),
-    [learners.data, campusId],
+    () =>
+      (learners.data ?? []).filter((learner) => {
+        if (String(learner.campus?.id ?? '') !== campusId) return false
+        if (currentYearId && learner.academicYear?.id && learner.academicYear.id !== Number(currentYearId)) return false
+        return true
+      }),
+    [learners.data, campusId, currentYearId],
   )
 
   const fromClassOptions = useMemo(() => unique(campusLearners.map((learner) => learner.currentClass)), [campusLearners])
@@ -132,6 +142,22 @@ export function ProgressionPanel({ canWrite }: { canWrite: boolean }): ReactNode
     const campus = Number(graduateCampusId)
     if (!campus || !graduateClassName) return
     graduateClass.mutate({ campusId: campus, className: graduateClassName })
+  }
+
+  const handleRollback = (event: FormEvent) => {
+    event.preventDefault()
+    const campus = Number(rollbackCampusId)
+    const year = Number(rollbackYearId)
+    if (!campus || !year || !rollbackClass.trim() || !rollbackReason.trim()) return
+    rollbackBulk.mutate(
+      {
+        campusId: campus,
+        accidentalTargetClass: rollbackClass.trim(),
+        academicYearId: year,
+        reason: rollbackReason.trim(),
+      },
+      { onSuccess: () => setRollbackReason('') },
+    )
   }
 
   if (!canWrite) {
@@ -303,6 +329,47 @@ export function ProgressionPanel({ canWrite }: { canWrite: boolean }): ReactNode
         </p>
         <Button type="submit" className="w-full sm:w-auto" isLoading={graduateClass.isPending} loadingLabel="Graduating">
           Graduate class
+        </Button>
+      </form>
+
+      <form onSubmit={handleRollback} className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 shadow-subtle sm:p-6">
+        <div>
+          <h2 className="type-heading">Undo a class promotion</h2>
+          <p className="type-caption mt-1 text-muted-foreground">
+            Reverses a batch that landed in the wrong class. Enter the class they were moved into, not the class they left.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SelectField
+            label="Campus"
+            value={rollbackCampusId}
+            onChange={setRollbackCampusId}
+            options={(campuses.data ?? []).map((campus) => ({ value: String(campus.id), label: campus.name }))}
+            emptyLabel="Select campus"
+          />
+          <SelectField
+            label="Academic year"
+            value={rollbackYearId}
+            onChange={setRollbackYearId}
+            options={(years.data ?? []).map((year) => ({ value: String(year.id), label: year.name }))}
+            emptyLabel="Select year"
+          />
+          <TextField
+            label="Class they were moved into"
+            value={rollbackClass}
+            onChange={(event) => setRollbackClass(event.target.value)}
+            placeholder="Grade 2"
+            required
+          />
+          <TextField
+            label="Reason"
+            value={rollbackReason}
+            onChange={(event) => setRollbackReason(event.target.value)}
+            required
+          />
+        </div>
+        <Button type="submit" variant="secondary" className="w-full sm:w-auto" isLoading={rollbackBulk.isPending} loadingLabel="Reversing">
+          Reverse promotion
         </Button>
       </form>
     </div>

@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { toUserMessage } from '@/api/errors'
 import { queryKeys } from '@/api/endpoints'
 import { learnersApi } from '@/features/learners/api/learners.api'
-import type { BulkPromotionBody, LearnerWriteBody } from '@/features/learners/types/learner.types'
+import type { BulkPromotionBody, BulkRollbackBody, DemotionBody, LearnerWriteBody } from '@/features/learners/types/learner.types'
 import { logger } from '@/lib/logger'
 
 export function useLearnerList() {
@@ -128,5 +128,41 @@ export function useLearnerMutations() {
     },
   })
 
-  return { create, update, remove, promoteClass, transferCampus, transferExternal, graduateClass }
+  const rollbackSingle = useMutation({
+    mutationFn: ({ learnerId, reason }: { learnerId: number; reason: string }) => learnersApi.rollbackSingle(learnerId, reason),
+    onSuccess: async () => {
+      await invalidate()
+      toast.success('Last promotion reversed.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Promotion rollback failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
+  const rollbackBulk = useMutation({
+    mutationFn: (body: BulkRollbackBody) => learnersApi.rollbackBulk(body),
+    onSuccess: async (result) => {
+      await invalidate()
+      toast.success(`Reversed ${result.revertedLearnersCount ?? 0} learners.`)
+    },
+    onError: (error: unknown) => {
+      logger.error('Bulk promotion rollback failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
+  const demote = useMutation({
+    mutationFn: (body: DemotionBody) => learnersApi.demote(body),
+    onSuccess: async () => {
+      await invalidate()
+      toast.success('Learner moved to the selected class.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Demotion failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
+  return { create, update, remove, promoteClass, transferCampus, transferExternal, graduateClass, rollbackSingle, rollbackBulk, demote }
 }

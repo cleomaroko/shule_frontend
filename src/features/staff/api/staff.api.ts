@@ -10,13 +10,77 @@ function requireData<T>(data: T | null | undefined, message: string): T {
   return data
 }
 
-export const staffApi = {
-  list(): Promise<Staff[]> {
-    return api.get<Staff[]>(endpoints.staff.list).then((result) => result.data ?? [])
-  },
+export type StaffListKind = 'all' | 'teachers' | 'drivers' | 'security'
 
-  listTeachers(): Promise<Staff[]> {
-    return api.get<Staff[]>(endpoints.staff.teachers).then((result) => result.data ?? [])
+export interface StaffPage {
+  content: Staff[]
+  totalElements: number
+  totalPages: number
+}
+
+export interface StaffBulkResult {
+  totalImported?: number
+  failedRows?: number
+  errors?: string[]
+}
+
+const PAGE_SIZE = 100
+const MAX_PAGES = 20
+
+function listUrl(kind: StaffListKind): string {
+  switch (kind) {
+    case 'teachers':
+      return endpoints.staff.teachers
+    case 'drivers':
+      return endpoints.staff.drivers
+    case 'security':
+      return endpoints.staff.security
+    default:
+      return endpoints.staff.list
+  }
+}
+
+function asPage(data: StaffPage | Staff[] | null | undefined): StaffPage {
+  if (Array.isArray(data)) {
+    return { content: data, totalElements: data.length, totalPages: data.length ? 1 : 0 }
+  }
+  const content = data?.content ?? []
+  return {
+    content,
+    totalElements: data?.totalElements ?? content.length,
+    totalPages: data?.totalPages ?? (content.length ? 1 : 0),
+  }
+}
+
+async function readPage(kind: StaffListKind, page: number, size: number): Promise<StaffPage> {
+  const result = await api.get<StaffPage | Staff[]>(listUrl(kind), { params: { page, size } })
+  return asPage(result.data)
+}
+
+async function readAll(kind: StaffListKind): Promise<Staff[]> {
+  const first = await readPage(kind, 0, PAGE_SIZE)
+  const rows = [...first.content]
+  const pages = Math.min(first.totalPages, MAX_PAGES)
+  for (let page = 1; page < pages; page += 1) {
+    const next = await readPage(kind, page, PAGE_SIZE)
+    rows.push(...next.content)
+  }
+  return rows
+}
+
+export const staffApi = {
+  list: () => readAll('all'),
+  listTeachers: () => readAll('teachers'),
+  listDrivers: () => readAll('drivers'),
+  listSecurity: () => readAll('security'),
+  page: (kind: StaffListKind, page: number, size: number) => readPage(kind, page, size),
+
+  downloadTemplate: () => api.getBlob(endpoints.staff.bulkTemplate),
+
+  upload(file: File): Promise<StaffBulkResult> {
+    const body = new FormData()
+    body.append('file', file)
+    return api.postMultipart<StaffBulkResult>(endpoints.staff.bulkUpload, body).then((result) => result.data ?? {})
   },
 
   register(body: StaffWritePayload): Promise<Staff> {

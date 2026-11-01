@@ -9,6 +9,12 @@ export interface Project {
   name?: string | null
   description?: string | null
   department?: Pick<Department, 'id' | 'name'> | null
+  requisition?: {
+    id: number
+    requisitionNumber?: string | null
+    approvedAmount?: number | null
+    status?: string | null
+  } | null
   startDate?: string | null
   deadline?: string | null
   status?: string | null
@@ -16,14 +22,14 @@ export interface Project {
 }
 
 /**
- * POST `/api/projects` raw body.
- * The controller saves the entity, so an existing `id` updates that row (including status).
+ * POST `/api/projects`. `requisitionId` is optional.
+ * Status changes use PATCH `/api/projects/{id}/status`, not this body.
  */
 export interface ProjectWritePayload {
-  id?: number
   name: string
   description?: string
   department?: { id: number }
+  requisitionId?: number | null
   startDate?: string
   deadline?: string
   status: ProjectStatus
@@ -41,19 +47,56 @@ export interface ProjectExpense {
 }
 
 export interface ProjectExpensePayload {
-  project: { id: number }
+  projectId: number
   amount: number
   description: string
   expenseDate?: string
   receiptLink?: string
 }
 
+export interface ProjectExpenseItem {
+  id: number
+  amount?: number | null
+  description?: string | null
+  date?: string | null
+  receiptLink?: string | null
+}
+
 /** GET `/api/projects/{id}/finances` map */
 export interface ProjectFinances {
   projectName?: string | null
+  department?: string | null
+  status?: string | null
   budget?: number | null
   spent?: number | null
   remaining?: number | null
+  burnRatePercent?: number | null
+  linkedRequisition?: { id?: number; number?: string | null; approvedAmount?: number | null } | null
+  expensesCount?: number | null
+  expenses?: ProjectExpenseItem[] | null
+}
+
+export interface ProjectVarianceRow {
+  item?: string | null
+  requested_cost?: number | null
+  actual_cost?: number | null
+  difference?: number | null
+  percentage?: number | null
+  flag?: string | null
+}
+
+/** GET `/api/projects/{id}/audit` */
+export interface ProjectAudit {
+  project_name?: string | null
+  total_budget?: number | null
+  baseline_funds?: number | null
+  total_spent?: number | null
+  remaining_balance?: number | null
+  burn_rate_percent?: number | null
+  financial_status?: string | null
+  warnings?: string[] | null
+  recommendations?: string[] | null
+  item_by_item_variance?: ProjectVarianceRow[] | null
 }
 
 export function projectStatusLabel(status: string | null | undefined): string {

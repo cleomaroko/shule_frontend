@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 
 import { toUserMessage } from '@/api/errors'
 import { queryKeys } from '@/api/endpoints'
-import { staffApi } from '@/features/staff/api/staff.api'
+import { staffApi, type StaffListKind } from '@/features/staff/api/staff.api'
 import type { Staff, StaffWritePayload } from '@/features/staff/types/staff.types'
 import { logger } from '@/lib/logger'
 
@@ -14,11 +14,35 @@ export function useStaffList() {
   })
 }
 
-/** Teaching staff for assignment dropdowns (`GET /api/staff/teachers`). */
+/** Teaching staff (`GET /api/staff/teachers`), every page joined for dropdowns. */
 export function useTeacherList() {
   return useQuery({
     queryKey: queryKeys.staff.teachers,
     queryFn: staffApi.listTeachers,
+  })
+}
+
+/** Drivers (`GET /api/staff/drivers`), every page joined for the transport log form. */
+export function useDriverList() {
+  return useQuery({
+    queryKey: queryKeys.staff.drivers,
+    queryFn: staffApi.listDrivers,
+  })
+}
+
+/** Security staff (`GET /api/staff/security`). */
+export function useSecurityList() {
+  return useQuery({
+    queryKey: queryKeys.staff.security,
+    queryFn: staffApi.listSecurity,
+  })
+}
+
+/** One server page for the staff directory. `page` is 1-based. */
+export function useStaffPage(kind: StaffListKind, page: number, size: number) {
+  return useQuery({
+    queryKey: queryKeys.staff.page(kind, page, size),
+    queryFn: () => staffApi.page(kind, page - 1, size),
   })
 }
 
@@ -38,8 +62,7 @@ export function useStaffMutations() {
 
   const invalidate = () =>
     Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.staff.all }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.staff.teachers }),
+      queryClient.invalidateQueries({ queryKey: ['staff'] }),
     ])
 
   const create = useMutation({

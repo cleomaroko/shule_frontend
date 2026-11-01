@@ -4,13 +4,21 @@ import { toast } from 'sonner'
 import { toUserMessage } from '@/api/errors'
 import { queryKeys } from '@/api/endpoints'
 import { projectsApi } from '@/features/projects/api/projects.api'
-import type { ProjectExpensePayload, ProjectWritePayload } from '@/features/projects/types/project.types'
+import type { ProjectExpensePayload, ProjectStatus, ProjectWritePayload } from '@/features/projects/types/project.types'
 import { logger } from '@/lib/logger'
 
 export function useProjectList() {
   return useQuery({
     queryKey: queryKeys.projects.all,
     queryFn: projectsApi.list,
+  })
+}
+
+export function useProjectAudit(id: number | null) {
+  return useQuery({
+    queryKey: queryKeys.projects.audit(id ?? 0),
+    queryFn: () => projectsApi.audit(id as number),
+    enabled: id != null,
   })
 }
 
@@ -38,17 +46,19 @@ export function useProjectMutations() {
     },
   })
 
-  const update = useMutation({
-    mutationFn: (body: ProjectWritePayload) => projectsApi.create(body),
-    onSuccess: async (saved) => {
-      await invalidate()
-      if (saved?.id) {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.projects.finances(saved.id) })
-      }
+  const updateStatus = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: ProjectStatus }) => projectsApi.updateStatus(id, status),
+    onSuccess: async (saved, variables) => {
+      await Promise.all([
+        invalidate(),
+        queryClient.invalidateQueries({ queryKey: queryKeys.projects.finances(variables.id) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.projects.audit(variables.id) }),
+      ])
       toast.success('Project status updated.')
+      return saved
     },
     onError: (error: unknown) => {
-      logger.error('Update project failed', error)
+      logger.error('Update project status failed', error)
       toast.error(toUserMessage(error))
     },
   })
@@ -58,7 +68,8 @@ export function useProjectMutations() {
     onSuccess: async (_void, variables) => {
       await Promise.all([
         invalidate(),
-        queryClient.invalidateQueries({ queryKey: queryKeys.projects.finances(variables.project.id) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.projects.finances(variables.projectId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.projects.audit(variables.projectId) }),
       ])
       toast.success('Expense recorded.')
     },
@@ -68,5 +79,5 @@ export function useProjectMutations() {
     },
   })
 
-  return { create, update, addExpense }
+  return { create, updateStatus, addExpense }
 }
