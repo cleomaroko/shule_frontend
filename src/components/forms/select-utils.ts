@@ -1,6 +1,8 @@
 export interface SelectOption {
   value: string
   label: string
+  /** Opens extra detail without choosing this option. */
+  onInspect?: () => void
 }
 
 /** Maps the empty sentinel back to an empty string for form state. */

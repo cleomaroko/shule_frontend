@@ -137,7 +137,7 @@ function HrAdminReport({
           />
           <BreakdownCard
             title={`Attendance ${periodLabel}`}
-            rows={countBy(attendanceRows, (row) => row.status)}
+            rows={countBy(attendanceRows, attendanceCoverage)}
             empty="No staff attendance in this month."
             loading={attendance.isLoading}
           />
@@ -220,7 +220,7 @@ function HrPersonalReport({
         />
         <BreakdownCard
           title="My attendance this month"
-          rows={countBy(attendance.data ?? [], (row: StaffAttendanceRecord) => row.status)}
+          rows={countBy(attendance.data ?? [], attendanceCoverage)}
           empty="No attendance recorded for you this month."
           loading={attendance.isLoading}
         />
@@ -236,6 +236,13 @@ function HrPersonalReport({
       </ReportSection>
     </div>
   )
+}
+
+function attendanceCoverage(row: StaffAttendanceRecord): string {
+  if (row.timeIn && row.timeOut) return 'Time in and out'
+  if (row.timeIn) return 'Time in only'
+  if (row.timeOut) return 'Time out only'
+  return 'No times'
 }
 
 function LeaveTable({

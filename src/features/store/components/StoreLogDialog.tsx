@@ -22,6 +22,7 @@ import type { Department } from '@/features/lookups/lookups.types'
 import type { Learner } from '@/features/learners/types/learner.types'
 import type { Staff } from '@/features/staff/types/staff.types'
 import type { Supplier } from '@/features/suppliers/types/supplier.types'
+import { RequisitionDetailDialog } from '@/features/requisitions/components/RequisitionDetailDialog'
 import type { Requisition } from '@/features/requisitions/types/requisition.types'
 import {
   TRANSACTION_TYPES,
@@ -163,6 +164,7 @@ export function StoreLogDialog({
     { quantity: '', expiryDate: '' },
   ])
   const photoRef = useRef<GoogleDrivePhotoFieldHandle>(null)
+  const [requisitionPreview, setRequisitionPreview] = useState<Requisition | null>(null)
   const isEdit = editing !== null
   const busy = isSaving || uploadingPhoto
 
@@ -256,6 +258,7 @@ export function StoreLogDialog({
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[92dvh] w-[calc(100%-1rem)] max-w-lg flex-col overflow-hidden p-0">
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
@@ -422,11 +425,13 @@ export function StoreLogDialog({
                       return {
                         value: String(requisition.id),
                         label: `${requisition.requisitionNumber || `Requisition #${requisition.id}`} · ${requester} · ${status}`,
+                        onInspect: () => setRequisitionPreview(requisition),
                       }
                     })}
                     emptyLabel="No requisition"
                     placeholder={requisitions.length ? 'Link a requisition' : 'No approved requisitions'}
                     emptyMessage="No approved requisitions available."
+                    hint="Use the info icon on a requisition to see its purpose, amounts, and lines before choosing it."
                   />
                 ) : null}
                 {terms.length > 0 || termsLoading ? (
@@ -574,5 +579,12 @@ export function StoreLogDialog({
         </form>
       </DialogContent>
     </Dialog>
+    <RequisitionDetailDialog
+      requisition={requisitionPreview}
+      onOpenChange={(next) => {
+        if (!next) setRequisitionPreview(null)
+      }}
+    />
+    </>
   )
 }

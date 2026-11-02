@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { toUserMessage } from '@/api/errors'
 import { SelectField } from '@/components/forms/SelectField'
+import { SpreadsheetFileField } from '@/components/forms/SpreadsheetFileField'
 import { Button } from '@/components/ui/button'
 import { useAcademicYearList } from '@/features/academic/hooks/useAcademic'
 import { learnersApi } from '@/features/learners/api/learners.api'
@@ -25,7 +26,6 @@ export function LearnerEnrollmentCard({ canWrite }: { canWrite: boolean }): Reac
   const campuses = useCampuses()
   const classes = useSchoolClasses()
   const years = useAcademicYearList()
-  const fileRef = useRef<HTMLInputElement>(null)
   const [campusId, setCampusId] = useState('')
   const [classId, setClassId] = useState('')
   const [streamId, setStreamId] = useState('')
@@ -83,7 +83,6 @@ export function LearnerEnrollmentCard({ canWrite }: { canWrite: boolean }): Reac
       })
       setResult(imported)
       setFile(null)
-      if (fileRef.current) fileRef.current.value = ''
       await queryClient.invalidateQueries({ queryKey: ['learners'] })
       toast.success(`Imported ${imported.totalImported ?? 0} learners.`)
     } catch (error) {
@@ -138,13 +137,7 @@ export function LearnerEnrollmentCard({ canWrite }: { canWrite: boolean }): Reac
         <Button type="button" variant="secondary" className="w-full sm:w-auto" isLoading={downloading} loadingLabel="Downloading" onClick={() => void download()}>
           Download template
         </Button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          className="type-body w-full min-w-0 sm:flex-1"
-          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-        />
+        <SpreadsheetFileField file={file} onChange={setFile} />
         <Button type="submit" className="w-full sm:w-auto" disabled={!file || !paramsReady} isLoading={uploading} loadingLabel="Uploading">
           Upload sheet
         </Button>

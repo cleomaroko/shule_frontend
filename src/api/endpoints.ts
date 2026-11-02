@@ -29,6 +29,8 @@ export const endpoints = {
     byId: (id: number) => `/staff/${id}`,
     /** PATCH `?reason=` — ADMIN or HEAD. Sets RESIGNED, stamps date left, deletes the login. */
     resign: (id: number) => `/staff/${id}/resign`,
+    /** PATCH `?empCode=` — SUPER_ADMIN or a role containing ADMIN. */
+    biometricCode: (id: number) => `/staff/${id}/biometric-code`,
   },
   learners: {
     list: "/learners",
@@ -294,11 +296,28 @@ export const endpoints = {
     attendanceReport: "/hr/attendance/report",
     processPayroll: (month: string) =>
       `/hr/payroll/process/${encodeURIComponent(month)}`,
+    /** POST wrapped. Finance/HR access. Replaces an existing DRAFT for the month. */
+    payrollDraft: (month: string) =>
+      `/hr/payroll/draft/${encodeURIComponent(month)}`,
+    /** PATCH wrapped. Moves DRAFT rows to SUBMITTED_TO_FINANCE. */
+    payrollSubmit: (month: string) =>
+      `/hr/payroll/submit/${encodeURIComponent(month)}`,
+    /** PATCH wrapped. Query `reference`, optional `receiptUrl`. Sets PAID. */
+    markPaid: (id: number) => `/hr/payroll/${id}/mark-paid`,
+    /** GET wrapped map, or data null when the month has no rows. */
+    payrollSummary: (month: string) =>
+      `/hr/payroll/summary/${encodeURIComponent(month)}`,
     leaves: "/hr/leave/list",
     leaveReview: (id: number) => `/hr/leave/${id}/review`,
     payroll: "/hr/payroll/list",
     salarySettings: "/hr/salary-settings",
     myPayroll: "/hr/my-payroll",
+    /** GET/POST wrapped. PUT/DELETE `/allowances/{id}`. Finance access. */
+    allowances: "/hr/setup/allowances",
+    allowance: (id: number) => `/hr/setup/allowances/${id}`,
+    /** GET/POST wrapped. PUT/DELETE `/deductions/{id}`. Finance access. */
+    deductions: "/hr/setup/deductions",
+    deduction: (id: number) => `/hr/setup/deductions/${id}`,
   },
   finance: {
     /** POST wrapped. Procurement access. Forces poNumber and PENDING_FINANCE_APPROVAL. */
@@ -494,6 +513,8 @@ export const queryKeys = {
     summary: (date: string) => ["biometric", "summary", date] as const,
     filter: (params: Record<string, string | number>) =>
       ["biometric", "filter", params] as const,
+    logs: (date: string, page: number, size: number) =>
+      ["biometric", "logs", date, page, size] as const,
   },
   sow: {
     report: (params: Record<string, string | number>) =>
@@ -551,6 +572,9 @@ export const queryKeys = {
     myPayroll: ["hr", "my-payroll"] as const,
     leaves: ["hr", "leaves"] as const,
     payroll: ["hr", "payroll"] as const,
+    allowances: ["hr", "allowances"] as const,
+    deductions: ["hr", "deductions"] as const,
+    payrollSummary: (month: string) => ["hr", "payroll-summary", month] as const,
     myAttendance: (filters: { startDate?: string; endDate?: string }) =>
       ["hr", "my-attendance", filters] as const,
     attendanceReport: (filters: {

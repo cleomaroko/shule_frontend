@@ -7,6 +7,7 @@ import { hrApi } from "@/features/hr/api/hr.api";
 import type {
   LeaveApplicationPayload,
   LeaveReviewPayload,
+  PayRulePayload,
   SalarySettingPayload,
   StaffAttendanceFilters,
   StaffAttendancePayload,
@@ -53,6 +54,30 @@ export function useHrPayroll(enabled = true) {
   return useQuery({
     queryKey: queryKeys.hr.payroll,
     queryFn: hrApi.payroll,
+    enabled,
+  });
+}
+
+export function usePayrollSummary(month: string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.hr.payrollSummary(month),
+    queryFn: () => hrApi.payrollSummary(month),
+    enabled: enabled && month.length > 0,
+  });
+}
+
+export function useAllowances(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.hr.allowances,
+    queryFn: hrApi.allowances,
+    enabled,
+  });
+}
+
+export function useDeductions(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.hr.deductions,
+    queryFn: hrApi.deductions,
     enabled,
   });
 }
@@ -109,9 +134,106 @@ export function useHrMutations() {
 
   const saveSalary = useMutation({
     mutationFn: (body: SalarySettingPayload) => hrApi.salarySettings(body),
-    onSuccess: () => toast.success("Salary settings saved."),
+    onSuccess: () => toast.success("Basic salary saved."),
     onError: (error: unknown) => {
       logger.error("Salary settings save failed", error);
+      toast.error(toUserMessage(error));
+    },
+  });
+
+  const draftPayroll = useMutation({
+    mutationFn: (month: string) => hrApi.draftPayroll(month),
+    onSuccess: async (result) => {
+      await Promise.all([
+        invalidatePayroll(),
+        queryClient.invalidateQueries({ queryKey: ["hr", "payroll-summary"] }),
+      ]);
+      toast.success(`Draft ready for ${result?.staffProcessed ?? 0} staff.`);
+    },
+    onError: (error: unknown) => {
+      logger.error("Payroll draft failed", error);
+      toast.error(toUserMessage(error));
+    },
+  });
+
+  const submitPayroll = useMutation({
+    mutationFn: (month: string) => hrApi.submitPayroll(month),
+    onSuccess: async () => {
+      await Promise.all([
+        invalidatePayroll(),
+        queryClient.invalidateQueries({ queryKey: ["hr", "payroll-summary"] }),
+      ]);
+      toast.success("Payroll sent to finance.");
+    },
+    onError: (error: unknown) => {
+      logger.error("Payroll submit failed", error);
+      toast.error(toUserMessage(error));
+    },
+  });
+
+  const markPayrollPaid = useMutation({
+    mutationFn: ({ id, reference, receiptUrl }: { id: number; reference: string; receiptUrl?: string }) =>
+      hrApi.markPayrollPaid(id, reference, receiptUrl),
+    onSuccess: async () => {
+      await Promise.all([
+        invalidatePayroll(),
+        queryClient.invalidateQueries({ queryKey: queryKeys.hr.myPayroll }),
+        queryClient.invalidateQueries({ queryKey: ["hr", "payroll-summary"] }),
+      ]);
+      toast.success("Salary marked as paid.");
+    },
+    onError: (error: unknown) => {
+      logger.error("Mark payroll paid failed", error);
+      toast.error(toUserMessage(error));
+    },
+  });
+
+  const saveAllowance = useMutation({
+    mutationFn: ({ id, body }: { id?: number; body: PayRulePayload }) =>
+      id ? hrApi.updateAllowance(id, body) : hrApi.saveAllowance(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.hr.allowances });
+      toast.success("Allowance saved.");
+    },
+    onError: (error: unknown) => {
+      logger.error("Allowance save failed", error);
+      toast.error(toUserMessage(error));
+    },
+  });
+
+  const deleteAllowance = useMutation({
+    mutationFn: (id: number) => hrApi.deleteAllowance(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.hr.allowances });
+      toast.success("Allowance removed.");
+    },
+    onError: (error: unknown) => {
+      logger.error("Allowance delete failed", error);
+      toast.error(toUserMessage(error));
+    },
+  });
+
+  const saveDeduction = useMutation({
+    mutationFn: ({ id, body }: { id?: number; body: PayRulePayload }) =>
+      id ? hrApi.updateDeduction(id, body) : hrApi.saveDeduction(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.hr.deductions });
+      toast.success("Deduction saved.");
+    },
+    onError: (error: unknown) => {
+      logger.error("Deduction save failed", error);
+      toast.error(toUserMessage(error));
+    },
+  });
+
+  const deleteDeduction = useMutation({
+    mutationFn: (id: number) => hrApi.deleteDeduction(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.hr.deductions });
+      toast.success("Deduction removed.");
+    },
+    onError: (error: unknown) => {
+      logger.error("Deduction delete failed", error);
       toast.error(toUserMessage(error));
     },
   });
@@ -122,5 +244,12 @@ export function useHrMutations() {
     reviewLeave,
     processPayroll,
     saveSalary,
+    draftPayroll,
+    submitPayroll,
+    markPayrollPaid,
+    saveAllowance,
+    deleteAllowance,
+    saveDeduction,
+    deleteDeduction,
   };
 }

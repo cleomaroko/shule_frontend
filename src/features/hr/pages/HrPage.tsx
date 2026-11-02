@@ -11,7 +11,6 @@ import { FormSection } from '@/components/forms/FormSection'
 import { SelectField } from '@/components/forms/SelectField'
 import { TextareaField } from '@/components/forms/TextareaField'
 import { TextField } from '@/components/forms/TextField'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -34,44 +33,19 @@ import {
   type StaffAttendanceFilters,
   type StaffAttendanceRecord,
   type StaffAppraisal,
-  type StaffAttendanceStatus,
   type StaffLeave,
 } from '@/features/hr/types/hr.types'
+import { PaySetupPanel } from '@/features/hr/components/PaySetupPanel'
 import { BiometricPanel } from '@/features/biometric/components/BiometricPanel'
 import { useStaffList } from '@/features/staff/hooks/useStaff'
 import type { Staff } from '@/features/staff/types/staff.types'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { formatKes, todayIso } from '@/lib/format'
 
-const ATTENDANCE_STATUSES: Array<{ value: StaffAttendanceStatus; label: string }> = [
-  { value: 'PRESENT', label: 'Present' },
-  { value: 'ABSENT', label: 'Absent' },
-  { value: 'LATE', label: 'Late' },
-]
-
-const MONTHS = [
-  'JANUARY',
-  'FEBRUARY',
-  'MARCH',
-  'APRIL',
-  'MAY',
-  'JUNE',
-  'JULY',
-  'AUGUST',
-  'SEPTEMBER',
-  'OCTOBER',
-  'NOVEMBER',
-  'DECEMBER',
-]
-
 function dateDaysAgo(days: number): string {
   const date = new Date()
   date.setDate(date.getDate() - days)
   return todayIso(date)
-}
-
-function currentPayPeriod(): string {
-  return `${MONTHS[new Date().getMonth()]}-${new Date().getFullYear()}`
 }
 
 const MANAGER_TABS = ['self', 'attendance', 'biometric', 'leave', 'salary'] as const
@@ -91,7 +65,7 @@ export function HrPage(): ReactNode {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Human resources"
-        description="Staff leave, attendance, biometric device punches, appraisals, and payroll."
+        description="Leave, time in and out, biometric punches, appraisals, and payroll."
       />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })} className="min-w-0">
         <div className="overflow-x-auto">
@@ -104,7 +78,7 @@ export function HrPage(): ReactNode {
           </TabsList>
         </div>
         <TabsContent value="self"><SelfServicePanel hasStaffProfile={hasStaffProfile} /></TabsContent>
-        <TabsContent value="biometric"><BiometricPanel /></TabsContent>
+        <TabsContent value="biometric"><BiometricPanel canLink={can(user?.role, 'staff:write')} /></TabsContent>
         {canManage ? (
           <>
             <TabsContent value="attendance"><AttendancePanel /></TabsContent>
@@ -203,7 +177,7 @@ function PersonalRecordsPanel({ hasStaffProfile }: { hasStaffProfile: boolean })
             </div>
           )}
       </FormSection>
-      <FormSection title="My payroll" description="Your processed salary records.">
+      <FormSection title="My payroll" description="Salary records for your own staff profile, including drafts and paid months.">
         {!hasStaffProfile ? <p className="type-body text-muted-foreground sm:col-span-2">Unavailable until this account is linked to a staff profile.</p> : payroll.isError ? <ErrorState message={toUserMessage(payroll.error)} onRetry={() => void payroll.refetch()} /> :
           (payroll.data?.length ?? 0) === 0 && !payroll.isLoading ? <p className="type-body text-muted-foreground">No payroll records are available.</p> : (
             <div className="sm:col-span-2">
@@ -234,13 +208,12 @@ function PersonalRecordsPanel({ hasStaffProfile }: { hasStaffProfile: boolean })
                   <PayrollDetail label="Gross salary" value={formatKes(selectedPayroll.grossSalary)} emphasize />
                 </dl>
                 <div>
-                  <h3 className="type-label mb-2">Deductions</h3>
+                  <h3 className="type-label mb-2">Breakdown</h3>
                   <dl className="divide-y divide-border rounded-lg border border-border px-4">
-                    <PayrollDetail label="NHIF" value={formatKes(selectedPayroll.nhif)} />
-                    <PayrollDetail label="NSSF" value={formatKes(selectedPayroll.nssf)} />
-                    <PayrollDetail label="PAYE" value={formatKes(selectedPayroll.paye)} />
-                    <PayrollDetail label="HELB" value={formatKes(selectedPayroll.helb)} />
+                    <PayrollDetail label="Allowances" value={selectedPayroll.itemizedAllowancesSummary?.trim() || formatKes(selectedPayroll.allowances)} />
+                    <PayrollDetail label="Deductions" value={selectedPayroll.itemizedDeductionsSummary?.trim() || formatKes(selectedPayroll.totalDeductions)} />
                     <PayrollDetail label="Total deductions" value={formatKes(selectedPayroll.totalDeductions)} emphasize />
+                    <PayrollDetail label="Payment reference" value={selectedPayroll.paymentReference || 'Not recorded'} />
                   </dl>
                 </div>
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
@@ -258,9 +231,9 @@ function PersonalRecordsPanel({ hasStaffProfile }: { hasStaffProfile: boolean })
 
 function PayrollDetail({ label, value, emphasize = false }: { label: string; value: string; emphasize?: boolean }): ReactNode {
   return (
-    <div className="flex items-center justify-between gap-4 py-3">
+    <div className="flex flex-col gap-1 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <dt className="type-caption text-muted-foreground">{label}</dt>
-      <dd className={emphasize ? 'type-label text-right' : 'type-body text-right'}>{value}</dd>
+      <dd className={emphasize ? 'type-label sm:text-right' : 'type-body break-words sm:max-w-[18rem] sm:text-right'}>{value}</dd>
     </div>
   )
 }
@@ -282,19 +255,33 @@ function AttendanceUploadPanel(): ReactNode {
   const staff = useStaffList()
   const { uploadAttendance } = useHrMutations()
   const [attendanceDate, setAttendanceDate] = useState(todayIso())
-  const [statuses, setStatuses] = useState<Record<number, StaffAttendanceStatus | ''>>({})
+  const [times, setTimes] = useState<Record<number, { timeIn: string; timeOut: string }>>({})
   const activeStaff = (staff.data ?? []).filter((person) => person.status?.toLowerCase() === 'active')
-  const markedCount = Object.values(statuses).filter(Boolean).length
+  const markedCount = activeStaff.filter((person) => times[person.id]?.timeIn || times[person.id]?.timeOut).length
 
-  const setAllPresent = () => setStatuses(Object.fromEntries(activeStaff.map((person) => [person.id, 'PRESENT'])))
+  const setTime = (id: number, field: 'timeIn' | 'timeOut', value: string) => {
+    setTimes((current) => ({
+      ...current,
+      [id]: { timeIn: current[id]?.timeIn ?? '', timeOut: current[id]?.timeOut ?? '', [field]: value },
+    }))
+  }
+  const setStandardDay = () => {
+    setTimes(Object.fromEntries(activeStaff.map((person) => [person.id, { timeIn: '08:00', timeOut: '17:00' }])))
+  }
   const submit = (event: FormEvent) => {
     event.preventDefault()
     const records = activeStaff.flatMap((person) => {
-      const status = statuses[person.id]
-      return status ? [{ staff: { id: person.id }, attendanceDate, status }] : []
+      const entry = times[person.id]
+      if (!entry?.timeIn && !entry?.timeOut) return []
+      return [{
+        staff: { id: person.id },
+        attendanceDate,
+        ...(entry.timeIn ? { timeIn: entry.timeIn } : {}),
+        ...(entry.timeOut ? { timeOut: entry.timeOut } : {}),
+      }]
     })
     if (!attendanceDate || records.length === 0) {
-      toast.error('Choose a date and mark at least one staff member.')
+      toast.error('Choose a date and enter a time in or time out for at least one person.')
       return
     }
     uploadAttendance.mutate(records)
@@ -302,25 +289,42 @@ function AttendanceUploadPanel(): ReactNode {
 
   return (
     <form onSubmit={submit}>
-      <FormSection title="Staff attendance" description="Select a date and mark each staff member to include in the upload.">
+      <FormSection title="Staff attendance" description="Record the time each person arrived and left. Leave a row blank to skip that person.">
         {staff.isError ? <div className="sm:col-span-2"><ErrorState message={toUserMessage(staff.error)} onRetry={() => void staff.refetch()} /></div> : null}
         <TextField label="Attendance date" type="date" value={attendanceDate} onChange={(event) => setAttendanceDate(event.target.value)} required />
-        <div className="flex items-end gap-3">
-          <p className="type-caption flex-1 text-muted-foreground">{markedCount} marked · {activeStaff.length} active staff</p>
-          <Button type="button" variant="outline" onClick={setAllPresent} disabled={activeStaff.length === 0}>Mark all present</Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <p className="type-caption flex-1 text-muted-foreground">{markedCount} with times · {activeStaff.length} active staff</p>
+          <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={setStandardDay} disabled={activeStaff.length === 0}>Set 08:00–17:00</Button>
         </div>
         {activeStaff.length === 0 && !staff.isLoading ? <p className="type-body text-muted-foreground sm:col-span-2">No active staff found.</p> : (
           <div className="sm:col-span-2">
-            <div className="overflow-x-auto rounded-xl border border-border">
-              <table className="w-full min-w-[34rem] text-left">
-                <thead><tr className="border-b border-border bg-muted/60"><th className="type-caption px-4 py-3 font-semibold uppercase text-muted-foreground">Staff member</th><th className="type-caption px-4 py-3 font-semibold uppercase text-muted-foreground">Attendance status</th></tr></thead>
+            <ul className="flex flex-col gap-3 md:hidden">
+              {activeStaff.map((person) => (
+                <li key={person.id} className="rounded-xl border border-border p-3">
+                  <p className="type-label">{staffName(person)}</p>
+                  <p className="type-caption mb-3 text-muted-foreground">{person.staffNumber || person.department || `Staff #${person.id}`}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <TextField label="Time in" type="time" value={times[person.id]?.timeIn ?? ''} onChange={(event) => setTime(person.id, 'timeIn', event.target.value)} />
+                    <TextField label="Time out" type="time" value={times[person.id]?.timeOut ?? ''} onChange={(event) => setTime(person.id, 'timeOut', event.target.value)} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto rounded-xl border border-border md:block">
+              <table className="w-full min-w-[40rem] text-left">
+                <thead>
+                  <tr className="border-b border-border bg-muted/60">
+                    <th className="type-caption px-4 py-3 font-semibold uppercase text-muted-foreground">Staff member</th>
+                    <th className="type-caption px-4 py-3 font-semibold uppercase text-muted-foreground">Time in</th>
+                    <th className="type-caption px-4 py-3 font-semibold uppercase text-muted-foreground">Time out</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {activeStaff.map((person) => (
                     <tr key={person.id} className="border-b border-border last:border-0">
                       <td className="px-4 py-3"><p className="type-label">{staffName(person)}</p><p className="type-caption text-muted-foreground">{person.staffNumber || person.department || `Staff #${person.id}`}</p></td>
-                      <td className="px-4 py-3"><select aria-label={`Attendance status for ${staffName(person)}`} className="h-10 w-full max-w-52 rounded-md border border-input bg-background px-3 type-body" value={statuses[person.id] ?? ''} onChange={(event) => setStatuses((current) => ({ ...current, [person.id]: event.target.value as StaffAttendanceStatus | '' }))}>
-                        <option value="">Not marked</option>{ATTENDANCE_STATUSES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                      </select></td>
+                      <td className="px-4 py-3"><input aria-label={`Time in for ${staffName(person)}`} type="time" className="h-10 w-full max-w-40 rounded-md border border-input bg-background px-3 type-body" value={times[person.id]?.timeIn ?? ''} onChange={(event) => setTime(person.id, 'timeIn', event.target.value)} /></td>
+                      <td className="px-4 py-3"><input aria-label={`Time out for ${staffName(person)}`} type="time" className="h-10 w-full max-w-40 rounded-md border border-input bg-background px-3 type-body" value={times[person.id]?.timeOut ?? ''} onChange={(event) => setTime(person.id, 'timeOut', event.target.value)} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -328,7 +332,7 @@ function AttendanceUploadPanel(): ReactNode {
             </div>
           </div>
         )}
-        <div className="sm:col-span-2"><Button type="submit" isLoading={uploadAttendance.isPending} loadingLabel="Saving" disabled={markedCount === 0}>Save marked attendance</Button></div>
+        <div className="sm:col-span-2"><Button type="submit" className="w-full sm:w-auto" isLoading={uploadAttendance.isPending} loadingLabel="Saving" disabled={markedCount === 0}>Save attendance</Button></div>
       </FormSection>
     </form>
   )
@@ -411,7 +415,6 @@ function AttendanceResults({
   const columns: Array<DataColumn<StaffAttendanceRecord>> = [
     { id: 'date', header: 'Date', cell: (row) => row.attendanceDate },
     { id: 'staff', header: 'Staff member', cell: (row) => staffDisplayName(row.staff) },
-    { id: 'status', header: 'Status', cell: (row) => <Badge variant={row.status === 'PRESENT' ? 'success' : row.status === 'LATE' ? 'warning' : 'destructive'}>{row.status}</Badge> },
     { id: 'timeIn', header: 'Time in', cell: (row) => row.timeIn || '—' },
     { id: 'timeOut', header: 'Time out', cell: (row) => row.timeOut || '—' },
   ]
@@ -430,7 +433,7 @@ function AttendanceResults({
         pageSize={10}
         total={records.length}
         onPageChange={onPageChange}
-        mobileCard={(row) => <div className="flex items-start justify-between gap-3"><div><p className="type-label">{row.attendanceDate}</p><p className="type-caption text-muted-foreground">{staffDisplayName(row.staff)} · In {row.timeIn || '—'} · Out {row.timeOut || '—'}</p></div><Badge variant={row.status === 'PRESENT' ? 'success' : row.status === 'LATE' ? 'warning' : 'destructive'}>{row.status}</Badge></div>}
+        mobileCard={(row) => <div><p className="type-label">{row.attendanceDate}</p><p className="type-caption text-muted-foreground">{staffDisplayName(row.staff)} · In {row.timeIn || '—'} · Out {row.timeOut || '—'}</p></div>}
       />
     </div>
   )
@@ -495,75 +498,7 @@ function LeaveReviewPanel(): ReactNode {
 }
 
 function SalaryPanel(): ReactNode {
-  const staff = useStaffList()
-  const { saveSalary, processPayroll } = useHrMutations()
-  const [staffId, setStaffId] = useState('')
-  const [basicSalary, setBasicSalary] = useState('')
-  const [houseAllowance, setHouseAllowance] = useState('0')
-  const [transportAllowance, setTransportAllowance] = useState('0')
-  const [helbAmount, setHelbAmount] = useState('0')
-  const [saccoContribution, setSaccoContribution] = useState('0')
-  const [isNssfEnabled, setIsNssfEnabled] = useState(true)
-  const [isNhifEnabled, setIsNhifEnabled] = useState(true)
-  const [payPeriod, setPayPeriod] = useState(currentPayPeriod)
-  const staffOptions = (staff.data ?? []).map((person) => ({ value: String(person.id), label: `${staffName(person)}${person.staffNumber ? ` · ${person.staffNumber}` : ''}` }))
-  const monthOptions = Array.from({ length: 24 }, (_, offset) => {
-    const date = new Date()
-    date.setDate(1)
-    date.setMonth(date.getMonth() - offset)
-    return `${MONTHS[date.getMonth()]}-${date.getFullYear()}`
-  })
-
-  const submitSalary = (event: FormEvent) => {
-    event.preventDefault()
-    const amounts = {
-      basicSalary: Number(basicSalary),
-      houseAllowance: Number(houseAllowance),
-      transportAllowance: Number(transportAllowance),
-      helbAmount: Number(helbAmount),
-      saccoContribution: Number(saccoContribution),
-    }
-    const values = Object.values(amounts)
-    if (!Number(staffId) || values.some((value) => !Number.isFinite(value) || value < 0) || amounts.basicSalary <= 0) {
-      toast.error('Choose a staff member and enter valid non-negative amounts. Basic salary must be greater than zero.')
-      return
-    }
-    saveSalary.mutate({
-      staff: { id: Number(staffId) },
-      ...amounts,
-      isNssfEnabled,
-      isNhifEnabled,
-    })
-  }
-
-  return (
-    <div className="flex flex-col gap-6">
-      <Alert variant="warning"><AlertTitle>Payroll calculation limitation</AlertTitle><AlertDescription>The current Java processor creates payroll at a fixed KES 50,000 basic salary and does not yet apply these saved salary settings or deductions.</AlertDescription></Alert>
-      <form onSubmit={submitSalary}>
-        <FormSection title="Salary settings" description="Save the employee salary configuration for payroll administration.">
-          {staff.isError ? <div className="sm:col-span-2"><ErrorState message={toUserMessage(staff.error)} onRetry={() => void staff.refetch()} /></div> : null}
-          <SelectField label="Staff member" value={staffId} onChange={setStaffId} options={staffOptions} allowEmpty={false} placeholder="Select staff" emptyMessage="No staff records available." />
-          <TextField label="Basic salary (KES)" type="number" min="0.01" step="0.01" value={basicSalary} onChange={(event) => setBasicSalary(event.target.value)} required />
-          <TextField label="House allowance (KES)" type="number" min="0" step="0.01" value={houseAllowance} onChange={(event) => setHouseAllowance(event.target.value)} required />
-          <TextField label="Transport allowance (KES)" type="number" min="0" step="0.01" value={transportAllowance} onChange={(event) => setTransportAllowance(event.target.value)} required />
-          <TextField label="HELB amount (KES)" type="number" min="0" step="0.01" value={helbAmount} onChange={(event) => setHelbAmount(event.target.value)} required />
-          <TextField label="SACCO contribution (KES)" type="number" min="0" step="0.01" value={saccoContribution} onChange={(event) => setSaccoContribution(event.target.value)} required />
-          <div className="flex flex-wrap gap-x-6 gap-y-3 sm:col-span-2">
-            <label className="inline-flex min-h-10 items-center gap-2 type-body"><input type="checkbox" checked={isNssfEnabled} onChange={(event) => setIsNssfEnabled(event.target.checked)} className="size-4 accent-primary" />Enable NSSF</label>
-            <label className="inline-flex min-h-10 items-center gap-2 type-body"><input type="checkbox" checked={isNhifEnabled} onChange={(event) => setIsNhifEnabled(event.target.checked)} className="size-4 accent-primary" />Enable NHIF</label>
-          </div>
-          <div className="sm:col-span-2"><Button type="submit" isLoading={saveSalary.isPending} loadingLabel="Saving">Save salary settings</Button></div>
-        </FormSection>
-      </form>
-      <form onSubmit={(event) => { event.preventDefault(); processPayroll.mutate(payPeriod) }}>
-        <FormSection title="Process payroll" description="Creates payroll records for all active staff for the selected period.">
-          <SelectField label="Pay period" value={payPeriod} onChange={setPayPeriod} options={monthOptions.map((month) => ({ value: month, label: month }))} allowEmpty={false} />
-          <div className="flex items-end"><Button type="submit" isLoading={processPayroll.isPending} loadingLabel="Processing">Process payroll</Button></div>
-          <p className="type-caption text-muted-foreground sm:col-span-2">Payroll records and payment status are available in Finance.</p>
-        </FormSection>
-      </form>
-    </div>
-  )
+  return <PaySetupPanel />
 }
 
 function staffName(person: Staff): string {

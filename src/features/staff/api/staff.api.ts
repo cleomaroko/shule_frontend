@@ -102,4 +102,8 @@ export const staffApi = {
   resign(id: number, reason: string): Promise<void> {
     return api.patch<null>(endpoints.staff.resign(id), null, { params: { reason } }).then(() => undefined)
   },
+
+  linkBiometric(id: number, empCode: string): Promise<void> {
+    return api.patch<null>(endpoints.staff.biometricCode(id), null, { params: { empCode } }).then(() => undefined)
+  },
 }

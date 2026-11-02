@@ -28,7 +28,6 @@ export interface StaffAttendanceRecord {
   attendanceDate: string;
   timeIn?: string | null;
   timeOut?: string | null;
-  status: StaffAttendanceStatus;
 }
 
 export interface StaffAttendanceFilters {
@@ -49,12 +48,44 @@ export interface LeaveApplicationPayload {
   reason: string;
 }
 
-export type StaffAttendanceStatus = "PRESENT" | "ABSENT" | "LATE";
-
 export interface StaffAttendancePayload {
   staff: { id: number };
   attendanceDate: string;
-  status: StaffAttendanceStatus;
+  timeIn?: string;
+  timeOut?: string;
+}
+
+/** `GET/POST /api/hr/setup/allowances` and `/deductions`. */
+export interface PayRule {
+  id: number;
+  staff?: { id: number; firstName?: string | null; lastName?: string | null } | null;
+  name?: string | null;
+  value?: number | string | null;
+  isGlobal?: boolean | null;
+  global?: boolean | null;
+  isPercentage?: boolean | null;
+  percentage?: boolean | null;
+}
+
+export interface PayRulePayload {
+  staff: { id: number };
+  name: string;
+  value: number;
+  isGlobal: boolean;
+  global: boolean;
+  isPercentage: boolean;
+  percentage: boolean;
+}
+
+export interface PayrollSummary {
+  payPeriod?: string | null;
+  totalStaffProcessed?: number | null;
+  grandTotalGross?: number | string | null;
+  grandTotalDeductions?: number | string | null;
+  grandTotalNet?: number | string | null;
+  netByDepartment?: Record<string, number | string> | null;
+  netByCampus?: Record<string, number | string> | null;
+  payrolls?: PayrollRecord[] | null;
 }
 
 export interface PayrollRecord {
@@ -68,24 +99,21 @@ export interface PayrollRecord {
   basicSalary?: number | string | null;
   allowances?: number | string | null;
   grossSalary?: number | string | null;
-  nhif?: number | string | null;
-  nssf?: number | string | null;
-  paye?: number | string | null;
-  helb?: number | string | null;
   totalDeductions?: number | string | null;
   netSalary?: number | string | null;
+  itemizedAllowancesSummary?: string | null;
+  itemizedDeductionsSummary?: string | null;
+  paymentReference?: string | null;
+  receiptProofUrl?: string | null;
+  paidAt?: string | null;
   status?: string | null;
 }
 
+/** The pay run loads this row with `findById(staffId)`, so `id` is the staff id. */
 export interface SalarySettingPayload {
+  id: number;
   staff: { id: number };
   basicSalary: number;
-  houseAllowance: number;
-  transportAllowance: number;
-  helbAmount: number;
-  saccoContribution: number;
-  isNssfEnabled: boolean;
-  isNhifEnabled: boolean;
 }
 
 export function payrollStatusLabel(status: string | null | undefined): string {
@@ -96,6 +124,10 @@ export function payrollStatusLabel(status: string | null | undefined): string {
       return "Paid";
     case "DRAFT":
       return "Draft";
+    case "SUBMITTED_TO_FINANCE":
+      return "With finance";
+    case "REJECTED":
+      return "Rejected";
     default:
       return status?.trim() || "Unknown";
   }
@@ -106,10 +138,19 @@ export function payrollBadgeVariant(status: string | null | undefined) {
     case "PAID":
       return "success" as const;
     case "PROCESSED":
+    case "SUBMITTED_TO_FINANCE":
       return "warning" as const;
     default:
       return "neutral" as const;
   }
+}
+
+export function payRuleIsGlobal(rule: PayRule): boolean {
+  return Boolean(rule.isGlobal ?? rule.global);
+}
+
+export function payRuleIsPercentage(rule: PayRule): boolean {
+  return Boolean(rule.isPercentage ?? rule.percentage);
 }
 
 export function leaveBadgeVariant(status: string | null | undefined) {
@@ -143,7 +184,7 @@ export function leaveStatusLabel(status: string | null | undefined): string {
 }
 
 export function staffDisplayName(
-  staff: StaffLeave["staff"] | PayrollRecord["staff"]
+  staff: { id?: number; firstName?: string | null; lastName?: string | null } | null | undefined
 ): string {
   const name = [staff?.firstName, staff?.lastName].filter(Boolean).join(" ");
   return name || (staff?.id ? `Staff #${staff.id}` : "Unknown staff");

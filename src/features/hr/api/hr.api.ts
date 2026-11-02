@@ -3,7 +3,10 @@ import { endpoints } from "@/api/endpoints";
 import type {
   LeaveApplicationPayload,
   LeaveReviewPayload,
+  PayRule,
+  PayRulePayload,
   PayrollRecord,
+  PayrollSummary,
   SalarySettingPayload,
   StaffAttendanceFilters,
   StaffAttendanceRecord,
@@ -40,6 +43,40 @@ export const hrApi = {
   },
   processPayroll: (month: string) =>
     api.post<null>(endpoints.hr.processPayroll(month)).then((r) => r.data),
+  draftPayroll: (month: string) =>
+    api
+      .post<{ staffProcessed?: number }>(endpoints.hr.payrollDraft(month))
+      .then((r) => r.data),
+  submitPayroll: (month: string) =>
+    api
+      .patch<{ totalNetOutflow?: number }>(endpoints.hr.payrollSubmit(month))
+      .then((r) => r.data),
+  markPayrollPaid: (id: number, reference: string, receiptUrl?: string) =>
+    api
+      .patch<PayrollRecord>(endpoints.hr.markPaid(id), undefined, {
+        params: receiptUrl ? { reference, receiptUrl } : { reference },
+      })
+      .then((r) => r.data as PayrollRecord),
+  payrollSummary: (month: string) =>
+    api
+      .get<PayrollSummary | null>(endpoints.hr.payrollSummary(month))
+      .then((r) => r.data ?? null),
+  allowances: () =>
+    api.get<PayRule[]>(endpoints.hr.allowances).then((r) => r.data ?? []),
+  saveAllowance: (body: PayRulePayload) =>
+    api.post<PayRule>(endpoints.hr.allowances, body).then((r) => r.data as PayRule),
+  updateAllowance: (id: number, body: PayRulePayload) =>
+    api.put<PayRule>(endpoints.hr.allowance(id), body).then((r) => r.data as PayRule),
+  deleteAllowance: (id: number) =>
+    api.delete(endpoints.hr.allowance(id)).then(() => undefined),
+  deductions: () =>
+    api.get<PayRule[]>(endpoints.hr.deductions).then((r) => r.data ?? []),
+  saveDeduction: (body: PayRulePayload) =>
+    api.post<PayRule>(endpoints.hr.deductions, body).then((r) => r.data as PayRule),
+  updateDeduction: (id: number, body: PayRulePayload) =>
+    api.put<PayRule>(endpoints.hr.deduction(id), body).then((r) => r.data as PayRule),
+  deleteDeduction: (id: number) =>
+    api.delete(endpoints.hr.deduction(id)).then(() => undefined),
   leaves: () =>
     api.get<StaffLeave[]>(endpoints.hr.leaves).then((r) => r.data ?? []),
   reviewLeave: ({ id, action, comment }: LeaveReviewPayload) =>

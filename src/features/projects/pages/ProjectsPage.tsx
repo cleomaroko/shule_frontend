@@ -18,7 +18,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useDepartments } from '@/features/lookups/useLookups'
+import { RequisitionDetailDialog } from '@/features/requisitions/components/RequisitionDetailDialog'
 import { useRequisitionList } from '@/features/requisitions/hooks/useRequisitions'
+import type { Requisition } from '@/features/requisitions/types/requisition.types'
 import { ProjectDetailDialog } from '@/features/projects/components/ProjectDetailDialog'
 import { useProjectFinances, useProjectList, useProjectMutations } from '@/features/projects/hooks/useProjects'
 import {
@@ -52,6 +54,7 @@ export function ProjectsPage(): ReactNode {
   const [status, setStatus] = useState<ProjectStatus>('PLANNED')
   const [budget, setBudget] = useState('')
   const [requisitionId, setRequisitionId] = useState('')
+  const [requisitionPreview, setRequisitionPreview] = useState<Requisition | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [detail, setDetail] = useState<Project | null>(null)
   const [amount, setAmount] = useState('')
@@ -169,8 +172,10 @@ export function ProjectsPage(): ReactNode {
                 options={(approved.data ?? []).map((item) => ({
                   value: String(item.id),
                   label: item.requisitionNumber || `Requisition #${item.id}`,
+                  onInspect: () => setRequisitionPreview(item),
                 }))}
                 emptyLabel="None"
+                hint="Use the info icon on a requisition to see its purpose, amounts, and lines before choosing it."
               />
               <TextField
                 label="Total budget (KES)"
@@ -328,6 +333,12 @@ export function ProjectsPage(): ReactNode {
               },
             },
           )
+        }}
+      />
+      <RequisitionDetailDialog
+        requisition={requisitionPreview}
+        onOpenChange={(open) => {
+          if (!open) setRequisitionPreview(null)
         }}
       />
     </div>

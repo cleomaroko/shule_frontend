@@ -1,16 +1,22 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { toast } from 'sonner'
 
 import { toUserMessage } from '@/api/errors'
 import { DataTable, type DataColumn } from '@/components/data/DataTable'
 import { FilterChip, SearchField } from '@/components/data/FilterBar'
 import { EmptyState, ErrorState } from '@/components/feedback/PageStates'
+import { FormSection } from '@/components/forms/FormSection'
+import { SelectField } from '@/components/forms/SelectField'
 import { TextField } from '@/components/forms/TextField'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { BiometricFilterQuery, BiometricPunchView } from '@/features/biometric/api/biometric.api'
-import { useBiometricFilter, useBiometricSummary } from '@/features/biometric/hooks/useBiometric'
+import { useBiometricFilter, useBiometricLogs, useBiometricSummary } from '@/features/biometric/hooks/useBiometric'
 import { currentMonthRange, todayIso } from '@/features/reports/lib/summaries'
+import { useStaffList, useStaffMutations } from '@/features/staff/hooks/useStaff'
+import type { Staff } from '@/features/staff/types/staff.types'
 import { displayValue, formatDateTime } from '@/lib/format'
 
 const PAGE_SIZE = 10
@@ -27,7 +33,7 @@ function punchBadge(state: string | null): 'success' | 'neutral' | 'warning' {
   return 'warning'
 }
 
-export function BiometricPanel(): ReactNode {
+export function BiometricPanel({ canLink = false }: { canLink?: boolean }): ReactNode {
   const [windowMode, setWindowMode] = useState<'day' | 'range'>('day')
   const [day, setDay] = useState(todayIso())
   const initialRange = currentMonthRange()
@@ -50,8 +56,11 @@ export function BiometricPanel(): ReactNode {
     return next
   }, [day, endDate, page, query, startDate, state, windowMode])
 
+  const plainDay = windowMode === 'day' && query.trim().length === 0 && state === 'all'
   const summary = useBiometricSummary(day, windowMode === 'day')
-  const list = useBiometricFilter(filterQuery)
+  const logs = useBiometricLogs(day, page - 1, PAGE_SIZE, plainDay)
+  const filtered = useBiometricFilter(filterQuery, !plainDay)
+  const list = plainDay ? logs : filtered
   const rows = list.data?.content ?? []
   const total = list.data?.totalElements ?? 0
 
@@ -77,6 +86,7 @@ export function BiometricPanel(): ReactNode {
 
   return (
     <div className="flex flex-col gap-4">
+      {canLink ? <BiometricLinkCard /> : null}
       <p className="type-caption text-muted-foreground">
         Staff punches from the biometric devices. This is separate from the learner class register. A single day
         uses that date; a range hides the day summary.
@@ -221,5 +231,53 @@ function SummaryCards({
         </Card>
       ))}
     </div>
+  )
+}
+
+function staffName(person: Staff): string {
+  const name = [person.firstName, person.secondName, person.lastName].filter(Boolean).join(' ')
+  return name || person.fullName || `Staff #${person.id}`
+}
+
+function BiometricLinkCard(): ReactNode {
+  const staff = useStaffList()
+  const { linkBiometric } = useStaffMutations()
+  const [staffId, setStaffId] = useState('')
+  const [empCode, setEmpCode] = useState('')
+  const options = (staff.data ?? []).map((person) => ({
+    value: String(person.id),
+    label: `${staffName(person)}${person.staffNumber ? ` · ${person.staffNumber}` : ''}`,
+  }))
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    const id = Number(staffId)
+    if (!id || !empCode.trim()) {
+      toast.error('Choose a staff member and enter the device employee code.')
+      return
+    }
+    linkBiometric.mutate({ id, empCode: empCode.trim() }, { onSuccess: () => setEmpCode('') })
+  }
+
+  return (
+    <form onSubmit={submit}>
+      <FormSection
+        title="Link a device code"
+        description="Match the employee code on the biometric clock to a staff record. The staff list does not show the current code."
+      >
+        {staff.isError ? (
+          <div className="sm:col-span-2">
+            <ErrorState message={toUserMessage(staff.error)} onRetry={() => void staff.refetch()} />
+          </div>
+        ) : null}
+        <SelectField label="Staff member" value={staffId} onChange={setStaffId} options={options} emptyLabel="Select staff" />
+        <TextField label="Employee code" value={empCode} onChange={(event) => setEmpCode(event.target.value)} required />
+        <div className="sm:col-span-2">
+          <Button type="submit" className="w-full sm:w-auto" isLoading={linkBiometric.isPending} loadingLabel="Linking">
+            Link code
+          </Button>
+        </div>
+      </FormSection>
+    </form>
   )
 }

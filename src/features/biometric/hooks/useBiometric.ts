@@ -15,10 +15,19 @@ export function useBiometricSummary(date: string, enabled = true) {
   })
 }
 
-export function useBiometricFilter(query: BiometricFilterQuery) {
+export function useBiometricFilter(query: BiometricFilterQuery, enabled = true) {
   const params = toBiometricParams(query)
   return useQuery({
     queryKey: queryKeys.biometric.filter(params),
     queryFn: () => biometricApi.filter(query),
+    enabled,
+  })
+}
+
+export function useBiometricLogs(date: string, page: number, size: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.biometric.logs(date, page, size),
+    queryFn: () => biometricApi.logs(date, page, size),
+    enabled: enabled && date.length > 0,
   })
 }

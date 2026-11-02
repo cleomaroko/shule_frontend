@@ -61,18 +61,32 @@ export function SelectContent({
 export function SelectItem({
   className,
   children,
+  accessory,
   ...props
-}: ComponentProps<typeof SelectPrimitive.Item>): ReactNode {
+}: ComponentProps<typeof SelectPrimitive.Item> & { accessory?: ReactNode }): ReactNode {
   return (
     <SelectPrimitive.Item
       className={cn(
-        'relative flex cursor-pointer select-none items-center rounded-md py-2 pr-8 pl-2.5 type-label outline-none',
+        'relative flex cursor-pointer select-none items-center rounded-md py-2 pl-2.5 type-label outline-none',
+        accessory ? 'pr-16' : 'pr-8',
         'focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-55',
         className,
       )}
       {...props}
     >
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+      {accessory ? (
+        <span
+          className="absolute right-8 flex items-center"
+          onPointerDown={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+          }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {accessory}
+        </span>
+      ) : null}
       <SelectPrimitive.ItemIndicator className="absolute right-2 flex items-center">
         <Check className="size-4 text-primary" aria-hidden="true" />
       </SelectPrimitive.ItemIndicator>

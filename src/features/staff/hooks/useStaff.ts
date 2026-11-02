@@ -113,7 +113,19 @@ export function useStaffMutations() {
     },
   })
 
-  return { create, update, remove, resign }
+  const linkBiometric = useMutation({
+    mutationFn: ({ id, empCode }: { id: number; empCode: string }) => staffApi.linkBiometric(id, empCode),
+    onSuccess: async () => {
+      await invalidate()
+      toast.success('Biometric code linked.')
+    },
+    onError: (error: unknown) => {
+      logger.error('Biometric code link failed', error)
+      toast.error(toUserMessage(error))
+    },
+  })
+
+  return { create, update, remove, resign, linkBiometric }
 }
 
 export function findStaff(list: Staff[] | undefined, id: number): Staff | undefined {

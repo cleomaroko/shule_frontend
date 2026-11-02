@@ -124,11 +124,6 @@ function percentToFraction(value: string): number | undefined {
   return parsed / 100
 }
 
-function isLikelyDriver(staff: Staff): boolean {
-  const haystack = `${staff.department ?? ''} ${staff.systemRole ?? ''}`.toLowerCase()
-  return haystack.includes('driver') || haystack.includes('transport')
-}
-
 export function VehicleLogDialog({
   open,
   onOpenChange,
@@ -144,15 +139,10 @@ export function VehicleLogDialog({
   const isRefuel = form.logType === 'REFUELING'
   const isTrip = form.logType === 'TRIP'
 
-  const hasDriverMatch = drivers.some(isLikelyDriver)
-
   const selectableDrivers = useMemo(() => {
-    const matched = drivers.filter(isLikelyDriver)
-    const base = matched.length > 0 ? matched : drivers
-    const currentId = editing?.driver?.id
-    if (!currentId || base.some((staff) => staff.id === currentId)) return base
-    const current = drivers.find((staff) => staff.id === currentId)
-    return current ? [current, ...base] : base
+    const current = editing?.driver
+    if (!current?.id || drivers.some((staff) => staff.id === current.id)) return drivers
+    return [current, ...drivers]
   }, [drivers, editing])
 
   useEffect(() => {
@@ -303,11 +293,8 @@ export function VehicleLogDialog({
                 }))}
                 placeholder="Select driver"
                 emptyLabel="Not set"
-                hint={
-                  hasDriverMatch
-                    ? 'Staff whose department or role mentions driver or transport.'
-                    : 'No staff department or role mentions driver or transport, so the full staff list is shown.'
-                }
+                emptyMessage="No drivers found."
+                hint="Drivers only, from the drivers staff list."
               />
             ) : null}
             {isService ? (

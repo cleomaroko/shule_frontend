@@ -18,9 +18,10 @@ import { TextField } from '@/components/forms/TextField'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useFinanceMutations, useFinanceSummary } from '@/features/finance/hooks/useFinance'
-import { useHrPayroll } from '@/features/hr/hooks/useHr'
+import { useHrMutations, useHrPayroll, usePayrollSummary } from '@/features/hr/hooks/useHr'
 import { payrollBadgeVariant, payrollStatusLabel, staffDisplayName, type PayrollRecord } from '@/features/hr/types/hr.types'
 import {
   invoiceBadgeVariant,
@@ -119,26 +120,146 @@ export function FinancePage(): ReactNode {
   )
 }
 
+const PAY_MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER']
+
+function currentPayPeriod(): string {
+  return `${PAY_MONTHS[new Date().getMonth()]}-${new Date().getFullYear()}`
+}
+
 function PayrollPanel({ canFinance }: { canFinance: boolean }): ReactNode {
-  const payroll = useHrPayroll(canFinance)
-  const { updatePayrollStatus } = useFinanceMutations()
-  const rows = payroll.data ?? []
+  const [month, setMonth] = useState(currentPayPeriod)
   const [page, setPage] = useState(1)
+  const [paying, setPaying] = useState<PayrollRecord | null>(null)
+  const [reference, setReference] = useState('')
+  const [receiptUrl, setReceiptUrl] = useState('')
+  const summary = usePayrollSummary(month, canFinance)
+  const payroll = useHrPayroll(canFinance)
+  const { markPayrollPaid } = useHrMutations()
+  const monthOptions = Array.from({ length: 24 }, (_, offset) => {
+    const date = new Date()
+    date.setDate(1)
+    date.setMonth(date.getMonth() - offset)
+    return `${PAY_MONTHS[date.getMonth()]}-${date.getFullYear()}`
+  })
+  const rows = summary.data?.payrolls ?? (payroll.data ?? []).filter((row) => (row.payPeriod ?? '').toUpperCase() === month)
+  const payable = (status: string | null | undefined) => status === 'SUBMITTED_TO_FINANCE' || status === 'PROCESSED'
   const columns: Array<DataColumn<PayrollRecord>> = [
     { id: 'staff', header: 'Staff member', cell: (row) => staffDisplayName(row.staff) },
-    { id: 'period', header: 'Pay period', cell: (row) => row.payPeriod || '—' },
     { id: 'gross', header: 'Gross pay', cell: (row) => formatKes(row.grossSalary), hideOnMobile: true },
+    { id: 'deductions', header: 'Deductions', cell: (row) => formatKes(row.totalDeductions), hideOnMobile: true },
     { id: 'net', header: 'Net pay', cell: (row) => formatKes(row.netSalary) },
     { id: 'status', header: 'Status', cell: (row) => <Badge variant={payrollBadgeVariant(row.status)}>{payrollStatusLabel(row.status)}</Badge> },
-    { id: 'actions', header: 'Payment', className: 'w-36', cell: (row) => row.status === 'PROCESSED' ? <Button size="sm" onClick={() => updatePayrollStatus.mutate({ id: row.id, status: 'PAID' })} disabled={updatePayrollStatus.isPending}>Mark paid</Button> : '—' },
+    {
+      id: 'actions',
+      header: 'Payment',
+      className: 'w-36',
+      cell: (row) => payable(row.status) ? (
+        <Button size="sm" onClick={() => { setPaying(row); setReference(''); setReceiptUrl('') }}>Mark paid</Button>
+      ) : row.paymentReference || '—',
+    },
   ]
 
-  if (!canFinance) return <EmptyState title="Finance access required" description="Payroll records and payment confirmation require finance access." />
-  if (payroll.isError) return <ErrorState message={toUserMessage(payroll.error)} onRetry={() => void payroll.refetch()} />
-  if (!payroll.isLoading && rows.length === 0) return <EmptyState title="No payroll records" description="Processed staff payroll will appear here." />
+  const submitPaid = (event: FormEvent) => {
+    event.preventDefault()
+    if (!paying || !reference.trim()) {
+      toast.error('Enter the bank or M-Pesa reference.')
+      return
+    }
+    markPayrollPaid.mutate(
+      { id: paying.id, reference: reference.trim(), ...(receiptUrl.trim() ? { receiptUrl: receiptUrl.trim() } : {}) },
+      { onSuccess: () => setPaying(null) },
+    )
+  }
 
-  return <FormSection title="Staff payroll" description="Confirm payment after salary has been wired."><div className="sm:col-span-2"><DataTable columns={columns} rows={rows.slice((page - 1) * 10, page * 10)} getRowId={(row) => row.id} isLoading={payroll.isLoading} page={page} pageSize={10} total={rows.length} onPageChange={setPage}
-    mobileCard={(row) => <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="type-label">{staffDisplayName(row.staff)}</p><p className="type-caption text-muted-foreground">{row.payPeriod || 'Pay period not set'} · Net {formatKes(row.netSalary)}</p></div><Badge variant={payrollBadgeVariant(row.status)}>{payrollStatusLabel(row.status)}</Badge></div>} /></div></FormSection>
+  if (!canFinance) return <EmptyState title="Finance access required" description="The monthly payroll audit and payment confirmation require finance access." />
+
+  return (
+    <div className="flex flex-col gap-6">
+      <FormSection title="Monthly payroll audit" description="Gross, deductions, and net pay for the selected month, split by department and campus.">
+        <SelectField
+          label="Pay period"
+          value={month}
+          onChange={(value) => { setMonth(value); setPage(1) }}
+          options={monthOptions.map((item) => ({ value: item, label: item }))}
+          allowEmpty={false}
+        />
+        {summary.isError ? <div className="sm:col-span-2"><ErrorState message={toUserMessage(summary.error)} onRetry={() => void summary.refetch()} /></div> : null}
+        <div className="sm:col-span-2">
+          <StatGrid
+            loading={summary.isLoading}
+            items={[
+              { label: 'Staff', value: summary.data ? String(summary.data.totalStaffProcessed ?? 0) : '—' },
+              { label: 'Gross', value: formatKes(summary.data?.grandTotalGross) },
+              { label: 'Deductions', value: formatKes(summary.data?.grandTotalDeductions) },
+              { label: 'Net outflow', value: formatKes(summary.data?.grandTotalNet) },
+            ]}
+          />
+        </div>
+        <MoneySplit title="Net by department" rows={summary.data?.netByDepartment} />
+        <MoneySplit title="Net by campus" rows={summary.data?.netByCampus} />
+      </FormSection>
+      {payroll.isError ? <ErrorState message={toUserMessage(payroll.error)} onRetry={() => void payroll.refetch()} /> : null}
+      {!summary.isLoading && rows.length === 0 ? (
+        <EmptyState title="No payroll for this month" description="HR creates a draft and sends it here before finance can mark salaries paid." />
+      ) : (
+        <DataTable
+          columns={columns}
+          rows={rows.slice((page - 1) * 10, page * 10)}
+          getRowId={(row) => row.id}
+          isLoading={summary.isLoading || payroll.isLoading}
+          page={page}
+          pageSize={10}
+          total={rows.length}
+          onPageChange={setPage}
+          mobileCard={(row) => (
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="type-label">{staffDisplayName(row.staff)}</p>
+                <p className="type-caption text-muted-foreground">Net {formatKes(row.netSalary)}</p>
+              </div>
+              <Badge variant={payrollBadgeVariant(row.status)}>{payrollStatusLabel(row.status)}</Badge>
+            </div>
+          )}
+        />
+      )}
+      <Dialog open={paying !== null} onOpenChange={(open) => { if (!open) setPaying(null) }}>
+        <DialogContent>
+          {paying ? (
+            <form onSubmit={submitPaid} className="space-y-5">
+              <DialogHeader>
+                <DialogTitle>Mark salary paid</DialogTitle>
+                <DialogDescription>{staffDisplayName(paying.staff)} · {formatKes(paying.netSalary)}</DialogDescription>
+              </DialogHeader>
+              <TextField label="Payment reference" value={reference} onChange={(event) => setReference(event.target.value)} required placeholder="M-Pesa or EFT reference" />
+              <TextField label="Receipt link" value={receiptUrl} onChange={(event) => setReceiptUrl(event.target.value)} placeholder="Optional" />
+              <div className="flex justify-end">
+                <Button type="submit" className="w-full sm:w-auto" isLoading={markPayrollPaid.isPending} loadingLabel="Saving">Confirm payment</Button>
+              </div>
+            </form>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+function MoneySplit({ title, rows }: { title: string; rows: Record<string, number | string> | null | undefined }): ReactNode {
+  const entries = Object.entries(rows ?? {})
+  return (
+    <div className="rounded-xl border border-border p-4">
+      <p className="type-label mb-3">{title}</p>
+      {entries.length === 0 ? <p className="type-caption text-muted-foreground">No totals for this month.</p> : (
+        <ul className="flex flex-col gap-2">
+          {entries.map(([label, amount]) => (
+            <li key={label} className="flex items-center justify-between gap-3">
+              <span className="type-body min-w-0 truncate">{label}</span>
+              <span className="type-label shrink-0">{formatKes(amount)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
 }
 
 function SummaryPanel({ canFinance }: { canFinance: boolean }): ReactNode {

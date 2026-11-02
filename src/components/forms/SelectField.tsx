@@ -1,3 +1,4 @@
+import { Info } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 
 import { FieldError } from '@/components/forms/FieldError'
@@ -103,7 +104,28 @@ export function SelectField({
             </div>
           ) : null}
           {visible.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              {...(option.onInspect
+                ? {
+                    accessory: (
+                      <button
+                        type="button"
+                        aria-label={`Details for ${option.label}`}
+                        className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        onClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          option.onInspect?.()
+                        }}
+                      >
+                        <Info className="size-4" aria-hidden="true" />
+                      </button>
+                    ),
+                  }
+                : {})}
+            >
               {option.label}
             </SelectItem>
           ))}

@@ -64,4 +64,8 @@ export const biometricApi = {
     api
       .get<BiometricPage>(endpoints.biometric.filter, { params: toBiometricParams(query) })
       .then((r) => r.data ?? emptyPage()),
+  logs: (date: string, page: number, size: number) =>
+    api
+      .get<BiometricPage>(endpoints.biometric.logs, { params: { date, page, size } })
+      .then((r) => r.data ?? emptyPage()),
 }

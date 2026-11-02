@@ -25,14 +25,14 @@ import { displayValue, formatDate, formatDateTime, formatPersonName } from '@/li
 
 export interface RequisitionDetailDialogProps {
   requisition: Requisition | null
-  canReview: boolean
-  canApprove: boolean
-  canReceive: boolean
+  canReview?: boolean
+  canApprove?: boolean
+  canReceive?: boolean
   onOpenChange: (open: boolean) => void
-  onReview: () => void
-  onApprove: () => void
-  onReceive: () => void
-  onReject: () => void
+  onReview?: () => void
+  onApprove?: () => void
+  onReceive?: () => void
+  onReject?: () => void
 }
 
 function staffName(staff: Requisition['createdBy']): string {
@@ -42,9 +42,9 @@ function staffName(staff: Requisition['createdBy']): string {
 
 export function RequisitionDetailDialog({
   requisition,
-  canReview,
-  canApprove,
-  canReceive,
+  canReview = false,
+  canApprove = false,
+  canReceive = false,
   onOpenChange,
   onReview,
   onApprove,
@@ -219,22 +219,22 @@ export function RequisitionDetailDialog({
           </div>
         ) : null}
         <DialogFooter className="flex-wrap gap-2 border-t border-border px-5 py-4 sm:px-6">
-          {showReject ? (
+          {showReject && onReject ? (
             <Button type="button" variant="outline" onClick={onReject}>
               Reject
             </Button>
           ) : null}
-          {showReview ? (
+          {showReview && onReview ? (
             <Button type="button" onClick={onReview}>
               Review
             </Button>
           ) : null}
-          {showApprove ? (
+          {showApprove && onApprove ? (
             <Button type="button" onClick={onApprove}>
               Approve
             </Button>
           ) : null}
-          {showReceive ? (
+          {showReceive && onReceive ? (
             <Button type="button" onClick={onReceive}>
               Confirm receipt
             </Button>

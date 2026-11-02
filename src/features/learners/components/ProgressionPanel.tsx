@@ -287,7 +287,7 @@ export function ProgressionPanel({ canWrite }: { canWrite: boolean }): ReactNode
             {fromClass ? 'No learners match this class and stream.' : 'Choose a class to see who will move.'}
           </p>
         )}
-        <Button type="submit" className="w-full sm:w-auto" isLoading={promoteClass.isPending} loadingLabel="Promoting">
+        <Button type="submit" className="w-full sm:w-fit" isLoading={promoteClass.isPending} loadingLabel="Promoting">
           Promote class
         </Button>
       </form>
@@ -327,7 +327,7 @@ export function ProgressionPanel({ canWrite }: { canWrite: boolean }): ReactNode
         <p className="type-caption text-muted-foreground">
           {graduateClassName ? `${graduateCount} active learner${graduateCount === 1 ? '' : 's'} will graduate.` : 'Choose a class to see the count.'}
         </p>
-        <Button type="submit" className="w-full sm:w-auto" isLoading={graduateClass.isPending} loadingLabel="Graduating">
+        <Button type="submit" className="w-full sm:w-fit" isLoading={graduateClass.isPending} loadingLabel="Graduating">
           Graduate class
         </Button>
       </form>
@@ -368,7 +368,7 @@ export function ProgressionPanel({ canWrite }: { canWrite: boolean }): ReactNode
             required
           />
         </div>
-        <Button type="submit" variant="secondary" className="w-full sm:w-auto" isLoading={rollbackBulk.isPending} loadingLabel="Reversing">
+        <Button type="submit" variant="secondary" className="w-full sm:w-fit" isLoading={rollbackBulk.isPending} loadingLabel="Reversing">
           Reverse promotion
         </Button>
       </form>
